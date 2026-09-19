@@ -19,16 +19,21 @@ const Field = ({ label, children, className }: { label: string; children: React.
 const allPlans = [...plans, ...plotPlans];
 
 type RoomKey = "bed" | "bath" | "living" | "kitchen" | "balcony" | "study" | "terrace" | "parking";
-const roomTypes: { k: RoomKey; l: string; I: typeof BedDouble; max: number }[] = [
-  { k: "bed", l: "Bedrooms", I: BedDouble, max: 8 },
-  { k: "bath", l: "Bathrooms", I: Bath, max: 8 },
-  { k: "living", l: "Living / dining", I: Sofa, max: 3 },
-  { k: "kitchen", l: "Kitchen", I: ChefHat, max: 2 },
-  { k: "balcony", l: "Balconies", I: Sun, max: 6 },
-  { k: "study", l: "Study / store", I: Warehouse, max: 4 },
-  { k: "terrace", l: "Terrace / garden", I: Sun, max: 2 },
-  { k: "parking", l: "Parking (car)", I: Car, max: 4 },
+/* Caps follow the home size you picked — a 2 BHK can't have 8 bedrooms — and
+   `min` keeps the layout physically sensible (every home has one kitchen). */
+const roomTypes: { k: RoomKey; l: string; I: typeof BedDouble; min: number; caps: Record<Size, number>; rate: number }[] = [
+  { k: "bed", l: "Bedrooms", I: BedDouble, min: 1, caps: { "2": 2, "3": 3, "4": 10 }, rate: 200 },
+  { k: "bath", l: "Bathrooms", I: Bath, min: 1, caps: { "2": 3, "3": 4, "4": 10 }, rate: 100 },
+  { k: "living", l: "Living / dining", I: Sofa, min: 1, caps: { "2": 2, "3": 2, "4": 4 }, rate: 150 },
+  { k: "kitchen", l: "Kitchen", I: ChefHat, min: 1, caps: { "2": 1, "3": 1, "4": 3 }, rate: 150 },
+  { k: "balcony", l: "Balconies", I: Sun, min: 0, caps: { "2": 3, "3": 4, "4": 8 }, rate: 75 },
+  { k: "study", l: "Study / store", I: Warehouse, min: 0, caps: { "2": 1, "3": 2, "4": 5 }, rate: 100 },
+  { k: "terrace", l: "Terrace / garden", I: Sun, min: 0, caps: { "2": 1, "3": 1, "4": 3 }, rate: 125 },
+  { k: "parking", l: "Parking (car)", I: Car, min: 0, caps: { "2": 2, "3": 2, "4": 6 }, rate: 75 },
 ];
+const sizeLabel: Record<Size, string> = { "2": "2 BHK", "3": "3 BHK", "4": "4 BHK+" };
+/* Add-on ceilings. Cars are capped by the parking you listed, but never below 1. */
+const addOnCap = (id: string, parking: number) => (id === "car" ? Math.max(1, parking) : id === "cleaning" ? 4 : 5);
 const defaultsFor = (size: Size): Record<RoomKey, number> =>
   size === "2" ? { bed: 2, bath: 2, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 0, parking: 1 }
   : size === "3" ? { bed: 3, bath: 3, living: 1, kitchen: 1, balcony: 2, study: 0, terrace: 0, parking: 1 }
@@ -55,16 +60,40 @@ export function AccessForm() {
   const [adds, setAdds] = useState<Record<string, number>>(initialAdd);
   const [rooms, setRooms] = useState<Record<RoomKey, number>>(defaultsFor("2"));
   const pickSize = (v: Size) => { setSize(v); setRooms(defaultsFor(v)); };
-  const setRoom = (k: RoomKey, d: number, max: number) => setRooms((r) => ({ ...r, [k]: Math.max(0, Math.min(max, r[k] + d)) }));
+  const setRoom = (k: RoomKey, d: number) => {
+    const t = roomTypes.find((x) => x.k === k)!;
+    setRooms((r) => {
+      const next = Math.max(t.min, Math.min(t.caps[size], r[k] + d));
+      /* fewer parking slots than cars booked → bring the car add-on back in line */
+      if (k === "parking") setAdds((a) => (a.car ? { ...a, car: Math.min(a.car, Math.max(1, next)) } : a));
+      return { ...r, [k]: next };
+    });
+  };
   const slots = roomTypes.flatMap((t) => Array.from({ length: rooms[t.k] }, (_, i) => roomLabel(t.k, i, rooms[t.k])));
   const slotCount = slots.length + 1; // + exit walkthrough
 
   const plan = allPlans.find((p) => p.id === planId)!;
   const isPlot = planId === "plot-once";
   const planPrice = isPlot ? plan.price : size === "3" ? plan.price3 ?? plan.price : size === "4" ? plan.price4 ?? plan.price3 ?? plan.price : plan.price;
+
+  /* The 2 and 3 BHK tiers are capped at exactly their layout, so only 4 BHK+ can
+     exceed its baseline. Rooms past it are quoted per inspection, and a yearly
+     plan pays that on each of its visits. */
+  const visits = plan.visits ?? 1;
+  const extras = useMemo(() => {
+    if (isPlot || size !== "4") return [];
+    const base = defaultsFor("4");
+    return roomTypes
+      .map((t) => ({ t, n: rooms[t.k] - base[t.k] }))
+      .filter((x) => x.n > 0)
+      .map((x) => ({ k: x.t.k, l: x.t.l, n: x.n, rate: x.t.rate, perVisit: x.n * x.t.rate }));
+  }, [rooms, size, isPlot]);
+  const extraPerVisit = extras.reduce((t, e) => t + e.perVisit, 0);
+  const extraTotal = extraPerVisit * visits;
+
   const addTotal = useMemo(() => (isPlot ? 0 : addOns.reduce((t, a) => t + (adds[a.id] || 0) * a.price, 0)), [adds, isPlot]);
-  const total = planPrice + addTotal;
-  const setQty = (id: string, d: number) => setAdds((s) => ({ ...s, [id]: Math.max(0, Math.min(5, (s[id] || 0) + d)) }));
+  const total = planPrice + addTotal + extraTotal;
+  const setQty = (id: string, d: number) => setAdds((s) => ({ ...s, [id]: Math.max(0, Math.min(addOnCap(id, rooms.parking), (s[id] || 0) + d)) }));
 
   return (
     <section className="pt-[88px] md:pt-[100px]">
@@ -126,7 +155,7 @@ export function AccessForm() {
                         return (
                           <button type="button" key={v} role="radio" aria-checked={on} onClick={() => pickSize(v)} className={cn("rounded-[12px] border px-3 py-3 text-left transition", on ? "border-accent bg-accent-tint ring-4 ring-accent/10" : "border-line-2 hover:border-ink/40")}>
                             <div className="text-[14px] font-medium">{l}</div>
-                            <div className="text-[13px] text-text-2">{inr(pr)}{plan.period === "per year" ? "/yr" : ""}</div>
+                            <div className="text-[13px] text-text-2">{v === "4" ? "from " : ""}{inr(pr)}{plan.period === "per year" ? "/yr" : ""}</div>
                           </button>
                         );
                       })}
@@ -138,20 +167,62 @@ export function AccessForm() {
                 {!isPlot && (
                   <div className="card bg-white p-6 shadow-card sm:p-7">
                     <h2 className="text-[18px] font-medium">3. Your home, room by room</h2>
-                    <p className="t-small mt-1">Every room you add becomes a mandatory video + photo slot in the inspector's app. They can't submit the visit until every slot is filled.</p>
+                    <p className="t-small mt-1">Every room you add becomes a mandatory video + photo slot in the inspector's app. They can't submit the visit until every slot is filled. Limits follow the {sizeLabel[size]} you picked above.</p>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      {roomTypes.map(({ k, l, I, max }) => (
-                        <div key={k} className={cn("flex items-center gap-3 rounded-[12px] border p-3 transition", rooms[k] ? "border-line-2" : "border-line opacity-70")}>
-                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={15} /></span>
-                          <div className="min-w-0 flex-1 text-[14px] font-medium">{l}</div>
-                          <div className="flex items-center gap-1">
-                            <button type="button" onClick={() => setRoom(k, -1, max)} aria-label={`Fewer ${l}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={!rooms[k]}><Minus size={13} /></button>
-                            <span className="w-5 text-center text-[14px] font-medium tabular-nums">{rooms[k]}</span>
-                            <button type="button" onClick={() => setRoom(k, 1, max)} aria-label={`More ${l}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white disabled:opacity-30" disabled={rooms[k] >= max}><Plus size={13} /></button>
+                      {roomTypes.map(({ k, l, I, min, caps }) => {
+                        const max = caps[size];
+                        const atMax = rooms[k] >= max;
+                        const atMin = rooms[k] <= min;
+                        return (
+                          <div key={k} className={cn("flex items-center gap-3 rounded-[12px] border p-3 transition", rooms[k] ? "border-line-2" : "border-line opacity-70")}>
+                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={15} /></span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[14px] font-medium">{l}</div>
+                              {atMax ? <div className="text-[11.5px] text-text-3">max {max} for {sizeLabel[size]}</div> : min > 0 && atMin ? <div className="text-[11.5px] text-text-3">at least {min}</div> : null}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => setRoom(k, -1)} aria-label={`Fewer ${l}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={atMin}><Minus size={13} /></button>
+                              <span className="w-5 text-center text-[14px] font-medium tabular-nums">{rooms[k]}</span>
+                              <button type="button" onClick={() => setRoom(k, 1)} aria-label={`More ${l}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white disabled:opacity-30" disabled={atMax}><Plus size={13} /></button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+                    {/* live quote for anything past the 4 BHK+ baseline */}
+                    {size === "4" && (
+                      <div className={cn("mt-4 rounded-[14px] border p-4 transition", extras.length ? "border-accent bg-accent-tint" : "border-line-2 bg-paper")}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[14px] font-medium">Beyond the 4 BHK baseline</span>
+                          <span className="text-[12.5px] text-text-2">{inr(planPrice)} covers 4 bed · 4 bath · 2 living · 1 kitchen · 2 balcony · 1 study · 1 terrace · 2 parking</span>
+                        </div>
+                        {extras.length === 0 ? (
+                          <p className="t-small mt-2">Add a room above and it's quoted here instantly — bedrooms {inr(200)}, bathrooms {inr(100)}, every other room at its own rate, per inspection.</p>
+                        ) : (
+                          <>
+                            <ul className="mt-3 space-y-1.5">
+                              {extras.map((e) => (
+                                <li key={e.k} className="flex items-center justify-between gap-3 text-[13.5px]">
+                                  <span className="text-text-2">+{e.n} {e.l.toLowerCase()} × {inr(e.rate)} <span className="text-text-3">per inspection</span></span>
+                                  <span className="font-medium tabular-nums">{inr(e.perVisit)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="mt-2.5 space-y-1.5 border-t border-accent/20 pt-2.5 text-[13.5px]">
+                              <div className="flex items-center justify-between gap-3"><span className="text-text-2">Extra per inspection</span><span className="font-medium tabular-nums">{inr(extraPerVisit)}</span></div>
+                              {visits > 1 && (
+                                <div className="flex items-center justify-between gap-3"><span className="text-text-2">× {visits} inspections a year on {plan.name}</span><span className="font-medium tabular-nums">{inr(extraTotal)}</span></div>
+                              )}
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] bg-accent px-3.5 py-2.5 text-white">
+                              <span className="text-[13.5px]">Added to your quote{plan.period === "per year" ? " each year" : ""}</span>
+                              <span className="text-[17px] font-medium tabular-nums">+{inr(extraTotal)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
                     {/* generated inspector checklist preview */}
                     <div className="mt-4 rounded-[14px] bg-ink p-4 text-white">
                       <div className="flex items-center justify-between"><span className="text-[13px] font-medium">What the inspector's app will show</span><span className="rounded-full bg-white/12 px-2.5 py-1 text-[11.5px] font-medium">{slotCount} video slots · all required</span></div>
@@ -172,14 +243,16 @@ export function AccessForm() {
                     {addOns.map((a) => {
                       const I = addOnIcon[a.id as keyof typeof addOnIcon];
                       const q = adds[a.id] || 0;
+                      const cap = addOnCap(a.id, rooms.parking);
+                      const atCap = q >= cap;
                       return (
                         <div key={a.id} className={cn("flex items-center gap-3 rounded-[12px] border p-3 transition", q ? "border-accent bg-accent-tint" : "border-line-2")}>
                           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={16} /></span>
-                          <div className="min-w-0 flex-1"><div className="text-[14.5px] font-medium">{a.name} · {inr(a.price)} <span className="text-[12px] font-normal text-text-2">{a.unit}</span></div><div className="t-small truncate">{a.note}</div></div>
+                          <div className="min-w-0 flex-1"><div className="text-[14.5px] font-medium">{a.name} · {inr(a.price)} <span className="text-[12px] font-normal text-text-2">{a.unit}</span></div><div className="t-small truncate">{atCap ? (a.id === "car" ? `Max ${cap} — matches the parking you listed above` : `Max ${cap} per visit`) : a.note}</div></div>
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => setQty(a.id, -1)} aria-label={`Remove ${a.name}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={!q}><Minus size={13} /></button>
                             <span className="w-5 text-center text-[14px] font-medium tabular-nums">{q}</span>
-                            <button type="button" onClick={() => setQty(a.id, 1)} aria-label={`Add ${a.name}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white"><Plus size={13} /></button>
+                            <button type="button" onClick={() => setQty(a.id, 1)} aria-label={`Add ${a.name}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white disabled:opacity-30" disabled={atCap}><Plus size={13} /></button>
                           </div>
                         </div>
                       );
@@ -223,6 +296,15 @@ export function AccessForm() {
                     <div className="flex items-start justify-between gap-3 py-3">
                       <div><div className="text-[15px] font-medium">{slots.length} rooms · {slotCount} video slots</div><div className="text-[12.5px] text-white/60">Inspector must fill every slot before submitting</div></div>
                       <div className="text-[13px] text-white/60">included</div>
+                    </div>
+                  )}
+                  {!isPlot && extraTotal > 0 && (
+                    <div className="flex items-start justify-between gap-3 py-3">
+                      <div>
+                        <div className="text-[15px] font-medium">Extra rooms past 4 BHK</div>
+                        <div className="text-[12.5px] text-white/60">{inr(extraPerVisit)} per inspection{visits > 1 ? ` × ${visits} a year` : ""}</div>
+                      </div>
+                      <div className="text-[15px] font-medium">{inr(extraTotal)}</div>
                     </div>
                   )}
                   {!isPlot && addOns.filter((a) => adds[a.id]).map((a) => (

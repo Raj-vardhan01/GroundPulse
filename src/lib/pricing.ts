@@ -12,11 +12,14 @@ export type Plan = {
   worth?: string;
   includes: string[];
   cta: string;
+  /** inspections included per plan period — extra rooms are charged per inspection */
+  visits?: number;
 };
 
 export const plans: Plan[] = [
   {
     id: "one-time",
+    visits: 1,
     name: "One-time visit",
     price: 1999,
     price3: 2499,
@@ -34,6 +37,7 @@ export const plans: Plan[] = [
   },
   {
     id: "care",
+    visits: 4,
     name: "Care",
     price: 7999,
     price3: 9999,
@@ -53,6 +57,7 @@ export const plans: Plan[] = [
   },
   {
     id: "care-plus",
+    visits: 4,
     name: "Care+",
     price: 14999,
     price3: 19999,
@@ -94,6 +99,7 @@ export const assets = [
 export const plotPlans: Plan[] = [
   {
     id: "plot-once",
+    visits: 1,
     name: "Plot visit",
     price: 1999,
     period: "one visit",
