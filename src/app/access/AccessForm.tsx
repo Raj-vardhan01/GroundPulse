@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -38,10 +38,12 @@ const defaultsFor = (size: Size): Record<RoomKey, number> =>
   size === "2" ? { bed: 2, bath: 2, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 0, parking: 1 }
   : size === "3" ? { bed: 3, bath: 3, living: 1, kitchen: 1, balcony: 2, study: 0, terrace: 0, parking: 1 }
   : { bed: 4, bath: 4, living: 2, kitchen: 1, balcony: 2, study: 1, terrace: 1, parking: 2 };
-const roomLabel = (k: RoomKey, i: number, n: number) => {
-  const base = { bed: "Bedroom", bath: "Bathroom", living: "Living / dining", kitchen: "Kitchen", balcony: "Balcony", study: "Study / store", terrace: "Terrace / garden", parking: "Parking" }[k];
-  return n > 1 ? `${base} ${i + 1}` : base;
-};
+const roomOne: Record<RoomKey, string> = { bed: "Bedroom", bath: "Bathroom", living: "Living / dining", kitchen: "Kitchen", balcony: "Balcony", study: "Study / store", terrace: "Terrace / garden", parking: "Parking" };
+const roomLabel = (k: RoomKey, i: number, n: number) => (n > 1 ? `${roomOne[k]} ${i + 1}` : roomOne[k]);
+/* Care+ carries more per room than Care or a one-off, because every extra room
+   also falls under its repair cover. Rounded to ₹25 so no price reads like ₹113. */
+const planRateMult = (planId: string) => (planId === "care-plus" ? 1.5 : 1);
+const rateAt = (base: number, planId: string) => Math.round((base * planRateMult(planId)) / 25) * 25;
 const addOnIcon = { cleaning: Sparkles, car: Car, plot: LandPlot } as const;
 
 export function AccessForm() {
@@ -59,35 +61,51 @@ export function AccessForm() {
   const [size, setSize] = useState<Size>("2");
   const [adds, setAdds] = useState<Record<string, number>>(initialAdd);
   const [rooms, setRooms] = useState<Record<RoomKey, number>>(defaultsFor("2"));
-  const pickSize = (v: Size) => { setSize(v); setRooms(defaultsFor(v)); };
+  const plan = allPlans.find((p) => p.id === planId)!;
+  const isPlot = planId === "plot-once";
+  const planPrice = isPlot ? plan.price : size === "3" ? plan.price3 ?? plan.price : size === "4" ? plan.price4 ?? plan.price3 ?? plan.price : plan.price;
+  const visits = plan.visits ?? 1;
+  const rateFor = (base: number) => rateAt(base, planId);
+
+  /* popup confirming the price of a room you just added past the baseline */
+  const [toast, setToast] = useState<{ id: number; t: string; b: string } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const popToast = (t: string, b: string) => {
+    setToast({ id: Date.now(), t, b });
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setToast(null), 3200);
+  };
+
+  const pickSize = (v: Size) => { setSize(v); setRooms(defaultsFor(v)); setToast(null); };
   const setRoom = (k: RoomKey, d: number) => {
     const t = roomTypes.find((x) => x.k === k)!;
     setRooms((r) => {
       const next = Math.max(t.min, Math.min(t.caps[size], r[k] + d));
       /* fewer parking slots than cars booked → bring the car add-on back in line */
       if (k === "parking") setAdds((a) => (a.car ? { ...a, car: Math.min(a.car, Math.max(1, next)) } : a));
+      /* only rooms past the 4 BHK+ baseline are billable — say so the moment they're added */
+      const base4 = defaultsFor("4")[k];
+      if (d > 0 && next > r[k] && size === "4" && next > base4) {
+        const rate = rateFor(t.rate);
+        popToast(`${roomOne[k]} ${next} added`, visits > 1 ? `${inr(rate)} per inspection · +${inr(rate * visits)} a year on ${plan.name}` : `+${inr(rate)} on this visit`);
+      }
       return { ...r, [k]: next };
     });
   };
   const slots = roomTypes.flatMap((t) => Array.from({ length: rooms[t.k] }, (_, i) => roomLabel(t.k, i, rooms[t.k])));
   const slotCount = slots.length + 1; // + exit walkthrough
 
-  const plan = allPlans.find((p) => p.id === planId)!;
-  const isPlot = planId === "plot-once";
-  const planPrice = isPlot ? plan.price : size === "3" ? plan.price3 ?? plan.price : size === "4" ? plan.price4 ?? plan.price3 ?? plan.price : plan.price;
-
   /* The 2 and 3 BHK tiers are capped at exactly their layout, so only 4 BHK+ can
      exceed its baseline. Rooms past it are quoted per inspection, and a yearly
      plan pays that on each of its visits. */
-  const visits = plan.visits ?? 1;
   const extras = useMemo(() => {
     if (isPlot || size !== "4") return [];
     const base = defaultsFor("4");
     return roomTypes
       .map((t) => ({ t, n: rooms[t.k] - base[t.k] }))
       .filter((x) => x.n > 0)
-      .map((x) => ({ k: x.t.k, l: x.t.l, n: x.n, rate: x.t.rate, perVisit: x.n * x.t.rate }));
-  }, [rooms, size, isPlot]);
+      .map((x) => { const rate = rateAt(x.t.rate, planId); return { k: x.t.k, l: x.t.l, one: roomOne[x.t.k], n: x.n, rate, perVisit: x.n * rate }; });
+  }, [rooms, size, isPlot, planId]);
   const extraPerVisit = extras.reduce((t, e) => t + e.perVisit, 0);
   const extraTotal = extraPerVisit * visits;
 
@@ -193,11 +211,11 @@ export function AccessForm() {
                     {size === "4" && (
                       <div className={cn("mt-4 rounded-[14px] border p-4 transition", extras.length ? "border-accent bg-accent-tint" : "border-line-2 bg-paper")}>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-[14px] font-medium">Beyond the 4 BHK baseline</span>
+                          <span className="flex items-center gap-2 text-[14px] font-medium">Beyond the 4 BHK baseline<span className="rounded-full bg-ink px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.06em] text-white">{plan.name} rates</span></span>
                           <span className="text-[12.5px] text-text-2">{inr(planPrice)} covers 4 bed · 4 bath · 2 living · 1 kitchen · 2 balcony · 1 study · 1 terrace · 2 parking</span>
                         </div>
                         {extras.length === 0 ? (
-                          <p className="t-small mt-2">Add a room above and it's quoted here instantly — bedrooms {inr(200)}, bathrooms {inr(100)}, every other room at its own rate, per inspection.</p>
+                          <p className="t-small mt-2">Add a room above and it's quoted here instantly — bedrooms {inr(rateFor(200))}, bathrooms {inr(rateFor(100))}, every other room at its own rate, per inspection.{planId === "care-plus" ? " Care+ rates are higher because every extra room falls under its repair cover too." : ""}</p>
                         ) : (
                           <>
                             <ul className="mt-3 space-y-1.5">
@@ -299,12 +317,23 @@ export function AccessForm() {
                     </div>
                   )}
                   {!isPlot && extraTotal > 0 && (
-                    <div className="flex items-start justify-between gap-3 py-3">
-                      <div>
+                    <div className="py-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="text-[15px] font-medium">Extra rooms past 4 BHK</div>
-                        <div className="text-[12.5px] text-white/60">{inr(extraPerVisit)} per inspection{visits > 1 ? ` × ${visits} a year` : ""}</div>
+                        <div className="text-[15px] font-medium">{inr(extraTotal)}</div>
                       </div>
-                      <div className="text-[15px] font-medium">{inr(extraTotal)}</div>
+                      <ul className="mt-2 space-y-1.5">
+                        {extras.map((e) => (
+                          <li key={e.k} className="flex items-baseline justify-between gap-3 text-[12.5px] text-white/60">
+                            <span>+{e.n} × {e.one}{e.n > 1 ? "s" : ""} <span className="text-white/40">@ {inr(e.rate)}</span></span>
+                            <span className="tabular-nums">{inr(e.perVisit)}</span>
+                          </li>
+                        ))}
+                        <li className="flex items-baseline justify-between gap-3 border-t border-white/10 pt-1.5 text-[12.5px] text-white/60">
+                          <span>{inr(extraPerVisit)} per inspection{visits > 1 ? ` × ${visits} a year` : ""}</span>
+                          <span className="tabular-nums font-medium text-white/80">{inr(extraTotal)}</span>
+                        </li>
+                      </ul>
                     </div>
                   )}
                   {!isPlot && addOns.filter((a) => adds[a.id]).map((a) => (
@@ -341,6 +370,28 @@ export function AccessForm() {
         </AnimatePresence>
       </div>
       <div className="h-16 md:h-24" />
+
+      {/* price popup when a billable room is added */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.28, ease: EASE }}
+            className="pointer-events-none fixed inset-x-4 bottom-5 z-50 mx-auto w-fit max-w-[calc(100vw-2rem)]"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-3 rounded-full bg-ink py-2.5 pl-2.5 pr-5 shadow-float">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-white"><Plus size={14} strokeWidth={3} /></span>
+              <span className="text-[13.5px] font-medium text-white">{toast.t}</span>
+              <span className="hidden text-[12.5px] text-white/60 sm:inline">{toast.b}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
