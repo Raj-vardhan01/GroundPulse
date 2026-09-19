@@ -8,9 +8,10 @@ import { ArrowRight, Bath, BedDouble, Car, Check, ChefHat, Home, LandPlot, Minus
 import { addOns, inr, plans, plotPlans } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
 import { Relax } from "@/components/shared/Relax";
+import { InspectorForm } from "./InspectorForm";
 import { EASE } from "@/lib/motion";
 
-type Role = "owner" | "inspector" | "provider";
+type Role = "owner" | "inspector";
 type Size = "2" | "3" | "4";
 const input = "h-12 w-full rounded-[12px] border border-line-2 bg-white px-4 text-[15px] text-ink outline-none transition placeholder:text-text-3 focus:border-accent focus:ring-4 focus:ring-accent/10";
 const Field = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
@@ -49,7 +50,7 @@ const addOnIcon = { cleaning: Sparkles, car: Car, plot: LandPlot } as const;
 export function AccessForm() {
   const params = useSearchParams();
   const initialRole = (params.get("role") as Role) || "owner";
-  const [role, setRole] = useState<Role>(["owner", "inspector", "provider"].includes(initialRole) ? initialRole : "owner");
+  const [role, setRole] = useState<Role>(["owner", "inspector"].includes(initialRole) ? initialRole : "owner");
   const [done, setDone] = useState(false);
   const address = params.get("address") || "";
 
@@ -70,27 +71,30 @@ export function AccessForm() {
   /* popup confirming the price of a room you just added past the baseline */
   const [toast, setToast] = useState<{ id: number; t: string; b: string } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seq = useRef(0);
   const popToast = (t: string, b: string) => {
-    setToast({ id: Date.now(), t, b });
+    seq.current += 1;
+    setToast({ id: seq.current, t, b });
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast(null), 3200);
   };
 
   const pickSize = (v: Size) => { setSize(v); setRooms(defaultsFor(v)); setToast(null); };
+  /* Everything here runs in the event handler, never inside a state updater —
+     updaters must stay pure, and React may call them more than once. */
   const setRoom = (k: RoomKey, d: number) => {
     const t = roomTypes.find((x) => x.k === k)!;
-    setRooms((r) => {
-      const next = Math.max(t.min, Math.min(t.caps[size], r[k] + d));
-      /* fewer parking slots than cars booked → bring the car add-on back in line */
-      if (k === "parking") setAdds((a) => (a.car ? { ...a, car: Math.min(a.car, Math.max(1, next)) } : a));
-      /* only rooms past the 4 BHK+ baseline are billable — say so the moment they're added */
-      const base4 = defaultsFor("4")[k];
-      if (d > 0 && next > r[k] && size === "4" && next > base4) {
-        const rate = rateFor(t.rate);
-        popToast(`${roomOne[k]} ${next} added`, visits > 1 ? `${inr(rate)} per inspection · +${inr(rate * visits)} a year on ${plan.name}` : `+${inr(rate)} on this visit`);
-      }
-      return { ...r, [k]: next };
-    });
+    const cur = rooms[k];
+    const next = Math.max(t.min, Math.min(t.caps[size], cur + d));
+    if (next === cur) return;
+    setRooms((r) => ({ ...r, [k]: next }));
+    /* fewer parking slots than cars booked → bring the car add-on back in line */
+    if (k === "parking") setAdds((a) => (a.car ? { ...a, car: Math.min(a.car, Math.max(1, next)) } : a));
+    /* only rooms past the 4 BHK+ baseline are billable — say so the moment they're added */
+    if (d > 0 && size === "4" && next > defaultsFor("4")[k]) {
+      const rate = rateFor(t.rate);
+      popToast(`${roomOne[k]} ${next} added`, visits > 1 ? `${inr(rate)} per inspection · +${inr(rate * visits)} a year on ${plan.name}` : `+${inr(rate)} on this visit`);
+    }
   };
   const slots = roomTypes.flatMap((t) => Array.from({ length: rooms[t.k] }, (_, i) => roomLabel(t.k, i, rooms[t.k])));
   const slotCount = slots.length + 1; // + exit walkthrough
@@ -117,16 +121,16 @@ export function AccessForm() {
     <section className="pt-[88px] md:pt-[100px]">
       <div className="wrap">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">Set up your first visit</h1></div>
+          <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">{role === "inspector" ? "Apply to inspect" : "Set up your first visit"}</h1></div>
           <div className="hidden items-center gap-1 rounded-[12px] bg-beige p-1 sm:flex">
-            {(["owner", "inspector", "provider"] as Role[]).map((r) => (
-              <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "provider" ? "Refer a provider" : r === "inspector" ? "Inspector (invite)" : "Owner"}</button>
+            {(["owner", "inspector"] as Role[]).map((r) => (
+              <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "inspector" ? "Apply as an inspector" : "Owner"}</button>
             ))}
           </div>
         </div>
-        <div className="mb-6 grid grid-cols-3 gap-1 rounded-[12px] bg-beige p-1 sm:hidden">
-          {(["owner", "inspector", "provider"] as Role[]).map((r) => (
-            <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "provider" ? "Refer" : r === "inspector" ? "Inspector" : "Owner"}</button>
+        <div className="mb-6 grid grid-cols-2 gap-1 rounded-[12px] bg-beige p-1 sm:hidden">
+          {(["owner", "inspector"] as Role[]).map((r) => (
+            <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "inspector" ? "Inspector" : "Owner"}</button>
           ))}
         </div>
 
@@ -134,8 +138,8 @@ export function AccessForm() {
           {done ? (
             <motion.div key="d" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="card mx-auto max-w-[640px] bg-white p-10 text-center shadow-card">
               <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-pass text-white"><Check size={28} strokeWidth={3} /></span>
-              <h2 className="t-2 mt-6">{role === "owner" ? "You're on the list." : "Received."}</h2>
-              <p className="t-body mx-auto mt-3 max-w-[44ch] text-text-2">{role === "owner" ? `We'll confirm your ${plan.name} within a day. Bengaluru is live now — other cities as soon as their verified bench is ready.` : "We keep the network small on purpose and reach out only when there's a fit. Thank you for the details."}</p>
+              <h2 className="t-2 mt-6">You're on the list.</h2>
+              <p className="t-body mx-auto mt-3 max-w-[44ch] text-text-2">{`We'll confirm your ${plan.name} within a day. Bengaluru is live now — other cities as soon as their verified bench is ready.`}</p>
               <Link href="/" className="btn btn-white mt-8">Back to home</Link>
             </motion.div>
           ) : role === "owner" ? (
@@ -353,19 +357,7 @@ export function AccessForm() {
               </aside>
             </motion.form>
           ) : (
-            <motion.form key="net" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} onSubmit={(e) => { e.preventDefault(); setDone(true); }} className="card mx-auto max-w-[720px] bg-white p-6 shadow-card sm:p-10">
-              <h2 className="text-[18px] font-medium">{role === "inspector" ? "Request an invitation" : "Refer a service provider"}</h2>
-              <p className="t-small mt-1">{role === "inspector" ? "We don't take open applications. Tell us who you are and who can vouch for you." : "Know a plumber, electrician or contractor you'd trust in your own home? Tell us."}</p>
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label={role === "inspector" ? "Full name" : "Provider's name"}><input required className={input} placeholder="Ravi Kumar" /></Field>
-                <Field label="Phone / WhatsApp"><input required className={input} placeholder="+91 98xxx xxxxx" /></Field>
-                <Field label="City / localities"><input required className={input} placeholder="Jaipur · Malviya Nagar, Tonk Road" /></Field>
-                <Field label={role === "inspector" ? "Who can vouch for you?" : "Service types"}><input required className={input} placeholder={role === "inspector" ? "Name & number of a reference" : "e.g. Plumbing, Electrical"} /></Field>
-                <Field label="Anything we should know" className="sm:col-span-2"><input className={input} placeholder={role === "inspector" ? "Background, years in the field, why you" : "How you know them, work they've done for you"} /></Field>
-              </div>
-              <button type="submit" className="btn btn-accent mt-6 w-full sm:w-auto">{role === "inspector" ? "Request an invitation" : "Send referral"} <ArrowRight size={16} /></button>
-              <p className="t-small mt-3">We keep the network small on purpose and reach out only when there's a fit.</p>
-            </motion.form>
+            <InspectorForm key="inspector" />
           )}
         </AnimatePresence>
       </div>

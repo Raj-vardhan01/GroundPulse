@@ -13,6 +13,7 @@ import { Guarantee } from "@/components/home/Guarantee";
 import { Founders } from "@/components/home/Founders";
 import { Health } from "@/components/home/Health";
 import { Story } from "@/components/home/Story";
+import { Neighbour } from "@/components/home/Neighbour";
 import { Timeline } from "@/components/home/Timeline";
 import { Trust } from "@/components/home/Trust";
 import { FAQ } from "@/components/home/FAQ";
@@ -36,6 +37,7 @@ export default function Home() {
       {/* warm tinted band */}
       <div className="sheet bg-beige pb-16 md:pb-24">
         <Story />
+        <Neighbour />
         <Trust />
       </div>
 

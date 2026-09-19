@@ -6,6 +6,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { OwnerDashMock, ReportMock, ResolveMock } from "@/components/shared/Mocks";
 import { Owners } from "@/components/home/Owners";
 import { Compare } from "@/components/home/Compare";
+import { Neighbour } from "@/components/home/Neighbour";
 import { Pricing } from "@/components/home/Pricing";
 import { CTA } from "@/components/home/CTA";
 
@@ -53,6 +54,7 @@ export default function Page() {
 
       <Pricing />
       <Compare />
+      <Neighbour />
       <Owners />
       <CTA />
     </>
