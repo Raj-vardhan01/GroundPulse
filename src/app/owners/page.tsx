@@ -7,6 +7,7 @@ import { OwnerDashMock, ReportMock, ResolveMock } from "@/components/shared/Mock
 import { Owners } from "@/components/home/Owners";
 import { Compare } from "@/components/home/Compare";
 import { Neighbour } from "@/components/home/Neighbour";
+import { ComingHome } from "@/components/home/ComingHome";
 import { Pricing } from "@/components/home/Pricing";
 import { CTA } from "@/components/home/CTA";
 
@@ -52,6 +53,7 @@ export default function Page() {
         </Reveal>
       </section>
 
+      <ComingHome />
       <Pricing />
       <Compare />
       <Neighbour />

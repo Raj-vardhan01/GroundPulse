@@ -10,7 +10,7 @@ import { Relax } from "@/components/shared/Relax";
 import { cn } from "@/lib/cn";
 
 const assetIcon = { home: Home, plot: LandPlot, car: Car } as const;
-const addOnIcon = { cleaning: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 export function Pricing({ full }: { full?: boolean }) {
   const [tab, setTab] = useState<"home" | "plot">("home");

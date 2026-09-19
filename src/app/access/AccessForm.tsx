@@ -45,7 +45,7 @@ const roomLabel = (k: RoomKey, i: number, n: number) => (n > 1 ? `${roomOne[k]} 
    also falls under its repair cover. Rounded to ₹25 so no price reads like ₹113. */
 const planRateMult = (planId: string) => (planId === "care-plus" ? 1.5 : 1);
 const rateAt = (base: number, planId: string) => Math.round((base * planRateMult(planId)) / 25) * 25;
-const addOnIcon = { cleaning: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 export function AccessForm() {
   const params = useSearchParams();

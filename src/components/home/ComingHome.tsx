@@ -1,0 +1,140 @@
+import Link from "next/link";
+import { ArrowRight, BadgeCheck, Check, KeyRound, PlaneLanding, Sparkles } from "lucide-react";
+import { Reveal } from "@/components/ui/Reveal";
+import { SectionHead } from "@/components/shared/SectionHead";
+import { EvidenceFrame } from "@/components/ui/EvidenceFrame";
+import { cleaning, comingHome, inr } from "@/lib/pricing";
+
+/** Before / after pair — the proof a cleaning receipt can't give you. */
+function BeforeAfter({ variant, room, before, after }: { variant: "kitchen" | "bathroom"; room: string; before: string; after: string }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {([["Before", before, "fail"], ["After", after, "pass"]] as const).map(([label, time, tone]) => (
+        <div key={label} className="relative">
+          <EvidenceFrame variant={variant} id="" room={room} time={time} tone={tone} ratio="4 / 3" dense />
+          <span className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10.5px] font-medium ${label === "After" ? "bg-accent text-white" : "bg-black/60 text-white"}`}>{label} · {time}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ComingHome() {
+  const d = cleaning.deep;
+  return (
+    <section className="section" aria-labelledby="coming-home-title">
+      <div className="wrap">
+        <SectionHead
+          eyebrow="Coming home"
+          title={<span id="coming-home-title">Flying in on Friday? Walk into a house that&rsquo;s ready.</span>}
+          lede="Book two or three days before you land. Your inspector checks the place, supervises a full deep clean, and gets anything broken fixed — so the door opens on a home you already know everything about."
+        />
+
+        {/* the gap nobody else can close */}
+        <Reveal className="mt-8">
+          <div className="card grid gap-6 bg-ink p-6 text-white sm:p-8 lg:grid-cols-[1fr_1fr] lg:items-center md:p-10">
+            <div>
+              <p className="flex items-center gap-2 text-[15px] font-medium text-white/70"><KeyRound size={16} /> Why you can&rsquo;t just book a cleaning app</p>
+              <h3 className="t-2 mt-2 max-w-[18ch] text-white">Every cleaning service needs someone at home to let them in.</h3>
+              <p className="mt-4 max-w-[48ch] text-[15.5px] leading-relaxed text-white/75">
+                That is the one thing you don&rsquo;t have. Someone has to hold the keys, be there at 10 a.m., check the crew actually did the
+                work, and tell you the truth about it afterwards. From another country, that person doesn&rsquo;t exist — so the booking never
+                gets made, and you land into a dusty flat and lose the first day of your trip to it.
+              </p>
+              <ul className="mt-5 grid gap-2">
+                {[
+                  "Entry on your OTP — no keys couriered, no spare set with a neighbour",
+                  "A police-verified inspector on site the whole time the crew is working",
+                  "Before and after photographs of every room, in the same report",
+                  "Anything broken is found, quoted and fixed before you arrive",
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-2.5 text-[14px] text-white/90">
+                    <span className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/15"><Check size={11} strokeWidth={3} /></span>{t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="grid gap-3">
+              <BeforeAfter variant="kitchen" room="Kitchen" before="11:14" after="15:40" />
+              <BeforeAfter variant="bathroom" room="Bathroom 1" before="11:52" after="15:44" />
+              <p className="text-[12.5px] text-white/55">
+                Every room photographed from the same angle before the crew starts and after they finish — so you can judge the work
+                yourself instead of taking a completion tick on faith.
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* the timeline */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+          <Reveal>
+            <div className="card h-full bg-white p-6 shadow-card sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-[16px] font-medium"><PlaneLanding size={17} className="text-accent" /> How the few days before you land go</span>
+                <span className="chip chip-accent">{comingHome.lead}</span>
+              </div>
+              <ol className="mt-6 space-y-5">
+                {comingHome.steps.map((s, i) => (
+                  <li key={s.t} className="flex gap-4">
+                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-soft font-mono text-[12px] text-accent-2">{i + 1}</span>
+                    <div>
+                      <div className="text-[15px] font-medium">{s.t}</div>
+                      <p className="t-small mt-1 text-[14px] leading-relaxed">{s.b}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </Reveal>
+
+          {/* what the deep clean actually covers + price */}
+          <Reveal delay={0.08}>
+            <div className="card flex h-full flex-col bg-white p-6 shadow-card sm:p-8">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><Sparkles size={18} /></span>
+                <div>
+                  <div className="text-[16px] font-medium">{d.name}</div>
+                  <div className="text-[12.5px] text-text-2">{d.time}</div>
+                </div>
+              </div>
+              <p className="t-small mt-3 text-[14px]">{d.tagline} Room by room, not a wipe-down:</p>
+              <ul className="mt-4 space-y-3">
+                {d.rooms.map((r) => (
+                  <li key={r.r}>
+                    <div className="text-[14px] font-medium">{r.r}</div>
+                    <p className="text-[13px] leading-snug text-text-2">{r.b}</p>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 border-t border-line pt-5">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[28px] font-medium leading-none tracking-[-0.04em]">{inr(d.price)}</div>
+                    <div className="mt-1 text-[12.5px] text-text-2">{d.unit} · 3 BHK {inr(d.price3)} · 4 BHK+ {inr(d.price4)}</div>
+                  </div>
+                  <span className="chip">+ visit {inr(1999)}</span>
+                </div>
+                <Link href="/access?plan=deep" className="btn btn-accent mt-4 w-full">Book the Coming home package <ArrowRight size={16} /></Link>
+                <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-[12.5px] text-text-2">
+                  <BadgeCheck size={13} className="text-accent" /> Inspection + deep clean from {inr(comingHome.from)}
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* the lighter tier, so the two don't get confused */}
+        <Reveal className="mt-4">
+          <div className="card flex flex-col gap-4 bg-beige p-5 sm:flex-row sm:items-center sm:p-6">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-accent shadow-card"><Sparkles size={18} /></span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[15.5px] font-medium">Not coming home — just want it kept decent? {cleaning.refresh.name}, {inr(cleaning.refresh.price)}.</div>
+              <p className="t-small mt-1 text-[13.5px]">{cleaning.refresh.time} · {cleaning.refresh.includes.slice(0, 4).join(" · ").toLowerCase()}. Included twice a year on Care and Care+.</p>
+            </div>
+            <Link href="/pricing" className="btn btn-white btn-sm shrink-0">Compare cleaning <ArrowRight size={15} /></Link>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}

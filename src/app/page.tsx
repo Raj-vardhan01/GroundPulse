@@ -3,6 +3,7 @@ import { Relax } from "@/components/shared/Relax";
 import { Owners } from "@/components/home/Owners";
 import { Steps } from "@/components/home/Steps";
 import { WhenWrong } from "@/components/home/WhenWrong";
+import { ComingHome } from "@/components/home/ComingHome";
 import { PlotsHome } from "@/components/home/PlotsHome";
 import { Handles } from "@/components/home/Handles";
 import { Pricing } from "@/components/home/Pricing";
@@ -29,6 +30,7 @@ export default function Home() {
       <Steps />
       <Timeline />
       <WhenWrong />
+      <ComingHome />
       <PlotsHome />
       <Pricing />
       <Handles />
