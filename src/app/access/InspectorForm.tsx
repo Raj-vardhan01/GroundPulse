@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowRight, BadgeCheck, Check, FileCheck2, Info, Lock, Smartphone, UserCheck, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, Check, FileCheck2, Lock, Smartphone, UserCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
 
@@ -98,16 +98,6 @@ export function InspectorForm() {
       className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start"
     >
       <div className="grid grid-cols-1 gap-6">
-        {/* owner-facing framing, right at the top */}
-        <div className="card flex items-start gap-3.5 bg-accent-tint p-5 ring-warm">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><Info size={17} /></span>
-          <p className="text-[14.5px] leading-relaxed text-text-2">
-            <span className="font-medium text-text">Reading this as a homeowner rather than an applicant? Good.</span> This is the entire bar
-            somebody has to clear before they can stand in your home — every document, every declaration and every stage of verification, in
-            full. Nothing here is softened for the public page.
-          </p>
-        </div>
-
         <Step n="01" title="About you">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Full name (as on Aadhaar)"><input required className={input} placeholder="Ravi Kumar" /></Field>
