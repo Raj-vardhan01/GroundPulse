@@ -7,31 +7,38 @@ export const site = {
   address: "HSR Layout, Bengaluru 560102",
   founders: [
     {
-      name: "Naitik Agrawal",
-      role: "Co-founder · Product & growth",
-      initials: "NA",
-      place: "Bengaluru · family flat in Jaipur",
-      sign: "Naitik",
-      /* short version, used where there isn't room for the full story */
-      line: "Grew up watching his parents fly home every few months 'just to check'.",
-      quote: "He didn't have to sell it to me. My parents' flat had been empty for four years.",
-      story: [
-        "Raj brought me this idea on a call that was meant to be about something else entirely. He'd been circling the same thing for weeks — millions of people own a place they can't get to, and the only thing standing between them and an expensive surprise is a neighbour saying sab theek hai.",
-        "He didn't have to sell it to me. My parents' flat had been sitting empty for four years. Every few months one of us would fly down, walk through it, find something small that had quietly turned into something expensive, and fly back. We called it 'just going to check'. It cost a ticket and a weekend every time — and we still only knew the truth about that house on the one day we happened to be standing inside it.",
-        "So I wasn't hearing a startup idea. I was hearing the fix for something my family had been paying for, in money and in worry, for years. That's the part I hold on to when we build: the proof has to be real. Not a summary, not a thumbs-up — the actual video of the actual room, stamped with a time, that you can open at 11 PM from another country and finally stop wondering.",
-      ],
-    },
-    {
+      id: "raj",
       name: "Raj Vardhan",
       role: "Co-founder · Engineering",
       initials: "RV",
-      place: "Bengaluru",
+      place: "Family home outside the city · land in the village · a car in Indore",
       sign: "Raj",
       line: "Builds the inspector app, the OTP-to-video chain and the audit log — the parts that make the promise real.",
-      /* ── Raj: drop your pull-quote here and your paragraphs in `story` below.
-         Leave them empty and the card renders its short version instead. ── */
-      quote: "",
-      story: [] as string[],
+      quote: "We were paying for that house twice. Once in flights, once in repairs.",
+      story: [
+        "My family's property is outside the city. Papa had his job, Mummy ran the house, and between the two of them a free weekend to go and check on it never really came. So we didn't go. Months would pass. And a house nobody walks through doesn't just sit there quietly — it goes bad slowly, in the exact way that costs a lot to undo later.",
+        "Every few months the worry would win and my parents would make the trip anyway. They'd find whatever had been waiting for them, spend on getting there, and then spend again getting it repaired — always more than it would have cost to catch early. Between trips the tension never actually left. It just sat at the back of their day, all year.",
+        "So they tried the obvious fix and put it on rent, hoping someone living in it would keep it alive. Then Papa visited. The tenants weren't looking after it either, and the rent was coming late, or not at all. Now my parents had two things to worry about instead of one.",
+        "Watching them carry that, year after year, is where this came from. Not a market gap — my mother and father. If one person we trusted could walk through that house on a fixed day, photograph everything and just tell us the truth, the whole thing stops being a worry and becomes a solved problem. I researched it until I was sure, then took it to Naitik.",
+        "I was also deliberate about one thing: I wanted to build something with real logistics inside it. A pure software product can be cloned in a weekend now — AI will write the app for you. A verified human being who actually turns up at your door, in your city, on the day they said, cannot be copied like that. The hard part is the moat, and it's also the product.",
+        "The land and the car aren't extra features we brainstormed. Papa's land is in the village and he is genuinely afraid someone will encroach on it — he can't get there, and even when there's a function at home, making the trip is difficult. And because he lives in Bhopal while the car stays in Indore, mice got into the wiring and chewed straight through it. That repair bill is the reason cars are on this site. Every one of these is something my family has already paid for.",
+      ],
+    },
+    {
+      id: "naitik",
+      name: "Naitik Agrawal",
+      role: "Co-founder · Product & growth",
+      initials: "NA",
+      place: "Bengaluru · the same empty-house story at home",
+      sign: "Naitik",
+      line: "Grew up watching his family get 'sab theek hai' instead of an answer.",
+      quote: "Raj was three sentences in and I already knew how it ended. We'd lived the same thing.",
+      story: [
+        "Raj called me about this on a day that was supposed to be about something else entirely. He got maybe three sentences in — a house the family can't get to, a condition nobody can actually verify — and I stopped him, because I already knew how the story ended.",
+        "I'd watched a version of it at home. A place that stays shut, a neighbour or a relative who says sab theek hai because that is the kind thing to say, and then a bill months later for something that was small in March and expensive by August. Nobody in that chain is lying to you. They simply have no way to show you the truth, and you have no way to ask for it without sounding like you don't trust them.",
+        "That's the part I couldn't put down. The problem isn't that people don't care about your house. It's that caring produces a thumbs-up, and a thumbs-up is not evidence. So the thing I push hardest on in what we build is proof — the actual room, on video, with a time stamped on it, that you can open at 11 PM from another country and finally stop wondering.",
+        "And Raj had already done the thinking on the half that isn't software: real people, verified, physically showing up. Left alone I'd have built an app and called it a product. He'd already worked out that the app is the easy half. That's when I knew this was worth doing properly — and worth doing with him.",
+      ],
     },
   ],
   inspectors: [

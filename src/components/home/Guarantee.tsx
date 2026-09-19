@@ -11,7 +11,7 @@ const guarantees = [
 
 /** The trust anchor: a signed note from a founder + the four zero-risk guarantees. */
 export function Guarantee() {
-  const f = site.founders[0];
+  const f = site.founders.find((x) => x.id === "naitik") ?? site.founders[0];
   return (
     <section className="section" aria-labelledby="guarantee-title">
       <div className="wrap">
@@ -23,8 +23,8 @@ export function Guarantee() {
                 <p className="t-label">A note from a founder</p>
                 <h2 id="guarantee-title" className="t-2 mt-3 max-w-[18ch]">We're asking you to let a stranger into your home.</h2>
                 <div className="t-body mt-5 max-w-[52ch] space-y-3.5 text-[15.5px] leading-relaxed text-text-2">
-                  <p>My parents' flat sat empty for four years. Every few months one of us flew down, walked through it, found something small that had quietly become something expensive, and flew back.</p>
-                  <p>GroundPulse exists so you don't have to make that flight. But I know exactly what we're asking of you — and a nice website isn't a reason to hand over your keys.</p>
+                  <p>For years, the only update my family got on a house we couldn't reach was somebody telling us sab theek hai. It was always meant kindly. It was never once proof.</p>
+                  <p>GroundPulse exists so nobody has to settle for that. But I know exactly what we're asking of you in return — and a nice website is not a reason to hand a stranger your keys.</p>
                   <p className="text-text">So here's our side of it. Whoever walks in is police-verified and gets in only with your OTP. Every room is on video, and you can watch it live. And if anything ever goes wrong on a visit, it's ₹1,00,000 from us — not an argument about whose fault it was.</p>
                   <p className="text-text">If any of that doesn't happen exactly as written, the four promises on the right are what you hold us to.</p>
                 </div>

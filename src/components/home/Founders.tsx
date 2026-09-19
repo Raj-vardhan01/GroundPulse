@@ -10,9 +10,9 @@ export function Founders() {
     <section className="section" aria-labelledby="founders-title">
       <div className="wrap">
         <SectionHead
-          eyebrow="The two of us"
-          title={<span id="founders-title">Built by two people who needed it first</span>}
-          lede="One of us brought the idea. The other had been living the problem for four years. Here's each of us, in our own words — not a company voice."
+          eyebrow="How this started"
+          title={<span id="founders-title">We were already paying for this problem</span>}
+          lede="Raj's family paid for their house twice over — once in flights, once in repairs. He brought the idea to Naitik, who recognised it before the call was over. Here's each of us, in our own words, not a company voice."
         />
 
         <div className="mt-10 grid gap-4 md:mt-12">
