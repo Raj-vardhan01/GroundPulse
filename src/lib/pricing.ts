@@ -1,0 +1,152 @@
+export type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  period: string;
+  tagline: string;
+  /** 3 BHK price */
+  price3?: number;
+  /** 4 BHK+ price */
+  price4?: number;
+  popular?: boolean;
+  worth?: string;
+  includes: string[];
+  cta: string;
+};
+
+export const plans: Plan[] = [
+  {
+    id: "one-time",
+    name: "One-time visit",
+    price: 1999,
+    price3: 2499,
+    price4: 2999,
+    period: "one inspection",
+    tagline: "Just need eyes on it once? Book a single verified visit.",
+    includes: [
+      "1 verified inspector visit — stays as long as it takes",
+      "Room-by-room checklist, photos & video on every item",
+      "Report within the hour + health score",
+      "Approve or decline any flagged repair",
+      "Add cleaning (₹1,500), car (₹700) or a plot visit (₹1,999)",
+    ],
+    cta: "Book a visit",
+  },
+  {
+    id: "care",
+    name: "Care",
+    price: 7999,
+    price3: 9999,
+    price4: 11999,
+    period: "per year",
+    tagline: "A verified inspector every quarter, and a clean home twice a year.",
+    popular: true,
+    worth: "₹10,996 value",
+    includes: [
+      "4 inspections a year (one every quarter)",
+      "2 full house cleanings (up to 2 BHK) — done during a visit, inspector present",
+      "Reports within the hour, health score trend",
+      "Owner-approved repairs by verified pros",
+      "Add-ons any time: cleaning ₹1,500 · car ₹700 · plot ₹1,999",
+    ],
+    cta: "Start Care",
+  },
+  {
+    id: "care-plus",
+    name: "Care+",
+    price: 14999,
+    price3: 19999,
+    price4: 24999,
+    period: "per year",
+    tagline: "Inspections, cleaning and the repairs handled — up to ₹25,000 covered.",
+    worth: "₹35,000+ value",
+    includes: [
+      "Everything in Care — 4 inspections + 2 cleanings",
+      "2 maintenance services (plumbing, electrical, anything) — done during a visit, inspector supervising",
+      "Repairs covered up to ₹25,000 a year · ₹12,500 per incident",
+      "Labour on us · parts: we pay up to ₹5,000 per incident, rest at cost",
+      "Priority assignment of verified pros",
+      "Add-ons any time: cleaning ₹1,500 · car ₹700 · plot ₹1,999",
+    ],
+    cta: "Start Care+",
+  },
+];
+
+export const addOn = { name: "Full house cleaning", price: 1500, note: "Up to 2 BHK · verified crew, cleaned during the visit with the inspector present" };
+
+export const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
+
+/* ── Add-ons (any plan, any visit) ─────────────────────────────── */
+export const addOns = [
+  { id: "cleaning", name: "Full house cleaning", price: 1500, unit: "per cleaning", note: "Up to 2 BHK · done during the visit, inspector present" },
+  { id: "car", name: "Car inspection", price: 700, unit: "per car", note: "Start & idle, battery, tyres, leaks, odometer photo, cover check" },
+  { id: "plot", name: "Plot / land visit", price: 1999, unit: "per visit", note: "Boundary walk, GPS-tagged photos, encroachment & occupation check" },
+];
+
+/* ── What we inspect ──────────────────────────────────────────── */
+export const assets = [
+  { id: "home", name: "Homes", b: "Apartments, villas, parents' house — room by room, every item with proof.", from: "from ₹1,999" },
+  { id: "plot", name: "Plots & land", b: "Is anyone sitting on it? Boundary walk, GPS photos, unauthorised construction, notices.", from: "from ₹1,999" },
+  { id: "car", name: "Cars", b: "The car parked in the basement for 9 months — started, checked, photographed.", from: "₹700 per car" },
+];
+
+/* ── Plots & land — same priority as homes ───────────────────── */
+export const plotPlans: Plan[] = [
+  {
+    id: "plot-once",
+    name: "Plot visit",
+    price: 1999,
+    period: "one visit",
+    tagline: "Haven't seen your land in months? Get eyes on it this week.",
+    includes: [
+      "Full boundary walk with a GPS-tagged photo of every corner",
+      "Encroachment, occupation & unauthorised construction check",
+      "Fence, gate, signboard and neighbour activity",
+      "Notices, dumping, road or utility work touching the plot",
+      "Report within the hour, with a photo map",
+      "Book again any time — no subscription needed",
+    ],
+    cta: "Book a plot visit",
+  },
+];
+
+/* ── What a ₹1,999 visit covers ──────────────────────────────── */
+export const visitCovers = [
+  "Room-by-room 42-item checklist with photos & video",
+  "Leaks, seepage, damp and drainage",
+  "Electrical: MCB, sockets, meter reading photo",
+  "Locks, doors, windows and security signs",
+  "Water supply, tank, geyser and gas shut-off",
+  "Pest, mould and long-idle damage signs",
+  "Society notices, dues slips and mail collected",
+  "Caretaker / tenant identity check on request",
+];
+export const visitUseCases = ["Before you fly down", "After a storm or monsoon", "Tenant check-in / check-out", "Parents' house, once a quarter", "Before you buy or rent it out"];
+
+/* ── Care+ cover terms (plain language) ──────────────────────── */
+export const carePlusCover = {
+  yearly: 25000,
+  perIncident: 12500,
+  partsPerIncident: 5000,
+  terms: [
+    { t: "Up to ₹25,000 a year", b: "The total value of repairs we cover across your plan year." },
+    { t: "Up to ₹12,500 per incident", b: "One repair can use at most half the yearly cover. The rest stays for later." },
+    { t: "Labour fully included", b: "The verified provider's work — plumbing, electrical, carpentry, masonry — is on us, every time." },
+    { t: "Parts: we pay up to ₹5,000 per incident", b: "Taps, traps, switches, wiring, small motors, fittings — we pay the first ₹5,000 of parts on every incident. If parts come to ₹7,000, we pay ₹5,000 and you pay ₹2,000 at cost — only after you approve the quote. Labour stays fully on us." },
+    { t: "Only through verified providers", b: "Cover applies to repairs assigned by us, done during a visit with your inspector present. Outside bills aren't covered." },
+  ],
+  excluded: [
+    "Appliance replacement — AC, geyser, fridge, washing machine, RO",
+    "Structural & civil work — walls, roof, waterproofing, plumbing lines inside walls",
+    "Anything already broken on day one — cover starts with your first inspection; whatever is flagged in that first report is quoted separately, no pressure",
+    "Damage from misuse, pests, floods or other force majeure",
+    "Painting, furniture and cosmetic upgrades",
+  ],
+  examples: [
+    { s: "Leak under the bathroom sink — new trap + sealing", cost: "₹1,800", r: "Fully covered", ok: true },
+    { s: "Bedroom MCB tripping — 2 switches + rewiring a point", cost: "₹3,200", r: "Fully covered", ok: true },
+    { s: "Kitchen motor + pipe — parts ₹7,000 + labour ₹1,500", cost: "₹8,500", r: "We pay ₹6,500 (₹5,000 parts + all labour) · you pay ₹2,000", ok: true },
+    { s: "Geyser burst — new geyser ₹11,000 + fitting ₹1,200", cost: "₹12,200", r: "Fitting covered · geyser excluded (appliance)", ok: false },
+    { s: "Terrace waterproofing", cost: "₹40,000", r: "Excluded (structural) — we quote it, you decide", ok: false },
+  ],
+};

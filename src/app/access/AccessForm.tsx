@@ -1,0 +1,264 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Bath, BedDouble, Car, Check, ChefHat, Home, LandPlot, Minus, Plus, Sofa, Sparkles, Sun, Video, Warehouse } from "lucide-react";
+import { addOns, inr, plans, plotPlans } from "@/lib/pricing";
+import { cn } from "@/lib/cn";
+import { Relax } from "@/components/shared/Relax";
+import { EASE } from "@/lib/motion";
+
+type Role = "owner" | "inspector" | "provider";
+type Size = "2" | "3" | "4";
+const input = "h-12 w-full rounded-[12px] border border-line-2 bg-white px-4 text-[15px] text-ink outline-none transition placeholder:text-text-3 focus:border-accent focus:ring-4 focus:ring-accent/10";
+const Field = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
+  <label className={cn("block", className)}><span className="mb-1.5 block text-[13px] font-medium text-text-2">{label}</span>{children}</label>
+);
+const allPlans = [...plans, ...plotPlans];
+
+type RoomKey = "bed" | "bath" | "living" | "kitchen" | "balcony" | "study" | "terrace" | "parking";
+const roomTypes: { k: RoomKey; l: string; I: typeof BedDouble; max: number }[] = [
+  { k: "bed", l: "Bedrooms", I: BedDouble, max: 8 },
+  { k: "bath", l: "Bathrooms", I: Bath, max: 8 },
+  { k: "living", l: "Living / dining", I: Sofa, max: 3 },
+  { k: "kitchen", l: "Kitchen", I: ChefHat, max: 2 },
+  { k: "balcony", l: "Balconies", I: Sun, max: 6 },
+  { k: "study", l: "Study / store", I: Warehouse, max: 4 },
+  { k: "terrace", l: "Terrace / garden", I: Sun, max: 2 },
+  { k: "parking", l: "Parking (car)", I: Car, max: 4 },
+];
+const defaultsFor = (size: Size): Record<RoomKey, number> =>
+  size === "2" ? { bed: 2, bath: 2, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 0, parking: 1 }
+  : size === "3" ? { bed: 3, bath: 3, living: 1, kitchen: 1, balcony: 2, study: 0, terrace: 0, parking: 1 }
+  : { bed: 4, bath: 4, living: 2, kitchen: 1, balcony: 2, study: 1, terrace: 1, parking: 2 };
+const roomLabel = (k: RoomKey, i: number, n: number) => {
+  const base = { bed: "Bedroom", bath: "Bathroom", living: "Living / dining", kitchen: "Kitchen", balcony: "Balcony", study: "Study / store", terrace: "Terrace / garden", parking: "Parking" }[k];
+  return n > 1 ? `${base} ${i + 1}` : base;
+};
+const addOnIcon = { cleaning: Sparkles, car: Car, plot: LandPlot } as const;
+
+export function AccessForm() {
+  const params = useSearchParams();
+  const initialRole = (params.get("role") as Role) || "owner";
+  const [role, setRole] = useState<Role>(["owner", "inspector", "provider"].includes(initialRole) ? initialRole : "owner");
+  const [done, setDone] = useState(false);
+  const address = params.get("address") || "";
+
+  // owner order state
+  const qp = params.get("plan") || "care";
+  const initialAdd: Record<string, number> = {};
+  if (["cleaning", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
+  const [planId, setPlanId] = useState(allPlans.some((p) => p.id === qp) ? qp : qp === "plot" ? "plot-once" : "care");
+  const [size, setSize] = useState<Size>("2");
+  const [adds, setAdds] = useState<Record<string, number>>(initialAdd);
+  const [rooms, setRooms] = useState<Record<RoomKey, number>>(defaultsFor("2"));
+  const pickSize = (v: Size) => { setSize(v); setRooms(defaultsFor(v)); };
+  const setRoom = (k: RoomKey, d: number, max: number) => setRooms((r) => ({ ...r, [k]: Math.max(0, Math.min(max, r[k] + d)) }));
+  const slots = roomTypes.flatMap((t) => Array.from({ length: rooms[t.k] }, (_, i) => roomLabel(t.k, i, rooms[t.k])));
+  const slotCount = slots.length + 1; // + exit walkthrough
+
+  const plan = allPlans.find((p) => p.id === planId)!;
+  const isPlot = planId === "plot-once";
+  const planPrice = isPlot ? plan.price : size === "3" ? plan.price3 ?? plan.price : size === "4" ? plan.price4 ?? plan.price3 ?? plan.price : plan.price;
+  const addTotal = useMemo(() => (isPlot ? 0 : addOns.reduce((t, a) => t + (adds[a.id] || 0) * a.price, 0)), [adds, isPlot]);
+  const total = planPrice + addTotal;
+  const setQty = (id: string, d: number) => setAdds((s) => ({ ...s, [id]: Math.max(0, Math.min(5, (s[id] || 0) + d)) }));
+
+  return (
+    <section className="pt-[88px] md:pt-[100px]">
+      <div className="wrap">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">Set up your first visit</h1></div>
+          <div className="hidden items-center gap-1 rounded-[12px] bg-beige p-1 sm:flex">
+            {(["owner", "inspector", "provider"] as Role[]).map((r) => (
+              <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "provider" ? "Refer a provider" : r === "inspector" ? "Inspector (invite)" : "Owner"}</button>
+            ))}
+          </div>
+        </div>
+        <div className="mb-6 grid grid-cols-3 gap-1 rounded-[12px] bg-beige p-1 sm:hidden">
+          {(["owner", "inspector", "provider"] as Role[]).map((r) => (
+            <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "provider" ? "Refer" : r === "inspector" ? "Inspector" : "Owner"}</button>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {done ? (
+            <motion.div key="d" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="card mx-auto max-w-[640px] bg-white p-10 text-center shadow-card">
+              <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-pass text-white"><Check size={28} strokeWidth={3} /></span>
+              <h2 className="t-2 mt-6">{role === "owner" ? "You're on the list." : "Received."}</h2>
+              <p className="t-body mx-auto mt-3 max-w-[44ch] text-text-2">{role === "owner" ? `We'll confirm your ${plan.name} within a day. Bengaluru is live now — other cities as soon as their verified bench is ready.` : "We keep the network small on purpose and reach out only when there's a fit. Thank you for the details."}</p>
+              <Link href="/" className="btn btn-white mt-8">Back to home</Link>
+            </motion.div>
+          ) : role === "owner" ? (
+            <motion.form key="owner" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} onSubmit={(e) => { e.preventDefault(); setDone(true); }} className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
+              <div className="grid grid-cols-1 gap-6">
+                {/* 1. plan */}
+                <div className="card bg-white p-6 shadow-card sm:p-7">
+                  <div className="flex items-center justify-between"><h2 className="text-[18px] font-medium">1. Pick a plan</h2><Link href="/pricing" className="text-[13px] font-medium text-accent-2 hover:underline">Compare plans</Link></div>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Plan">
+                    {allPlans.map((p) => {
+                      const on = planId === p.id;
+                      const I = p.id === "plot-once" ? LandPlot : Home;
+                      const shown = p.id === "plot-once" ? p.price : size === "3" ? p.price3 ?? p.price : size === "4" ? p.price4 ?? p.price3 ?? p.price : p.price;
+                      return (
+                        <button type="button" key={p.id} role="radio" aria-checked={on} onClick={() => { setPlanId(p.id); if (p.id === "plot-once") setAdds({}); }} className={cn("relative min-w-0 w-full rounded-[14px] border p-4 text-left transition", on ? "border-accent bg-accent-tint ring-4 ring-accent/10" : "border-line-2 bg-white hover:border-ink/40")}>
+                          {p.popular && <span className="absolute -top-2.5 right-3 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-white">Most popular</span>}
+                          <div className="flex items-center gap-2"><I size={15} className={on ? "text-accent" : "text-text-3"} /><span className="text-[15px] font-medium">{p.name}</span></div>
+                          <div className="mt-2 text-[22px] font-medium leading-none tracking-[-0.03em]">{inr(shown)}<span className="ml-1 text-[12px] font-normal text-text-2">{p.period}</span></div>
+                          <div className="t-small mt-1.5 pr-2">{p.tagline}</div>
+                          <span className={cn("absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full border", on ? "border-accent bg-accent text-white" : "border-line-2")}>{on && <Check size={11} strokeWidth={3} />}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. home size */}
+                {!isPlot && (
+                  <div className="card bg-white p-6 shadow-card sm:p-7">
+                    <h2 className="text-[18px] font-medium">2. Home size</h2>
+                    <p className="t-small mt-1">Prices update automatically with the size of the home.</p>
+                    <div className="mt-4 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Home size">
+                      {([["2", "Up to 2 BHK", plan.price], ["3", "3 BHK", plan.price3 ?? plan.price], ["4", "4 BHK+", plan.price4 ?? plan.price3 ?? plan.price]] as const).map(([v, l, pr]) => {
+                        const on = size === v;
+                        return (
+                          <button type="button" key={v} role="radio" aria-checked={on} onClick={() => pickSize(v)} className={cn("rounded-[12px] border px-3 py-3 text-left transition", on ? "border-accent bg-accent-tint ring-4 ring-accent/10" : "border-line-2 hover:border-ink/40")}>
+                            <div className="text-[14px] font-medium">{l}</div>
+                            <div className="text-[13px] text-text-2">{inr(pr)}{plan.period === "per year" ? "/yr" : ""}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. rooms → inspector slots */}
+                {!isPlot && (
+                  <div className="card bg-white p-6 shadow-card sm:p-7">
+                    <h2 className="text-[18px] font-medium">3. Your home, room by room</h2>
+                    <p className="t-small mt-1">Every room you add becomes a mandatory video + photo slot in the inspector's app. They can't submit the visit until every slot is filled.</p>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {roomTypes.map(({ k, l, I, max }) => (
+                        <div key={k} className={cn("flex items-center gap-3 rounded-[12px] border p-3 transition", rooms[k] ? "border-line-2" : "border-line opacity-70")}>
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={15} /></span>
+                          <div className="min-w-0 flex-1 text-[14px] font-medium">{l}</div>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => setRoom(k, -1, max)} aria-label={`Fewer ${l}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={!rooms[k]}><Minus size={13} /></button>
+                            <span className="w-5 text-center text-[14px] font-medium tabular-nums">{rooms[k]}</span>
+                            <button type="button" onClick={() => setRoom(k, 1, max)} aria-label={`More ${l}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white disabled:opacity-30" disabled={rooms[k] >= max}><Plus size={13} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* generated inspector checklist preview */}
+                    <div className="mt-4 rounded-[14px] bg-ink p-4 text-white">
+                      <div className="flex items-center justify-between"><span className="text-[13px] font-medium">What the inspector's app will show</span><span className="rounded-full bg-white/12 px-2.5 py-1 text-[11.5px] font-medium">{slotCount} video slots · all required</span></div>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {slots.map((sl) => <span key={sl} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[12px]"><Video size={11} className="text-white/70" /> {sl}</span>)}
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[12px]"><Video size={11} /> Exit walkthrough · whole home</span>
+                      </div>
+                      <p className="mt-3 text-[12px] text-white/60">Each slot needs a full video of that room plus the checklist items — GPS and time-stamped. Skipped slots block submission.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. add-ons (homes only) */}
+                {!isPlot && (
+                <div className="card bg-white p-6 shadow-card sm:p-7">
+                  <h2 className="text-[18px] font-medium">4. Add-ons <span className="text-[13px] font-normal text-text-2">(optional)</span></h2>
+                  <div className="mt-4 grid grid-cols-1 gap-2">
+                    {addOns.map((a) => {
+                      const I = addOnIcon[a.id as keyof typeof addOnIcon];
+                      const q = adds[a.id] || 0;
+                      return (
+                        <div key={a.id} className={cn("flex items-center gap-3 rounded-[12px] border p-3 transition", q ? "border-accent bg-accent-tint" : "border-line-2")}>
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={16} /></span>
+                          <div className="min-w-0 flex-1"><div className="text-[14.5px] font-medium">{a.name} · {inr(a.price)} <span className="text-[12px] font-normal text-text-2">{a.unit}</span></div><div className="t-small truncate">{a.note}</div></div>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => setQty(a.id, -1)} aria-label={`Remove ${a.name}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={!q}><Minus size={13} /></button>
+                            <span className="w-5 text-center text-[14px] font-medium tabular-nums">{q}</span>
+                            <button type="button" onClick={() => setQty(a.id, 1)} aria-label={`Add ${a.name}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white"><Plus size={13} /></button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                )}
+
+                {/* 4. details */}
+                <div className="card bg-white p-6 shadow-card sm:p-7">
+                  <h2 className="text-[18px] font-medium">{isPlot ? "2" : "5"}. Your details</h2>
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Full name"><input required className={input} placeholder="Priya Sharma" /></Field>
+                    <Field label="Email"><input required type="email" className={input} placeholder="priya@example.com" /></Field>
+                    <Field label="Phone / WhatsApp"><input className={input} placeholder="+971 50 000 0000" /></Field>
+                    <Field label="You live in"><input className={input} placeholder="Dubai, UAE" /></Field>
+                    <Field label={isPlot ? "Plot address / survey no." : "Property address"} className="sm:col-span-2"><input required defaultValue={address} className={input} placeholder={isPlot ? "Khasra 112, Village Bagru, Jaipur" : "C-14 Malviya Nagar, Jaipur"} /></Field>
+                    {!isPlot && <Field label="Property type"><select className={input} defaultValue="Apartment">{["Apartment", "Villa", "Independent house"].map((o) => <option key={o}>{o}</option>)}</select></Field>}
+                    <Field label="Preferred first visit"><input type="date" className={input} /></Field>
+                  </div>
+                  <label className="mt-4 flex items-start gap-3 rounded-[12px] bg-accent-tint p-3.5 text-[13.5px]">
+                    <input type="checkbox" defaultChecked className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
+                    <span><span className="font-medium">Call me live at the start and end of every visit.</span> The inspector video-calls the number above — you, your parents or your caretaker can watch live.</span>
+                  </label>
+                  <label className="mt-3 flex items-start gap-3 rounded-[12px] bg-paper p-3.5 text-[13.5px]">
+                    <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
+                    <span><span className="font-medium">Valuables are locked away.</span> Cash, jewellery and documents are in a locked cupboard or not at the property. Inspectors never open cupboards or lockers, and every visit is protected up to ₹1 lakh under the GroundPulse Guarantee.</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* summary */}
+              <aside className="card min-w-0 bg-ink p-6 text-white sm:p-7 lg:sticky lg:top-[92px]">
+                <div className="text-[13px] font-medium text-white/60">Your order</div>
+                <div className="mt-3 divide-y divide-white/10">
+                  <div className="flex items-start justify-between gap-3 py-3">
+                    <div><div className="text-[15px] font-medium">{plan.name}</div><div className="text-[12.5px] text-white/60">{isPlot ? "One boundary visit" : size === "2" ? "Up to 2 BHK" : size === "3" ? "3 BHK" : "4 BHK+"}{plan.period === "per year" ? " · yearly" : ""}</div></div>
+                    <div className="text-[15px] font-medium">{inr(planPrice)}</div>
+                  </div>
+                  {!isPlot && (
+                    <div className="flex items-start justify-between gap-3 py-3">
+                      <div><div className="text-[15px] font-medium">{slots.length} rooms · {slotCount} video slots</div><div className="text-[12.5px] text-white/60">Inspector must fill every slot before submitting</div></div>
+                      <div className="text-[13px] text-white/60">included</div>
+                    </div>
+                  )}
+                  {!isPlot && addOns.filter((a) => adds[a.id]).map((a) => (
+                    <div key={a.id} className="flex items-start justify-between gap-3 py-3">
+                      <div><div className="text-[15px] font-medium">{a.name} × {adds[a.id]}</div><div className="text-[12.5px] text-white/60">{inr(a.price)} {a.unit}</div></div>
+                      <div className="text-[15px] font-medium">{inr(a.price * adds[a.id])}</div>
+                    </div>
+                  ))}
+                  <div className="flex items-end justify-between gap-3 py-4">
+                    <div className="text-[14px] text-white/70">Total</div>
+                    <div className="text-[30px] font-medium leading-none tracking-[-0.04em]">{inr(total)}</div>
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-accent mt-2 w-full">Confirm {plan.name} <ArrowRight size={16} /></button>
+                <p className="mt-3 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
+                <div className="mt-5 border-t border-white/10 pt-5"><Relax variant="dark" /></div>
+              </aside>
+            </motion.form>
+          ) : (
+            <motion.form key="net" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} onSubmit={(e) => { e.preventDefault(); setDone(true); }} className="card mx-auto max-w-[720px] bg-white p-6 shadow-card sm:p-10">
+              <h2 className="text-[18px] font-medium">{role === "inspector" ? "Request an invitation" : "Refer a service provider"}</h2>
+              <p className="t-small mt-1">{role === "inspector" ? "We don't take open applications. Tell us who you are and who can vouch for you." : "Know a plumber, electrician or contractor you'd trust in your own home? Tell us."}</p>
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label={role === "inspector" ? "Full name" : "Provider's name"}><input required className={input} placeholder="Ravi Kumar" /></Field>
+                <Field label="Phone / WhatsApp"><input required className={input} placeholder="+91 98xxx xxxxx" /></Field>
+                <Field label="City / localities"><input required className={input} placeholder="Jaipur · Malviya Nagar, Tonk Road" /></Field>
+                <Field label={role === "inspector" ? "Who can vouch for you?" : "Service types"}><input required className={input} placeholder={role === "inspector" ? "Name & number of a reference" : "e.g. Plumbing, Electrical"} /></Field>
+                <Field label="Anything we should know" className="sm:col-span-2"><input className={input} placeholder={role === "inspector" ? "Background, years in the field, why you" : "How you know them, work they've done for you"} /></Field>
+              </div>
+              <button type="submit" className="btn btn-accent mt-6 w-full sm:w-auto">{role === "inspector" ? "Request an invitation" : "Send referral"} <ArrowRight size={16} /></button>
+              <p className="t-small mt-3">We keep the network small on purpose and reach out only when there's a fit.</p>
+            </motion.form>
+          )}
+        </AnimatePresence>
+      </div>
+      <div className="h-16 md:h-24" />
+    </section>
+  );
+}
