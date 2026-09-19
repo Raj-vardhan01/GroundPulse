@@ -9,9 +9,8 @@ const guarantees = [
   { I: BadgeIndianRupee, t: "Never a rupee of commission", b: "We don't broker tenants and we don't mark up bills. The provider's quote + a flat 10%, shown to you before you approve." },
 ];
 
-/** The trust anchor: a signed note from a founder + the four zero-risk guarantees. */
+/** The trust anchor: a joint note from both founders + the four guarantees they sign up to. */
 export function Guarantee() {
-  const f = site.founders.find((x) => x.id === "naitik") ?? site.founders[0];
   return (
     <section className="section" aria-labelledby="guarantee-title">
       <div className="wrap">
@@ -20,20 +19,27 @@ export function Guarantee() {
             <div className="grid lg:grid-cols-[1.05fr_1fr]">
               {/* the note */}
               <div className="relative p-7 sm:p-10 md:p-12">
-                <p className="t-label">A note from a founder</p>
+                <p className="t-label">What the two of us are building</p>
                 <h2 id="guarantee-title" className="t-2 mt-3 max-w-[18ch]">We're asking you to let a stranger into your home.</h2>
                 <div className="t-body mt-5 max-w-[52ch] space-y-3.5 text-[15.5px] leading-relaxed text-text-2">
-                  <p>For years, the only update my family got on a house we couldn't reach was somebody telling us sab theek hai. It was always meant kindly. It was never once proof.</p>
-                  <p>GroundPulse exists so nobody has to settle for that. But I know exactly what we're asking of you in return — and a nice website is not a reason to hand a stranger your keys.</p>
-                  <p className="text-text">So here's our side of it. Whoever walks in is police-verified and gets in only with your OTP. Every room is on video, and you can watch it live. And if anything ever goes wrong on a visit, it's ₹1,00,000 from us — not an argument about whose fault it was.</p>
-                  <p className="text-text">If any of that doesn't happen exactly as written, the four promises on the right are what you hold us to.</p>
+                  <p>Between the two of us there's a house outside the city, a plot in a village, and a car parked in another state. Every one of them has cost our families money that a single honest look would have saved — and for years the only update either family got was somebody saying sab theek hai. Meant kindly, every time. Proof, not once.</p>
+                  <p>So we know exactly what we're asking of you in return, and we don't take it lightly. A website with good words on it is not a reason to hand a stranger your keys. We wouldn't do it either.</p>
+                  <p className="text-text">Which is why what we're building is narrow on purpose. One verified person, standing inside your property on a day you picked, producing evidence you can check yourself — the actual room, on video, with a time on it. Not an estimate, not a summary, not somebody's opinion. Get that one thing right in every city we open, and any owner anywhere should be able to know the truth about a place they can't reach, within the hour, without booking a flight and without taking anyone's word for it.</p>
+                  <p className="text-text">Until we've earned that, here's our side of it in plain terms. Whoever walks in is police-verified and gets in only with your OTP. Every room is on video, and you can watch it live. And if anything ever goes wrong on a visit, it's ₹1,00,000 from us — not an argument about whose fault it was.</p>
+                  <p className="text-text">If any of it doesn't happen exactly as written, the four promises on the right are what you hold us both to.</p>
                 </div>
-                <div className="mt-7 flex flex-wrap items-center gap-4">
-                  <span className="hand -rotate-3 text-[30px] leading-none text-accent-2">{f.name.split(" ")[0]}</span>
-                  <div className="h-8 w-px bg-line" />
-                  <div>
-                    <div className="text-[14.5px] font-medium">{f.name}</div>
-                    <div className="text-[13px] text-text-2">{f.role}</div>
+                <div className="mt-8 border-t border-line pt-6">
+                  <div className="flex flex-wrap gap-x-12 gap-y-5">
+                    {site.founders.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3.5">
+                        <span className="hand -rotate-3 text-[30px] leading-none text-accent-2">{p.sign}</span>
+                        <span className="h-8 w-px bg-line" />
+                        <div>
+                          <div className="text-[14.5px] font-medium">{p.name}</div>
+                          <div className="text-[13px] text-text-2">{p.role}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
