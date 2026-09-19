@@ -24,11 +24,11 @@ type RoomKey = "bed" | "bath" | "living" | "kitchen" | "balcony" | "study" | "te
 const roomTypes: { k: RoomKey; l: string; I: typeof BedDouble; min: number; caps: Record<Size, number>; rate: number }[] = [
   { k: "bed", l: "Bedrooms", I: BedDouble, min: 1, caps: { "2": 2, "3": 3, "4": 10 }, rate: 200 },
   { k: "bath", l: "Bathrooms", I: Bath, min: 1, caps: { "2": 3, "3": 4, "4": 10 }, rate: 100 },
-  { k: "living", l: "Living / dining", I: Sofa, min: 1, caps: { "2": 2, "3": 2, "4": 4 }, rate: 150 },
-  { k: "kitchen", l: "Kitchen", I: ChefHat, min: 1, caps: { "2": 1, "3": 1, "4": 3 }, rate: 150 },
+  { k: "living", l: "Living / dining", I: Sofa, min: 1, caps: { "2": 2, "3": 2, "4": 7 }, rate: 150 },
+  { k: "kitchen", l: "Kitchen", I: ChefHat, min: 1, caps: { "2": 1, "3": 1, "4": 5 }, rate: 150 },
   { k: "balcony", l: "Balconies", I: Sun, min: 0, caps: { "2": 3, "3": 4, "4": 8 }, rate: 75 },
   { k: "study", l: "Study / store", I: Warehouse, min: 0, caps: { "2": 1, "3": 2, "4": 5 }, rate: 100 },
-  { k: "terrace", l: "Terrace / garden", I: Sun, min: 0, caps: { "2": 1, "3": 1, "4": 3 }, rate: 125 },
+  { k: "terrace", l: "Terrace / garden", I: Sun, min: 0, caps: { "2": 1, "3": 1, "4": 5 }, rate: 125 },
   { k: "parking", l: "Parking (car)", I: Car, min: 0, caps: { "2": 2, "3": 2, "4": 6 }, rate: 75 },
 ];
 const sizeLabel: Record<Size, string> = { "2": "2 BHK", "3": "3 BHK", "4": "4 BHK+" };
