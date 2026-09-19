@@ -17,7 +17,8 @@ export function Founders() {
 
         <div className="mt-10 grid gap-4 md:mt-12">
           {site.founders.map((f, i) => {
-            const dark = i % 2 === 1;
+            /* both founders share the dark treatment — flip to `i % 2 === 1` to alternate */
+            const dark = true;
             const told = f.story.length > 0;
             return (
               <Reveal key={f.name} delay={i * 0.08}>
