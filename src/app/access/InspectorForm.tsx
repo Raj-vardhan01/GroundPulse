@@ -69,6 +69,8 @@ const availability = ["Weekday mornings", "Weekday afternoons", "Weekday evening
 
 export function InspectorForm() {
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [docs, setDocs] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(documents.filter((d) => d.req).map((d) => [d.t, false])),
   );
@@ -76,6 +78,48 @@ export function InspectorForm() {
   const allDeclared = declarations.every((_, i) => decl[i]);
   const requiredDocs = documents.filter((d) => d.req);
   const docsReady = requiredDocs.filter((d) => docs[d.t]).length;
+
+
+  async function submitApplication(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (sending) return;
+    setSending(true);
+    setSendError(null);
+    const fd = new FormData(e.currentTarget);
+    const g = (k: string) => (fd.get(k) as string) ?? "";
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "inspector",
+          name: g("name"), dob: g("dob"), phone: g("phone"), email: g("email"),
+          city: g("city"), localities: g("localities"), occupation: g("occupation"),
+          experience: g("experience"), smartphone: g("smartphone"),
+          mobileData: g("mobileData"), travel: g("travel"), distance: g("distance"),
+          visitsPerWeek: g("visitsPerWeek"), commitment: g("commitment"),
+          company: g("company"),
+          documents: docs,
+          declarations: decl,
+          availability: {
+            slots: fd.getAll("availability"),
+            languages: fd.getAll("languages"),
+          },
+          refName: [g("refName1"), g("refName2")].filter(Boolean).join(" \u00b7 "),
+          refPhone: [g("refPhone1"), g("refPhone2")].filter(Boolean).join(" \u00b7 "),
+          refRelation: [g("refRelation1"), g("refRelation2")].filter(Boolean).join(" \u00b7 "),
+          source: typeof window === "undefined" ? "" : window.location.search,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "We could not save that just now.");
+      setSent(true);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "We could not save that just now.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   if (sent) {
     return (
@@ -94,27 +138,27 @@ export function InspectorForm() {
     <motion.form
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.25 }}
-      onSubmit={(e) => { e.preventDefault(); setSent(true); }}
+      onSubmit={submitApplication}
       className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start"
     >
       <div className="grid grid-cols-1 gap-6">
         <Step n="01" title="About you">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Full name (as on Aadhaar)"><input required className={input} placeholder="Ravi Kumar" /></Field>
-            <Field label="Date of birth"><input required type="date" className={input} /></Field>
-            <Field label="Phone / WhatsApp"><input required className={input} placeholder="+91 98xxx xxxxx" /></Field>
-            <Field label="Email"><input required type="email" className={input} placeholder="ravi@example.com" /></Field>
-            <Field label="City"><input required className={input} placeholder="Bengaluru" /></Field>
-            <Field label="Localities you can cover" hint="Be realistic — you'll be assigned inside this radius."><input required className={input} placeholder="Whitefield, Marathahalli, Brookefield" /></Field>
-            <Field label="Current or last occupation"><input required className={input} placeholder="Facility supervisor, Prestige Group" /></Field>
-            <Field label="Years of work experience"><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["Under 2 years", "2–5 years", "5–10 years", "10+ years"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="Full name (as on Aadhaar)"><input name="name" required className={input} placeholder="Ravi Kumar" /></Field>
+            <Field label="Date of birth"><input name="dob" required type="date" className={input} /></Field>
+            <Field label="Phone / WhatsApp"><input name="phone" required className={input} placeholder="+91 98xxx xxxxx" /></Field>
+            <Field label="Email"><input name="email" required type="email" className={input} placeholder="ravi@example.com" /></Field>
+            <Field label="City"><input name="city" required className={input} placeholder="Bengaluru" /></Field>
+            <Field label="Localities you can cover" hint="Be realistic — you'll be assigned inside this radius."><input name="localities" required className={input} placeholder="Whitefield, Marathahalli, Brookefield" /></Field>
+            <Field label="Current or last occupation"><input name="occupation" required className={input} placeholder="Facility supervisor, Prestige Group" /></Field>
+            <Field label="Years of work experience"><select name="experience" required className={input} defaultValue=""><option value="" disabled>Select</option>{["Under 2 years", "2–5 years", "5–10 years", "10+ years"].map((o) => <option key={o}>{o}</option>)}</select></Field>
           </div>
           <fieldset className="mt-4">
             <legend className="mb-2 text-[13px] font-medium text-text-2">Languages you speak</legend>
             <div className="flex flex-wrap gap-2">
               {languages.map((l) => (
                 <label key={l} className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line-2 px-3.5 py-2 text-[13.5px] transition has-[:checked]:border-accent has-[:checked]:bg-accent-tint">
-                  <input type="checkbox" className="h-3.5 w-3.5 accent-[var(--accent)]" /> {l}
+                  <input type="checkbox" name="languages" value={l} className="h-3.5 w-3.5 accent-[var(--accent)]" /> {l}
                 </label>
               ))}
             </div>
@@ -151,19 +195,19 @@ export function InspectorForm() {
 
         <Step n="03" title="Equipment & availability">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Smartphone"><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["Android 11 or newer", "Android 10 or older", "iPhone", "I'd need to arrange one"].map((o) => <option key={o}>{o}</option>)}</select></Field>
-            <Field label="Mobile data" hint="Videos upload from the property."><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["Unlimited 4G/5G plan", "Limited data plan", "Wi-Fi only"].map((o) => <option key={o}>{o}</option>)}</select></Field>
-            <Field label="How you'll travel"><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["Own two-wheeler", "Own car", "Public transport", "Cab / auto"].map((o) => <option key={o}>{o}</option>)}</select></Field>
-            <Field label="Distance you'll travel for a visit"><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["Up to 5 km", "Up to 10 km", "Up to 20 km", "Anywhere in the city"].map((o) => <option key={o}>{o}</option>)}</select></Field>
-            <Field label="Visits you can take a week"><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["1–3", "4–7", "8–14", "15+"].map((o) => <option key={o}>{o}</option>)}</select></Field>
-            <Field label="Is this full-time or alongside a job?"><select required className={input} defaultValue=""><option value="" disabled>Select</option>{["Full-time", "Part-time alongside a job", "Weekends only"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="Smartphone"><select name="smartphone" required className={input} defaultValue=""><option value="" disabled>Select</option>{["Android 11 or newer", "Android 10 or older", "iPhone", "I'd need to arrange one"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="Mobile data" hint="Videos upload from the property."><select name="mobileData" required className={input} defaultValue=""><option value="" disabled>Select</option>{["Unlimited 4G/5G plan", "Limited data plan", "Wi-Fi only"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="How you'll travel"><select name="travel" required className={input} defaultValue=""><option value="" disabled>Select</option>{["Own two-wheeler", "Own car", "Public transport", "Cab / auto"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="Distance you'll travel for a visit"><select name="distance" required className={input} defaultValue=""><option value="" disabled>Select</option>{["Up to 5 km", "Up to 10 km", "Up to 20 km", "Anywhere in the city"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="Visits you can take a week"><select name="visitsPerWeek" required className={input} defaultValue=""><option value="" disabled>Select</option>{["1–3", "4–7", "8–14", "15+"].map((o) => <option key={o}>{o}</option>)}</select></Field>
+            <Field label="Is this full-time or alongside a job?"><select name="commitment" required className={input} defaultValue=""><option value="" disabled>Select</option>{["Full-time", "Part-time alongside a job", "Weekends only"].map((o) => <option key={o}>{o}</option>)}</select></Field>
           </div>
           <fieldset className="mt-4">
             <legend className="mb-2 text-[13px] font-medium text-text-2">When you're available</legend>
             <div className="flex flex-wrap gap-2">
               {availability.map((a) => (
                 <label key={a} className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line-2 px-3.5 py-2 text-[13.5px] transition has-[:checked]:border-accent has-[:checked]:bg-accent-tint">
-                  <input type="checkbox" className="h-3.5 w-3.5 accent-[var(--accent)]" /> {a}
+                  <input type="checkbox" name="availability" value={a} className="h-3.5 w-3.5 accent-[var(--accent)]" /> {a}
                 </label>
               ))}
             </div>
@@ -176,9 +220,9 @@ export function InspectorForm() {
             <div key={n} className="mb-3 rounded-[14px] bg-paper p-4 last:mb-0">
               <div className="mb-3 text-[13px] font-medium text-text-2">Reference {n}</div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Name"><input required className={input} placeholder="Suresh Nair" /></Field>
-                <Field label="Phone"><input required className={input} placeholder="+91 98xxx xxxxx" /></Field>
-                <Field label="How they know you"><input required className={input} placeholder="Reporting manager, 4 yrs" /></Field>
+                <Field label="Name"><input required name={`refName${n}`} className={input} placeholder="Suresh Nair" /></Field>
+                <Field label="Phone"><input required name={`refPhone${n}`} className={input} placeholder="+91 98xxx xxxxx" /></Field>
+                <Field label="How they know you"><input required name={`refRelation${n}`} className={input} placeholder="Reporting manager, 4 yrs" /></Field>
               </div>
             </div>
           ))}
@@ -211,7 +255,7 @@ export function InspectorForm() {
 
         {/* mobile submit — the sticky aside is desktop-only */}
         <div className="lg:hidden">
-          <button type="submit" disabled={!allDeclared} className="btn btn-accent w-full disabled:opacity-40">Submit application <ArrowRight size={16} /></button>
+          <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={!allDeclared || sending} className="btn btn-accent w-full disabled:opacity-40">{sending ? "Sending\u2026" : <>Submit application <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in instead.</p>}
           {!allDeclared && <p className="mt-2 text-center text-[12.5px] text-text-2">Tick all eight declarations to submit.</p>}
         </div>
       </div>
@@ -240,7 +284,7 @@ export function InspectorForm() {
         </div>
 
         <div className="card hidden bg-white p-6 shadow-card lg:block">
-          <button type="submit" disabled={!allDeclared} className="btn btn-accent w-full disabled:opacity-40">Submit application <ArrowRight size={16} /></button>
+          <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={!allDeclared || sending} className="btn btn-accent w-full disabled:opacity-40">{sending ? "Sending\u2026" : <>Submit application <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in instead.</p>}
           <p className="mt-3 text-center text-[12.5px] text-text-2">
             {allDeclared ? "We read every application ourselves." : `${Object.values(decl).filter(Boolean).length} of ${declarations.length} declarations ticked.`}
           </p>
