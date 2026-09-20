@@ -56,8 +56,12 @@ and threw the submission away.
    ```
 3. Set `DATABASE_URL` in Vercel → Settings → Environment Variables, for all
    environments. Copy `.env.example` to `.env.local` for local work.
-4. Optional: set `RESEND_API_KEY`, `LEADS_EMAIL_TO` and `LEADS_EMAIL_FROM` to be
-   emailed on every submission.
+4. Optional, to be emailed on every submission: set `LEADS_EMAIL_TO` and
+   `LEADS_EMAIL_FROM`, then **either** `RESEND_API_KEY` **or** SMTP
+   (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`). Resend takes priority
+   if both are present. Gmail works as the SMTP option with an App Password —
+   see `.env.example`. With neither configured, leads still save; you just are
+   not notified.
 
 ### Reading the leads
 
