@@ -1,9 +1,10 @@
 /* Edit these — they show up in the footer and the founders section. */
 export const site = {
-  name: "GroundPulse",
+  name: "Still Yours",
+  tagline: "Far away. Still yours.",
   city: "Bengaluru",
-  email: "hello@groundpulse.app",
-  company: "GroundPulse Technologies Pvt. Ltd. (registration in progress)",
+  email: "hello@stillyours.in",
+  company: "Still Yours Technologies Pvt. Ltd. (registration in progress)",
   address: "HSR Layout, Bengaluru 560102",
   founders: [
     {

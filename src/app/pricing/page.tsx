@@ -5,7 +5,13 @@ import { CoverTerms } from "@/components/home/CoverTerms";
 import { FAQ } from "@/components/home/FAQ";
 import { CTA } from "@/components/home/CTA";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Home inspections from ₹1,999 a visit, Care plans from ₹7,999 a year, plot visits ₹1,999 and cars ₹700. Cleaning priced by the size of your home. No brokerage, no commission, no bill you did not approve.",
+  alternates: { canonical: "/pricing" },
+  openGraph: { title: "Pricing · StillYours", description: "Home inspections from ₹1,999 a visit, Care plans from ₹7,999 a year, plot visits ₹1,999 and cars ₹700. Cleaning priced by the size of your home. No brokerage, no commission, no bill you did not approve.", url: "/pricing" },
+};
 
 export default function Page() {
   return (

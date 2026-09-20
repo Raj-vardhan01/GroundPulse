@@ -1,4 +1,6 @@
 import { Hero } from "@/components/home/Hero";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { faqPageLd } from "@/lib/seo";
 import { Relax } from "@/components/shared/Relax";
 import { Owners } from "@/components/home/Owners";
 import { Steps } from "@/components/home/Steps";
@@ -24,6 +26,7 @@ import { StickyBar } from "@/components/site/StickyBar";
 export default function Home() {
   return (
     <>
+      <JsonLd data={faqPageLd()} />
       <Hero />
       <Relax />
       <Owners />

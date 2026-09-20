@@ -1,29 +1,35 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────
-   GroundPulse — design tokens (Opendoor-derived system)
-   Canvas #FBF9F9 · ink #23201D · warm tints · deep emerald accent
+   Still Yours — design tokens, taken from the mark itself.
+   Forest #134027 · gold #E49C1A · cream ground #FCFAF0 · ink #23201D
    ───────────────────────────────────────────────────────────── */
 :root {
-  --paper: #fbf9f9;
-  --paper-2: #f9f8f8;
+  --paper: #fcfaf0;
+  --paper-2: #faf8ec;
   --white: #ffffff;
-  --tint: #f7f3f2;
-  --beige: #f4efec;
-  --beige-2: #ede8e8;
+  --tint: #f7f3e6;
+  --beige: #f2ede0;
+  --beige-2: #e9e3d3;
   --ink: #23201d;
   --ink-2: #33302c;
 
-  --accent: #14664a;
-  --accent-2: #0e4f39;
-  --accent-3: #0a3d2c;
-  --accent-soft: #e4f1ea;
-  --accent-tint: #f0f7f3;
+  /* straight off the mark */
+  --accent: #134027;
+  --accent-2: #0e3320;
+  --accent-3: #081f13;
+  --accent-soft: #e0eae3;
+  --accent-tint: #eff5f1;
+
+  /* the heart and the lit window — the brand's second colour */
+  --gold: #e49c1a;
+  --gold-2: #b87a12;
+  --gold-soft: #fbeed4;
 
   --pass: #1e9e5a;
   --pass-soft: #e6f5ec;
-  --warn: #d99a1a;
-  --warn-soft: #fbf1d9;
+  --warn: #cd7a12;
+  --warn-soft: #fbead2;
   --fail: #d64545;
   --fail-soft: #fbe6e6;
 
@@ -32,7 +38,7 @@
   --text-3: #8d8781;
   --line: rgba(35, 32, 29, 0.09);
   --line-2: rgba(35, 32, 29, 0.16);
-  --ring-warm: rgba(100, 57, 31, 0.18);
+  --ring-warm: rgba(83, 62, 26, 0.16);
 
   --r-panel: 30px;
   --r-card: 20px;
@@ -46,6 +52,9 @@
 @media (max-width: 767px) { :root { --r-panel: 26px; --r-card: 16px; } }
 
 @theme inline {
+  --color-gold: var(--gold);
+  --color-gold-2: var(--gold-2);
+  --color-gold-soft: var(--gold-soft);
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
   --color-white: var(--white);
@@ -96,7 +105,7 @@ body {
   /* Type ---------------------------------------------------------- */
   .serif { font-family: var(--font-serif), Georgia, serif; font-weight: 400; letter-spacing: -0.03em; }
   .hand { font-family: var(--font-hand), "Segoe Script", cursive; font-weight: 600; }
-  .hatch { background-color: #f6f3f1; background-image: repeating-linear-gradient(-45deg, rgba(35,32,29,0.13) 0 1.5px, transparent 1.5px 11px); }
+  .hatch { background-color: #f6f2e6; background-image: repeating-linear-gradient(-45deg, rgba(35,32,29,0.13) 0 1.5px, transparent 1.5px 11px); }
   .t-display { font-size: clamp(2.5rem, 5.4vw, 3.75rem); line-height: 1.06; letter-spacing: -0.03em; }
   .t-1 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.04; letter-spacing: -0.05em; font-weight: 500; }
   .t-2 { font-size: clamp(1.6rem, 2.8vw, 2.25rem); line-height: 1.08; letter-spacing: -0.04em; font-weight: 500; }
@@ -162,7 +171,7 @@ body {
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: .8rem; font-weight: 500; background: rgba(35,32,29,.06); color: var(--text-2); white-space: nowrap; }
   .chip::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
   .chip-pass { background: var(--pass-soft); color: #157a44; }
-  .chip-warn { background: var(--warn-soft); color: #9a6c0f; }
+  .chip-warn { background: var(--warn-soft); color: #94560a; }
   .chip-fail { background: var(--fail-soft); color: #b03434; }
   .chip-accent { background: var(--accent-soft); color: var(--accent-2); }
   .on-dark .chip { background: rgba(255,255,255,.12); color: #fff; }
@@ -174,6 +183,31 @@ body {
   .arrow-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line-2); transition: box-shadow .2s, opacity .2s; }
   .arrow-btn:hover { box-shadow: 0 0 0 1px var(--ink); }
   .arrow-btn:disabled { opacity: .35; }
+
+  /* Buttons and chips are nowrap on a fixed height, so their min-content is
+     the whole label. Inside a grid that is enough to stretch the track past a
+     narrow screen — the label cannot wrap, so the track grows instead. Below
+     sm they wrap and grow downward, which a phone has room for. */
+  @media (max-width: 639px) {
+    .btn { height: auto; min-height: 48px; padding-block: 10px; white-space: normal; text-align: center; }
+    .btn-sm { height: auto; min-height: 44px; padding-block: 8px; }
+    .btn-lg { height: auto; min-height: 56px; padding-block: 12px; }
+    .btn-pill { height: auto; min-height: 40px; padding-block: 8px; white-space: normal; }
+    .chip { height: auto; min-height: 28px; padding-block: 5px; white-space: normal; }
+  }
+
+  /* Small phones (iPhone SE and the like). The product mocks are drawn for a
+     ~460px panel and cannot honestly reflow below about 360px. Grid and flex
+     items default to min-width:auto, so instead of the mock staying put it
+     stretches its whole track and drags the page sideways. Zero that floor and
+     let the panel itself scroll — the mock keeps its proportions and the page
+     stays exactly as wide as the screen. */
+  @media (max-width: 400px) {
+    :root { --gutter: 14px; }
+    .wrap > *, .wrap > * > *, .wrap > * > * > * { min-width: 0; }
+    .panel { overflow-x: auto; min-width: 0; scrollbar-width: none; }
+    .panel::-webkit-scrollbar { display: none; }
+  }
 }
 
 @keyframes marquee { from { transform: translate3d(0,0,0);} to { transform: translate3d(-50%,0,0);} }

@@ -30,7 +30,7 @@ export function Steps() {
                   <h3 className="t-2 mt-4 max-w-[16ch]">{s.t}</h3>
                   <p className="t-body mt-4 max-w-[44ch] text-text-2">{s.b}</p>
                 </div>
-                <div className="lg:col-span-8"><div className="panel bg-tint p-4 sm:p-6"><s.V /></div></div>
+                <div className="lg:col-span-8"><div className="panel bg-tint p-2.5 sm:p-6"><s.V /></div></div>
               </div>
             </Reveal>
           ))}

@@ -7,7 +7,13 @@ import { SectionHead } from "@/components/shared/SectionHead";
 import { Reveal } from "@/components/ui/Reveal";
 import { InspectMock, InspectorJobsMock, ProviderJobsMock } from "@/components/shared/Mocks";
 
-export const metadata: Metadata = { title: "Our inspectors" };
+export const metadata: Metadata = {
+  title: "Our inspectors",
+  description:
+    "Every StillYours inspector is referred or scouted, then vetted in person — Aadhaar, address proof, police verification, two references we call, and a supervised trial visit. Invite-only, never off the street.",
+  alternates: { canonical: "/network" },
+  openGraph: { title: "Our inspectors · StillYours", description: "Every StillYours inspector is referred or scouted, then vetted in person — Aadhaar, address proof, police verification, two references we call, and a supervised trial visit. Invite-only, never off the street.", url: "/network" },
+};
 
 const steps = [
   { I: Search, t: "Scouted or referred", b: "We don't run open applications. Inspectors come to us through people we already trust — or we go looking for them." },
@@ -19,7 +25,7 @@ const steps = [
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="Our inspectors" title={<>Hand-picked. Verified.<br className="hidden md:block" /> Invite-only.</>} lede="We don't take applications off the street. Every GroundPulse inspector and service provider is referred or scouted, vetted in person, and verified before their first visit — the kind of person we'd hand our own keys to.">
+      <PageHero eyebrow="Our inspectors" title={<>Hand-picked. Verified.<br className="hidden md:block" /> Invite-only.</>} lede="We don't take applications off the street. Every Still Yours inspector and service provider is referred or scouted, vetted in person, and verified before their first visit — the kind of person we'd hand our own keys to.">
         <Reveal delay={0.1} className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/access?role=inspector" className="btn btn-accent">Request an invitation <ArrowRight size={16} /></Link>
           <Link href="/access?role=provider" className="btn btn-white">Refer someone you trust <ArrowRight size={16} /></Link>

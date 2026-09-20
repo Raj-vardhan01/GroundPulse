@@ -3,7 +3,8 @@ import { ArrowRight, BadgeCheck, Check, KeyRound, PlaneLanding, Sparkles } from 
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { EvidenceFrame } from "@/components/ui/EvidenceFrame";
-import { cleaning, comingHome, inr } from "@/lib/pricing";
+import { comingHome } from "@/lib/pricing";
+import { bhkKeys, bhkLabel, inr, tiers } from "@/lib/cleaning";
 
 /** Before / after pair — the proof a cleaning receipt can't give you. */
 function BeforeAfter({ variant, room, before, after }: { variant: "kitchen" | "bathroom"; room: string; before: string; after: string }) {
@@ -19,8 +20,9 @@ function BeforeAfter({ variant, room, before, after }: { variant: "kitchen" | "b
   );
 }
 
+const [refresh, deep] = tiers;
+
 export function ComingHome() {
-  const d = cleaning.deep;
   return (
     <section className="section" aria-labelledby="coming-home-title">
       <div className="wrap">
@@ -87,35 +89,45 @@ export function ComingHome() {
             </div>
           </Reveal>
 
-          {/* what the deep clean actually covers + price */}
+          {/* the deep clean, priced by the size of the home */}
           <Reveal delay={0.08}>
             <div className="card flex h-full flex-col bg-white p-6 shadow-card sm:p-8">
               <div className="flex items-center gap-2.5">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><Sparkles size={18} /></span>
                 <div>
-                  <div className="text-[16px] font-medium">{d.name}</div>
-                  <div className="text-[12.5px] text-text-2">{d.time}</div>
+                  <div className="text-[16px] font-medium">{deep.name}</div>
+                  <div className="text-[12.5px] text-text-2">{deep.hours["2"]} · {deep.crew["2"]} + inspector</div>
                 </div>
               </div>
-              <p className="t-small mt-3 text-[14px]">{d.tagline} Room by room, not a wipe-down:</p>
-              <ul className="mt-4 space-y-3">
-                {d.rooms.map((r) => (
-                  <li key={r.r}>
-                    <div className="text-[14px] font-medium">{r.r}</div>
-                    <p className="text-[13px] leading-snug text-text-2">{r.b}</p>
+              <p className="t-small mt-3 text-[14px]">{deep.tagline} Room by room, with your inspector on site for every hour of it:</p>
+              <ul className="mt-4 space-y-2">
+                {deep.does.map((t) => (
+                  <li key={t} className="flex items-start gap-2.5 text-[13.5px] leading-snug">
+                    <span className="mt-[3px] grid h-[16px] w-[16px] shrink-0 place-items-center rounded-full bg-accent-soft text-accent-2"><Check size={10} strokeWidth={3} /></span>{t}
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 border-t border-line pt-5">
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <div className="text-[28px] font-medium leading-none tracking-[-0.04em]">{inr(d.price)}</div>
-                    <div className="mt-1 text-[12.5px] text-text-2">{d.unit} · 3 BHK {inr(d.price3)} · 4 BHK+ {inr(d.price4)}</div>
-                  </div>
-                  <span className="chip">+ visit {inr(1999)}</span>
+              <div className="mt-5 rounded-[14px] bg-paper p-3.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13px] font-medium">All in, by size</span>
+                  <span className="text-[12px] text-text-3">inspector &amp; report included</span>
                 </div>
-                <Link href="/access?plan=deep" className="btn btn-accent mt-4 w-full">Book the Coming home package <ArrowRight size={16} /></Link>
-                <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-[12.5px] text-text-2">
+                <div className="mt-2 grid grid-cols-5 gap-1.5 text-center">
+                  {bhkKeys.map((k) => (
+                    <div key={k} className="rounded-[9px] bg-white px-1 py-2 shadow-card">
+                      <div className="text-[11px] text-text-2">{bhkLabel[k]}</div>
+                      <div className="text-[13px] font-medium tabular-nums">{inr(deep.price[k])}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2.5 text-[12px] leading-relaxed text-text-2">Chimney, fridge, microwave, cabinet interiors and sofa shampoo are itemised, not assumed — you pick them before you pay.</p>
+              </div>
+              <div className="mt-auto pt-5">
+                <Link href="/access?plan=deep" className="btn btn-accent w-full">Book the Coming home package <ArrowRight size={16} /></Link>
+                <Link href="/cleaning" className="mt-2 flex items-center justify-center gap-1.5 py-1 text-[13px] font-medium text-accent-2 hover:underline">
+                  See every room, every step and every price <ArrowRight size={13} />
+                </Link>
+                <p className="mt-1.5 flex items-center justify-center gap-1.5 text-center text-[12.5px] text-text-2">
                   <BadgeCheck size={13} className="text-accent" /> Inspection + deep clean from {inr(comingHome.from)}
                 </p>
               </div>
@@ -123,15 +135,15 @@ export function ComingHome() {
           </Reveal>
         </div>
 
-        {/* the lighter tier, so the two don't get confused */}
+        {/* the lighter tier, so nobody buys the wrong one */}
         <Reveal className="mt-4">
           <div className="card flex flex-col gap-4 bg-beige p-5 sm:flex-row sm:items-center sm:p-6">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-accent shadow-card"><Sparkles size={18} /></span>
             <div className="min-w-0 flex-1">
-              <div className="text-[15.5px] font-medium">Not coming home — just want it kept decent? {cleaning.refresh.name}, {inr(cleaning.refresh.price)}.</div>
-              <p className="t-small mt-1 text-[13.5px]">{cleaning.refresh.time} · {cleaning.refresh.includes.slice(0, 4).join(" · ").toLowerCase()}. Included twice a year on Care and Care+.</p>
+              <div className="text-[15.5px] font-medium">Not coming home &mdash; just want it kept decent? {refresh.name}, from {inr(refresh.price["1"])}.</div>
+              <p className="t-small mt-1 text-[13.5px]">{refresh.tagline} {refresh.hours["2"]} for a {bhkLabel["2"]} at {inr(refresh.price["2"])}, up to {inr(refresh.price["5"])} for a {bhkLabel["5"]} &mdash; inspector included on both. Two of them come free every year on Care and Care+.</p>
             </div>
-            <Link href="/pricing" className="btn btn-white btn-sm shrink-0">Compare cleaning <ArrowRight size={15} /></Link>
+            <Link href="/cleaning" className="btn btn-white btn-sm shrink-0">Compare the two <ArrowRight size={15} /></Link>
           </div>
         </Reveal>
       </div>

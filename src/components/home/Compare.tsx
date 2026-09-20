@@ -16,7 +16,7 @@ export function Compare() {
   return (
     <section className="section" aria-labelledby="compare-title">
       <div className="wrap">
-        <SectionHead title={<span id="compare-title">GroundPulse vs. the usual way</span>} lede="Every workaround is missing something. Here's the whole picture, side by side." />
+        <SectionHead title={<span id="compare-title">Still Yours vs. the usual way</span>} lede="Every workaround is missing something. Here's the whole picture, side by side." />
         <Reveal className="mt-10 md:mt-14">
           <div className="grid gap-4 md:grid-cols-[180px_1fr_1fr] md:gap-0">
             <div className="hidden md:block" />

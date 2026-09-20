@@ -55,7 +55,7 @@ export function WhenWrong() {
                 <div className="t-small mt-0.5">Water leakage · Bathroom · 2 photos, 1 video</div>
                 <div className="mt-3 rounded-[10px] bg-white p-3 text-[12.5px]">
                   <div className="flex justify-between"><span className="text-text-2">Suresh M. (verified) · replace trap + seal</span><span>₹3,000</span></div>
-                  <div className="mt-1 flex justify-between"><span className="text-text-2">GroundPulse fee · flat 10%</span><span>₹300</span></div>
+                  <div className="mt-1 flex justify-between"><span className="text-text-2">Still Yours fee · flat 10%</span><span>₹300</span></div>
                   <div className="mt-2 flex justify-between border-t border-line pt-2 font-semibold"><span>You approve</span><span>₹3,300</span></div>
                 </div>
                 <div className="mt-3 min-h-[96px]">

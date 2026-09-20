@@ -16,7 +16,7 @@ export function FeatureRow({ n, k, title, body, children, flip, bullets }: { n?:
             </ul>
           )}
         </div>
-        <div className="lg:col-span-8"><div className="panel bg-paper p-4 sm:p-6">{children}</div></div>
+        <div className="lg:col-span-8"><div className="panel bg-paper p-2.5 sm:p-6">{children}</div></div>
       </div>
     </Reveal>
   );

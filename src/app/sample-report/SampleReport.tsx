@@ -87,7 +87,7 @@ function HomeReport({ approved, setApproved }: { approved: boolean; setApproved:
             <div className="mt-4 space-y-1.5 text-[14px]">
               <div className="flex justify-between"><span className="text-text-2">Replace P-trap + reseal (labour)</span><span>₹1,800</span></div>
               <div className="flex justify-between"><span className="text-text-2">Parts (trap, sealant)</span><span>₹1,200</span></div>
-              <div className="flex justify-between"><span className="text-text-2">GroundPulse fee · flat 10%</span><span>₹300</span></div>
+              <div className="flex justify-between"><span className="text-text-2">Still Yours fee · flat 10%</span><span>₹300</span></div>
               <div className="flex justify-between border-t border-line pt-2 font-medium"><span>You approve</span><span>₹3,300</span></div>
             </div>
             <p className="mt-2 text-[12px] text-text-2">Work happens during a scheduled visit with your inspector present. After-photos land in this report.</p>

@@ -9,7 +9,13 @@ import { Trust } from "@/components/home/Trust";
 import { CTA } from "@/components/home/CTA";
 import { cn } from "@/lib/cn";
 
-export const metadata: Metadata = { title: "Platform" };
+export const metadata: Metadata = {
+  title: "Platform",
+  description:
+    "Four roles, one audit trail. Owners schedule and approve, inspectors walk the checklist, providers quote, admin verifies — every photo GPS- and time-stamped, every decision written to a log nobody can edit.",
+  alternates: { canonical: "/platform" },
+  openGraph: { title: "Platform · StillYours", description: "Four roles, one audit trail. Owners schedule and approve, inspectors walk the checklist, providers quote, admin verifies — every photo GPS- and time-stamped, every decision written to a log nobody can edit.", url: "/platform" },
+};
 
 const seats = [
   { r: "Owner", c: "bg-accent text-white", b: "Registers properties, schedules inspections, reads reports, approves or declines every repair." },

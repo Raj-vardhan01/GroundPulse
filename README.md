@@ -1,6 +1,6 @@
-# GroundPulse — marketing site
+# Still Yours — marketing site
 
-Multi-page marketing website for **GroundPulse**, the smart remote property monitoring and maintenance platform (Project WEB-01).
+Multi-page marketing website for **Still Yours**, the smart remote property monitoring and maintenance platform (Project WEB-01).
 
 ## Run
 

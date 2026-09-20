@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { serviceLd } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Check, Clock, Fence, MapPinned, ShieldCheck, Video } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
@@ -9,7 +11,13 @@ import { Relax } from "@/components/shared/Relax";
 import { FAQ } from "@/components/home/FAQ";
 import { CTA } from "@/components/home/CTA";
 
-export const metadata: Metadata = { title: "Plots & land" };
+export const metadata: Metadata = {
+  title: "Plots & land",
+  description:
+    "Plot or farmland sitting empty? A verified inspector does a full boundary walk with a GPS track, photographs every corner, fence, gate and signboard, and flags encroachment or unauthorised construction. From ₹1,999.",
+  alternates: { canonical: "/plots" },
+  openGraph: { title: "Plots & land · StillYours", description: "Plot or farmland sitting empty? A verified inspector does a full boundary walk with a GPS track, photographs every corner, fence, gate and signboard, and flags encroachment or unauthorised construction. From ₹1,999.", url: "/plots" },
+};
 
 const steps = [
   { I: MapPinned, t: "Tell us where it is", b: "Survey number or pin, size, and where the corners are if you know. A photo of the sale deed sketch helps." },
@@ -29,6 +37,7 @@ const worries = [
 export default function Page() {
   return (
     <>
+      <JsonLd data={serviceLd({ name: "Plot and land inspection", serviceType: "Land inspection", path: "/plots", description: "A full boundary walk with a GPS track, photos and video at every corner, fence, gate and signboard, and a flag on any encroachment or unauthorised construction." })} />
       <PageHero eyebrow="Plots & land" title={<>Your land, walked every quarter.<br className="hidden md:block" /> Proof of every corner.</>} lede="Empty plots get occupied, fenced, dumped on and built over — quietly, for years. A police-verified inspector walks the boundary, photographs every corner with GPS, and shows you exactly what's there today.">
         <Reveal delay={0.1} className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/access?plan=plot-once" className="btn btn-accent">Book a plot visit · ₹1,999 <ArrowRight size={16} /></Link>

@@ -4,14 +4,18 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Bath, BedDouble, Car, Check, ChefHat, Home, LandPlot, Minus, Plus, Sofa, Sparkles, Sun, Video, Warehouse } from "lucide-react";
+import { ArrowRight, Bath, BedDouble, Car, Check, ChefHat, ClipboardCheck, Home, LandPlot, Minus, Plus, Sofa, Sparkles, Sun, Video, Warehouse } from "lucide-react";
 import { addOns, inr, plans, plotPlans } from "@/lib/pricing";
+import { bhkLabel, tiers as cleanTiers, visitPrice, type BhkKey } from "@/lib/cleaning";
+import { CleanConfig } from "@/components/cleaning/CleanConfig";
+import { useCleanOrder } from "@/components/cleaning/useCleanOrder";
 import { cn } from "@/lib/cn";
 import { Relax } from "@/components/shared/Relax";
 import { InspectorForm } from "./InspectorForm";
 import { EASE } from "@/lib/motion";
 
 type Role = "owner" | "inspector";
+type Service = "inspection" | "cleaning";
 type Size = "2" | "3" | "4";
 const input = "h-12 w-full rounded-[12px] border border-line-2 bg-white px-4 text-[15px] text-ink outline-none transition placeholder:text-text-3 focus:border-accent focus:ring-4 focus:ring-accent/10";
 const Field = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
@@ -33,8 +37,27 @@ const roomTypes: { k: RoomKey; l: string; I: typeof BedDouble; min: number; caps
   { k: "parking", l: "Parking (car)", I: Car, min: 0, caps: { "2": 2, "3": 2, "4": 6 }, rate: 75 },
 ];
 const sizeLabel: Record<Size, string> = { "2": "2 BHK", "3": "3 BHK", "4": "4 BHK+" };
-/* Add-on ceilings. Cars are capped by the parking you listed, but never below 1. */
-const addOnCap = (id: string, parking: number) => (id === "car" ? Math.max(1, parking) : id === "cleaning" ? 4 : 5);
+/* Add-on ceilings. Cars are capped by the parking you listed (never below 1),
+   and a clean can be added once per inspection the plan actually buys. */
+const addOnCap = (id: string, parking: number, visits: number) =>
+  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" ? visits : 5;
+
+/* Cleaning is priced on /cleaning as an all-in package — crew, inspector,
+   report. Here the inspector is already in the order, so the clean is shown
+   for what it actually adds to a visit you are booking anyway. */
+const [refreshTier, deepTier] = cleanTiers;
+const addOnsFor = (size: Size) =>
+  addOns.map((a) => {
+    const t = a.id === "cleaning" ? refreshTier : a.id === "deep" ? deepTier : null;
+    if (!t) return a;
+    return {
+      ...a,
+      name: t.name,
+      price: t.rider[size],
+      unit: "added to this visit",
+      note: `${t.hours[size]} · ${t.tagline.toLowerCase().replace(/\.$/, "")} · ${inr(t.price[size])} if booked on its own`,
+    };
+  });
 const defaultsFor = (size: Size): Record<RoomKey, number> =>
   size === "2" ? { bed: 2, bath: 2, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 0, parking: 1 }
   : size === "3" ? { bed: 3, bath: 3, living: 1, kitchen: 1, balcony: 2, study: 0, terrace: 0, parking: 1 }
@@ -56,10 +79,19 @@ export function AccessForm() {
 
   // owner order state
   const qp = params.get("plan") || "care";
+  /* Two things people come here for, and they need different questions.
+     A ?plan= of deep/cleaning lands straight on the cleaning side. */
+  const qService = params.get("service");
+  const [service, setService] = useState<Service>(
+    qService === "cleaning" || (!qService && ["deep", "cleaning"].includes(qp)) ? "cleaning" : "inspection"
+  );
   const initialAdd: Record<string, number> = {};
-  if (["cleaning", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
+  if (["cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
   const [planId, setPlanId] = useState(allPlans.some((p) => p.id === qp) ? qp : qp === "plot" ? "plot-once" : "care");
-  const [size, setSize] = useState<Size>("2");
+  const qsize = params.get("size");
+  const [size, setSize] = useState<Size>(qsize === "3" ? "3" : qsize === "4" || qsize === "5" ? "4" : "2");
+  const clean = useCleanOrder((["1", "2", "3", "4", "5"].includes(qsize ?? "") ? qsize : "2") as BhkKey, qp === "cleaning" ? "refresh" : "deep");
+  const isClean = service === "cleaning";
   const [adds, setAdds] = useState<Record<string, number>>(initialAdd);
   const [rooms, setRooms] = useState<Record<RoomKey, number>>(defaultsFor("2"));
   const plan = allPlans.find((p) => p.id === planId)!;
@@ -113,15 +145,16 @@ export function AccessForm() {
   const extraPerVisit = extras.reduce((t, e) => t + e.perVisit, 0);
   const extraTotal = extraPerVisit * visits;
 
-  const addTotal = useMemo(() => (isPlot ? 0 : addOns.reduce((t, a) => t + (adds[a.id] || 0) * a.price, 0)), [adds, isPlot]);
+  const visitAddOns = useMemo(() => addOnsFor(size), [size]);
+  const addTotal = useMemo(() => (isPlot ? 0 : visitAddOns.reduce((t, a) => t + (adds[a.id] || 0) * a.price, 0)), [adds, isPlot, visitAddOns]);
   const total = planPrice + addTotal + extraTotal;
-  const setQty = (id: string, d: number) => setAdds((s) => ({ ...s, [id]: Math.max(0, Math.min(addOnCap(id, rooms.parking), (s[id] || 0) + d)) }));
+  const setQty = (id: string, d: number) => setAdds((s) => ({ ...s, [id]: Math.max(0, Math.min(addOnCap(id, rooms.parking, visits), (s[id] || 0) + d)) }));
 
   return (
     <section className="pt-[88px] md:pt-[100px]">
       <div className="wrap">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">{role === "inspector" ? "Apply to inspect" : "Set up your first visit"}</h1></div>
+          <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">{role === "inspector" ? "Apply to inspect" : isClean ? "Build your cleaning quote" : "Set up your first visit"}</h1></div>
           <div className="hidden items-center gap-1 rounded-[12px] bg-beige p-1 sm:flex">
             {(["owner", "inspector"] as Role[]).map((r) => (
               <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "inspector" ? "Apply as an inspector" : "Owner"}</button>
@@ -139,15 +172,41 @@ export function AccessForm() {
             <motion.div key="d" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="card mx-auto max-w-[640px] bg-white p-10 text-center shadow-card">
               <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-pass text-white"><Check size={28} strokeWidth={3} /></span>
               <h2 className="t-2 mt-6">You're on the list.</h2>
-              <p className="t-body mx-auto mt-3 max-w-[44ch] text-text-2">{`We'll confirm your ${plan.name} within a day. Bengaluru is live now — other cities as soon as their verified bench is ready.`}</p>
+              <p className="t-body mx-auto mt-3 max-w-[44ch] text-text-2">{`We'll confirm your ${isClean ? `${clean.tier.name.toLowerCase()} for a ${bhkLabel[clean.size]}` : plan.name} within a day. Bengaluru is live now — other cities as soon as their verified bench is ready.`}</p>
               <Link href="/" className="btn btn-white mt-8">Back to home</Link>
             </motion.div>
           ) : role === "owner" ? (
             <motion.form key="owner" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} onSubmit={(e) => { e.preventDefault(); setDone(true); }} className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
               <div className="grid grid-cols-1 gap-6">
-                {/* 1. plan */}
+                {/* 1. what are you here for */}
                 <div className="card bg-white p-6 shadow-card sm:p-7">
-                  <div className="flex items-center justify-between"><h2 className="text-[18px] font-medium">1. Pick a plan</h2><Link href="/pricing" className="text-[13px] font-medium text-accent-2 hover:underline">Compare plans</Link></div>
+                  <h2 className="text-[18px] font-medium">1. What do you need?</h2>
+                  <p className="t-small mt-1">Both put a verified inspector in your home and a report in your inbox within the hour. Pick the one you came for — you can add the other on the same visit.</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Service">
+                    {([
+                      ["inspection", "Inspection", ClipboardCheck, "Eyes on the place. A 42-item checklist, photos and video on every item, health score and quotes for anything broken.", `one visit from ${inr(1999)} · a year of them from ${inr(7999)}`],
+                      ["cleaning", "Cleaning", Sparkles, "The house put right. A refresh or a full deep clean, crew supervised by your inspector, before/after photos — and the inspection runs alongside it.", `refresh from ${inr(cleanTiers[0].price["1"])} · deep from ${inr(cleanTiers[1].price["1"])}`],
+                    ] as const).map(([v, l, I, b, from]) => {
+                      const on = service === v;
+                      return (
+                        <button type="button" key={v} role="radio" aria-checked={on} onClick={() => setService(v)}
+                          className={cn("relative rounded-[16px] border p-5 text-left transition", on ? "border-accent bg-accent-tint ring-4 ring-accent/10" : "border-line-2 hover:border-ink/40")}>
+                          <span className={cn("absolute right-4 top-4 grid h-5 w-5 place-items-center rounded-full border", on ? "border-accent bg-accent text-white" : "border-line-2")}>{on && <Check size={11} strokeWidth={3} />}</span>
+                          <div className="flex items-center gap-2 pr-7"><I size={16} className={on ? "text-accent" : "text-text-3"} /><span className="text-[15.5px] font-medium">{l}</span></div>
+                          <div className="mt-1.5 text-[13px] font-medium text-text-2">{from}</div>
+                          <p className="t-small mt-2 text-[13px] leading-relaxed">{b}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {isClean && <CleanConfig o={clean} n={2} />}
+
+                {/* 2. plan */}
+                {!isClean && (
+                <div className="card bg-white p-6 shadow-card sm:p-7">
+                  <div className="flex items-center justify-between"><h2 className="text-[18px] font-medium">2. Pick a plan</h2><Link href="/pricing" className="text-[13px] font-medium text-accent-2 hover:underline">Compare plans</Link></div>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Plan">
                     {allPlans.map((p) => {
                       const on = planId === p.id;
@@ -155,7 +214,7 @@ export function AccessForm() {
                       const shown = p.id === "plot-once" ? p.price : size === "3" ? p.price3 ?? p.price : size === "4" ? p.price4 ?? p.price3 ?? p.price : p.price;
                       return (
                         <button type="button" key={p.id} role="radio" aria-checked={on} onClick={() => { setPlanId(p.id); if (p.id === "plot-once") setAdds({}); }} className={cn("relative min-w-0 w-full rounded-[14px] border p-4 text-left transition", on ? "border-accent bg-accent-tint ring-4 ring-accent/10" : "border-line-2 bg-white hover:border-ink/40")}>
-                          {p.popular && <span className="absolute -top-2.5 right-3 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-white">Most popular</span>}
+                          {p.popular && <span className="absolute -top-2.5 right-3 rounded-full bg-gold px-2 py-0.5 text-[11px] font-medium text-ink">Most popular</span>}
                           <div className="flex items-center gap-2"><I size={15} className={on ? "text-accent" : "text-text-3"} /><span className="text-[15px] font-medium">{p.name}</span></div>
                           <div className="mt-2 text-[22px] font-medium leading-none tracking-[-0.03em]">{inr(shown)}<span className="ml-1 text-[12px] font-normal text-text-2">{p.period}</span></div>
                           <div className="t-small mt-1.5 pr-2">{p.tagline}</div>
@@ -165,11 +224,12 @@ export function AccessForm() {
                     })}
                   </div>
                 </div>
+                )}
 
-                {/* 2. home size */}
-                {!isPlot && (
+                {/* 3. home size */}
+                {!isClean && !isPlot && (
                   <div className="card bg-white p-6 shadow-card sm:p-7">
-                    <h2 className="text-[18px] font-medium">2. Home size</h2>
+                    <h2 className="text-[18px] font-medium">3. Home size</h2>
                     <p className="t-small mt-1">Prices update automatically with the size of the home.</p>
                     <div className="mt-4 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Home size">
                       {([["2", "Up to 2 BHK", plan.price], ["3", "3 BHK", plan.price3 ?? plan.price], ["4", "4 BHK+", plan.price4 ?? plan.price3 ?? plan.price]] as const).map(([v, l, pr]) => {
@@ -185,10 +245,10 @@ export function AccessForm() {
                   </div>
                 )}
 
-                {/* 3. rooms → inspector slots */}
-                {!isPlot && (
+                {/* 4. rooms → inspector slots */}
+                {!isClean && !isPlot && (
                   <div className="card bg-white p-6 shadow-card sm:p-7">
-                    <h2 className="text-[18px] font-medium">3. Your home, room by room</h2>
+                    <h2 className="text-[18px] font-medium">4. Your home, room by room</h2>
                     <p className="t-small mt-1">Every room you add becomes a mandatory video + photo slot in the inspector's app. They can't submit the visit until every slot is filled. Limits follow the {sizeLabel[size]} you picked above.</p>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       {roomTypes.map(({ k, l, I, min, caps }) => {
@@ -203,9 +263,9 @@ export function AccessForm() {
                               {atMax ? <div className="text-[11.5px] text-text-3">max {max} for {sizeLabel[size]}</div> : min > 0 && atMin ? <div className="text-[11.5px] text-text-3">at least {min}</div> : null}
                             </div>
                             <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => setRoom(k, -1)} aria-label={`Fewer ${l}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={atMin}><Minus size={13} /></button>
+                              <button type="button" onClick={() => setRoom(k, -1)} aria-label={`Fewer ${l}`} className="grid h-11 w-11 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30 sm:h-8 sm:w-8" disabled={atMin}><Minus size={13} /></button>
                               <span className="w-5 text-center text-[14px] font-medium tabular-nums">{rooms[k]}</span>
-                              <button type="button" onClick={() => setRoom(k, 1)} aria-label={`More ${l}`} className="grid h-8 w-8 place-items-center rounded-full bg-ink text-white disabled:opacity-30" disabled={atMax}><Plus size={13} /></button>
+                              <button type="button" onClick={() => setRoom(k, 1)} aria-label={`More ${l}`} className="grid h-11 w-11 place-items-center rounded-full bg-ink text-white disabled:opacity-30 sm:h-8 sm:w-8" disabled={atMax}><Plus size={13} /></button>
                             </div>
                           </div>
                         );
@@ -257,20 +317,24 @@ export function AccessForm() {
                   </div>
                 )}
 
-                {/* 4. add-ons (homes only) */}
-                {!isPlot && (
+                {/* 5. add-ons (homes only) */}
+                {!isClean && !isPlot && (
                 <div className="card bg-white p-6 shadow-card sm:p-7">
-                  <h2 className="text-[18px] font-medium">4. Add-ons <span className="text-[13px] font-normal text-text-2">(optional)</span></h2>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-[18px] font-medium">5. Add-ons <span className="text-[13px] font-normal text-text-2">(optional)</span></h2>
+                    <Link href="/cleaning" className="text-[13px] font-medium text-accent-2 hover:underline">What the cleaning covers</Link>
+                  </div>
+                  <p className="t-small mt-1">Cleaning is cheaper here than booked on its own — the inspector is already in your order, so you are not paying for two visits.</p>
                   <div className="mt-4 grid grid-cols-1 gap-2">
-                    {addOns.map((a) => {
+                    {visitAddOns.map((a) => {
                       const I = addOnIcon[a.id as keyof typeof addOnIcon];
                       const q = adds[a.id] || 0;
-                      const cap = addOnCap(a.id, rooms.parking);
+                      const cap = addOnCap(a.id, rooms.parking, visits);
                       const atCap = q >= cap;
                       return (
                         <div key={a.id} className={cn("flex items-center gap-3 rounded-[12px] border p-3 transition", q ? "border-accent bg-accent-tint" : "border-line-2")}>
                           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={16} /></span>
-                          <div className="min-w-0 flex-1"><div className="text-[14.5px] font-medium">{a.name} · {inr(a.price)} <span className="text-[12px] font-normal text-text-2">{a.unit}</span></div><div className="t-small truncate">{atCap ? (a.id === "car" ? `Max ${cap} — matches the parking you listed above` : `Max ${cap} per visit`) : a.note}</div></div>
+                          <div className="min-w-0 flex-1"><div className="text-[14.5px] font-medium">{a.name} · {a.id === "cleaning" || a.id === "deep" ? "+" : ""}{inr(a.price)} <span className="text-[12px] font-normal text-text-2">{a.unit}</span></div><div className="t-small truncate">{atCap ? (a.id === "car" ? `Max ${cap} — matches the parking you listed above` : cap === 1 ? "One per visit" : `Max ${cap} — one on each inspection your plan buys`) : a.note}</div></div>
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => setQty(a.id, -1)} aria-label={`Remove ${a.name}`} className="grid h-8 w-8 place-items-center rounded-full border border-line-2 bg-white disabled:opacity-30" disabled={!q}><Minus size={13} /></button>
                             <span className="w-5 text-center text-[14px] font-medium tabular-nums">{q}</span>
@@ -283,9 +347,9 @@ export function AccessForm() {
                 </div>
                 )}
 
-                {/* 4. details */}
+                {/* details */}
                 <div className="card bg-white p-6 shadow-card sm:p-7">
-                  <h2 className="text-[18px] font-medium">{isPlot ? "2" : "5"}. Your details</h2>
+                  <h2 className="text-[18px] font-medium">{isClean ? "5" : isPlot ? "3" : "6"}. Your details</h2>
                   <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Full name"><input required className={input} placeholder="Priya Sharma" /></Field>
                     <Field label="Email"><input required type="email" className={input} placeholder="priya@example.com" /></Field>
@@ -293,7 +357,7 @@ export function AccessForm() {
                     <Field label="You live in"><input className={input} placeholder="Dubai, UAE" /></Field>
                     <Field label={isPlot ? "Plot address / survey no." : "Property address"} className="sm:col-span-2"><input required defaultValue={address} className={input} placeholder={isPlot ? "Khasra 112, Village Bagru, Jaipur" : "C-14 Malviya Nagar, Jaipur"} /></Field>
                     {!isPlot && <Field label="Property type"><select className={input} defaultValue="Apartment">{["Apartment", "Villa", "Independent house"].map((o) => <option key={o}>{o}</option>)}</select></Field>}
-                    <Field label="Preferred first visit"><input type="date" className={input} /></Field>
+                    <Field label={isClean ? "Preferred clean date" : "Preferred first visit"}><input type="date" className={input} /></Field>
                   </div>
                   <label className="mt-4 flex items-start gap-3 rounded-[12px] bg-accent-tint p-3.5 text-[13.5px]">
                     <input type="checkbox" defaultChecked className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
@@ -301,58 +365,98 @@ export function AccessForm() {
                   </label>
                   <label className="mt-3 flex items-start gap-3 rounded-[12px] bg-paper p-3.5 text-[13.5px]">
                     <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
-                    <span><span className="font-medium">Valuables are locked away.</span> Cash, jewellery and documents are in a locked cupboard or not at the property. Inspectors never open cupboards or lockers, and every visit is protected up to ₹1 lakh under the GroundPulse Guarantee.</span>
+                    <span><span className="font-medium">Valuables are locked away.</span> Cash, jewellery and documents are in a locked cupboard or not at the property. Inspectors never open cupboards or lockers, and every visit is protected up to ₹1 lakh under the Still Yours Guarantee.</span>
                   </label>
                 </div>
               </div>
 
               {/* summary */}
               <aside className="card min-w-0 bg-ink p-6 text-white sm:p-7 lg:sticky lg:top-[92px]">
-                <div className="text-[13px] font-medium text-white/60">Your order</div>
-                <div className="mt-3 divide-y divide-white/10">
-                  <div className="flex items-start justify-between gap-3 py-3">
-                    <div><div className="text-[15px] font-medium">{plan.name}</div><div className="text-[12.5px] text-white/60">{isPlot ? "One boundary visit" : size === "2" ? "Up to 2 BHK" : size === "3" ? "3 BHK" : "4 BHK+"}{plan.period === "per year" ? " · yearly" : ""}</div></div>
-                    <div className="text-[15px] font-medium">{inr(planPrice)}</div>
-                  </div>
-                  {!isPlot && (
-                    <div className="flex items-start justify-between gap-3 py-3">
-                      <div><div className="text-[15px] font-medium">{slots.length} rooms · {slotCount} video slots</div><div className="text-[12.5px] text-white/60">Inspector must fill every slot before submitting</div></div>
-                      <div className="text-[13px] text-white/60">included</div>
-                    </div>
-                  )}
-                  {!isPlot && extraTotal > 0 && (
-                    <div className="py-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-[15px] font-medium">Extra rooms past 4 BHK</div>
-                        <div className="text-[15px] font-medium">{inr(extraTotal)}</div>
+                <div className="text-[13px] font-medium text-white/60">{isClean ? "Your clean" : "Your order"}</div>
+                {isClean ? (
+                  <>
+                    <div className="mt-3 divide-y divide-white/10">
+                      <div className="flex items-start justify-between gap-3 py-3">
+                        <div>
+                          <div className="text-[15px] font-medium">{clean.tier.name} · {bhkLabel[clean.size]}</div>
+                          <div className="text-[12.5px] text-white/60">{clean.cov.bed} bed · {clean.cov.bath} bath · {clean.cov.balcony} balcony · living · kitchen</div>
+                        </div>
+                        <div className="shrink-0 text-[15px] font-medium tabular-nums">{inr(clean.base)}</div>
                       </div>
-                      <ul className="mt-2 space-y-1.5">
-                        {extras.map((e) => (
-                          <li key={e.k} className="flex items-baseline justify-between gap-3 text-[12.5px] text-white/60">
-                            <span>+{e.n} × {e.one}{e.n > 1 ? "s" : ""} <span className="text-white/40">@ {inr(e.rate)}</span></span>
-                            <span className="tabular-nums">{inr(e.perVisit)}</span>
-                          </li>
-                        ))}
-                        <li className="flex items-baseline justify-between gap-3 border-t border-white/10 pt-1.5 text-[12.5px] text-white/60">
-                          <span>{inr(extraPerVisit)} per inspection{visits > 1 ? ` × ${visits} a year` : ""}</span>
-                          <span className="tabular-nums font-medium text-white/80">{inr(extraTotal)}</span>
-                        </li>
-                      </ul>
+                      <div className="flex items-start justify-between gap-3 py-3">
+                        <div>
+                          <div className="text-[15px] font-medium">Verified inspector, whole visit</div>
+                          <div className="text-[12.5px] text-white/60">42-item checklist, before/after photos, report within the hour</div>
+                        </div>
+                        <div className="shrink-0 text-[13px] text-white/60">included</div>
+                      </div>
+                      {clean.picked.map(({ e, n }) => (
+                        <div key={e.id} className="flex items-start justify-between gap-3 py-3">
+                          <div>
+                            <div className="text-[15px] font-medium">{e.name}{n > 1 ? ` × ${n}` : ""}</div>
+                            <div className="text-[12.5px] text-white/60">{inr(e.price)} {e.per ?? "one-off"}</div>
+                          </div>
+                          <div className="shrink-0 text-[15px] font-medium tabular-nums">{inr(e.price * n)}</div>
+                        </div>
+                      ))}
+                      <div className="flex items-end justify-between gap-3 py-4">
+                        <div className="text-[14px] text-white/70">Total, all in</div>
+                        <div className="text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums">{inr(clean.total)}</div>
+                      </div>
                     </div>
-                  )}
-                  {!isPlot && addOns.filter((a) => adds[a.id]).map((a) => (
-                    <div key={a.id} className="flex items-start justify-between gap-3 py-3">
-                      <div><div className="text-[15px] font-medium">{a.name} × {adds[a.id]}</div><div className="text-[12.5px] text-white/60">{inr(a.price)} {a.unit}</div></div>
-                      <div className="text-[15px] font-medium">{inr(a.price * adds[a.id])}</div>
+                    <button type="submit" className="btn btn-accent w-full">Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></button>
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/55">
+                      Nobody needs to be home — entry on your OTP. Inspection on its own for a {bhkLabel[clean.size]} is {inr(visitPrice[clean.size])}; booked with a visit you already have, this clean is +{inr(clean.tier.rider[clean.size])}.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-3 divide-y divide-white/10">
+                      <div className="flex items-start justify-between gap-3 py-3">
+                        <div><div className="text-[15px] font-medium">{plan.name}</div><div className="text-[12.5px] text-white/60">{isPlot ? "One boundary visit" : size === "2" ? "Up to 2 BHK" : size === "3" ? "3 BHK" : "4 BHK+"}{plan.period === "per year" ? " · yearly" : ""}</div></div>
+                        <div className="text-[15px] font-medium">{inr(planPrice)}</div>
+                      </div>
+                      {!isPlot && (
+                        <div className="flex items-start justify-between gap-3 py-3">
+                          <div><div className="text-[15px] font-medium">{slots.length} rooms · {slotCount} video slots</div><div className="text-[12.5px] text-white/60">Inspector must fill every slot before submitting</div></div>
+                          <div className="text-[13px] text-white/60">included</div>
+                        </div>
+                      )}
+                      {!isPlot && extraTotal > 0 && (
+                        <div className="py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-[15px] font-medium">Extra rooms past 4 BHK</div>
+                            <div className="text-[15px] font-medium">{inr(extraTotal)}</div>
+                          </div>
+                          <ul className="mt-2 space-y-1.5">
+                            {extras.map((e) => (
+                              <li key={e.k} className="flex items-baseline justify-between gap-3 text-[12.5px] text-white/60">
+                                <span>+{e.n} × {e.one}{e.n > 1 ? "s" : ""} <span className="text-white/40">@ {inr(e.rate)}</span></span>
+                                <span className="tabular-nums">{inr(e.perVisit)}</span>
+                              </li>
+                            ))}
+                            <li className="flex items-baseline justify-between gap-3 border-t border-white/10 pt-1.5 text-[12.5px] text-white/60">
+                              <span>{inr(extraPerVisit)} per inspection{visits > 1 ? ` × ${visits} a year` : ""}</span>
+                              <span className="tabular-nums font-medium text-white/80">{inr(extraTotal)}</span>
+                            </li>
+                          </ul>
+                        </div>
+                      )}
+                      {!isPlot && visitAddOns.filter((a) => adds[a.id]).map((a) => (
+                        <div key={a.id} className="flex items-start justify-between gap-3 py-3">
+                          <div><div className="text-[15px] font-medium">{a.name} × {adds[a.id]}</div><div className="text-[12.5px] text-white/60">{inr(a.price)} {a.unit}</div></div>
+                          <div className="text-[15px] font-medium">{inr(a.price * adds[a.id])}</div>
+                        </div>
+                      ))}
+                      <div className="flex items-end justify-between gap-3 py-4">
+                        <div className="text-[14px] text-white/70">Total</div>
+                        <div className="text-[30px] font-medium leading-none tracking-[-0.04em]">{inr(total)}</div>
+                      </div>
                     </div>
-                  ))}
-                  <div className="flex items-end justify-between gap-3 py-4">
-                    <div className="text-[14px] text-white/70">Total</div>
-                    <div className="text-[30px] font-medium leading-none tracking-[-0.04em]">{inr(total)}</div>
-                  </div>
-                </div>
-                <button type="submit" className="btn btn-accent mt-2 w-full">Confirm {plan.name} <ArrowRight size={16} /></button>
-                <p className="mt-3 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
+                    <button type="submit" className="btn btn-accent mt-2 w-full">Confirm {plan.name} <ArrowRight size={16} /></button>
+                    <p className="mt-3 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
+                  </>
+                )}
                 <div className="mt-5 border-t border-white/10 pt-5"><Relax variant="dark" /></div>
               </aside>
             </motion.form>

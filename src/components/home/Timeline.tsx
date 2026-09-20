@@ -14,7 +14,7 @@ const ours: Item[] = [
   { t: "Register your home or plot", when: "5 min", kind: "tint" },
   { t: "Verified inspector walks the rooms — or the boundary", when: "scheduled", kind: "tint" },
   { t: "Report in your inbox — photos & video attached", when: "≤ 1 hour", kind: "white" },
-  { t: "GroundPulse takes over from here", kind: "note" },
+  { t: "Still Yours takes over from here", kind: "note" },
   { t: "You approve the repair", when: "1 tap", kind: "tint" },
   { t: "Admin matches a verified local pro", when: "same day", kind: "tint" },
   { t: "Pro does the work during a visit — inspector present", when: "live status", kind: "tint" },
@@ -70,7 +70,7 @@ export function Timeline() {
       <div className="wrap grid gap-12 lg:grid-cols-12 lg:gap-8">
         <div className="relative lg:col-span-5">
           <Reveal>
-            <p className="text-[20px] font-medium text-text-2 sm:text-[24px]">GroundPulse lets you stay away with</p>
+            <p className="text-[20px] font-medium text-text-2 sm:text-[24px]">Still Yours lets you stay away with</p>
             <h2 id="timeline-title" className="t-1 mt-1">Proof Now, Peace Later</h2>
             <p className="t-lede mt-5 max-w-[40ch] text-text-2">A full report within the hour. You approve only what needs fixing. A verified pro does the rest — and shows you it's done.</p>
             <Link href="/access" className="btn btn-accent mt-7">Get an inspection today</Link>
@@ -95,7 +95,7 @@ export function Timeline() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:gap-8">
-          <Column title="GroundPulse" items={ours} accent />
+          <Column title="Still Yours" items={ours} accent />
           <Column title="Traditional" items={theirs} />
         </div>
       </div>

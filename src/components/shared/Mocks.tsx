@@ -9,10 +9,10 @@ import { cn } from "@/lib/cn";
 
 export const Card = ({ title, meta, children, className }: { title: string; meta?: string; children: React.ReactNode; className?: string }) => (
   <div className={cn("card shadow-card overflow-hidden bg-white", className)}>
-    <div className="flex items-center justify-between border-b border-line px-4 py-3">
+    <div className="flex items-center justify-between border-b border-line px-2.5 py-3 sm:px-4">
       <span className="text-[13.5px] font-semibold">{title}</span>{meta && <span className="text-[12px] text-text-3">{meta}</span>}
     </div>
-    <div className="p-4">{children}</div>
+    <div className="p-2.5 sm:p-4">{children}</div>
   </div>
 );
 const Lbl = ({ c }: { c: string }) => <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-3">{c}</div>;
@@ -69,7 +69,7 @@ export function InspectMock() {
         {rows.map((r, i) => (
           <div key={i} className="flex items-center justify-between gap-3 py-2.5">
             <div className="min-w-0"><div className="truncate text-[12.5px]"><span className="text-text-3">{r.room} · </span>{r.item}</div>{r.media && <div className="mt-0.5 flex items-center gap-1 text-[10.5px] text-text-3"><Camera size={9} /> {r.media}</div>}</div>
-            <div className="w-[136px] shrink-0"><Seg s={r.s} /></div>
+            <div className="w-[104px] shrink-0 sm:w-[136px]"><Seg s={r.s} /></div>
           </div>
         ))}
       </div>

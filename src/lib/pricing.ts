@@ -31,7 +31,7 @@ export const plans: Plan[] = [
       "Room-by-room checklist, photos & video on every item",
       "Report within the hour + health score",
       "Approve or decline any flagged repair",
-      "Add a refresh clean (₹899), deep clean (from ₹3,499) or car (₹700)",
+      "Add cleaning to the same visit — refresh +₹999, deep clean from +₹3,999 — or a car check (₹700)",
     ],
     cta: "Book a visit",
   },
@@ -45,13 +45,13 @@ export const plans: Plan[] = [
     period: "per year",
     tagline: "A verified inspector every quarter, and a clean home twice a year.",
     popular: true,
-    worth: "₹10,996 value",
+    worth: "₹9,994 value",
     includes: [
       "4 inspections a year (one every quarter)",
-      "2 refresh cleans (up to 2 BHK) — done during a visit, inspector present",
+      "2 refresh cleans a year — your whole home, at its size, inspector on site",
       "Reports within the hour, health score trend",
       "Owner-approved repairs by verified pros",
-      "Add-ons any time: refresh clean ₹899 · deep clean from ₹3,499 · car ₹700",
+      "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],
     cta: "Start Care",
   },
@@ -71,64 +71,27 @@ export const plans: Plan[] = [
       "Repairs covered up to ₹25,000 a year · ₹12,500 per incident",
       "Labour on us · parts: we pay up to ₹5,000 per incident, rest at cost",
       "Priority assignment of verified pros",
-      "Add-ons any time: refresh clean ₹899 · deep clean from ₹3,499 · car ₹700",
+      "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],
     cta: "Start Care+",
   },
 ];
 
-export const addOn = { name: "Refresh clean", price: 899, note: "Up to 2 BHK · 2 hours, done during the visit with the inspector present" };
-
 export const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 /* ── Add-ons (any plan, any visit) ─────────────────────────────── */
 export const addOns = [
-  { id: "cleaning", name: "Refresh clean", price: 899, unit: "per visit", note: "Dust, cobwebs, sweep, mop, taps run · ~2 hrs · inspector present" },
-  { id: "deep", name: "Full deep clean", price: 3499, unit: "from, 2 BHK", note: "Crew of 2–3 · 4–6 hrs · kitchen degrease, bathroom descale, before/after photos" },
+  { id: "cleaning", name: "Refresh clean", price: 999, unit: "on any visit", note: "Cobwebs, fans, floors, surfaces, taps run · added to a visit you are already booking · any size" },
+  { id: "deep", name: "Deep clean", price: 3999, unit: "from · 1 BHK, on any visit", note: "Scrubbed, descaled, degreased · before/after photos · 2 BHK ₹4,499 · 3 BHK ₹5,499 · 4 BHK ₹6,499" },
   { id: "car", name: "Car inspection", price: 700, unit: "per car", note: "Start & idle, battery, tyres, leaks, odometer photo, cover check" },
   { id: "plot", name: "Plot / land visit", price: 1999, unit: "per visit", note: "Boundary walk, GPS-tagged photos, encroachment & occupation check" },
 ];
 
-/* ── Cleaning: two honest tiers ───────────────────────────────────
-   A shut-up flat needs dust removed, not grease. That's a genuinely
-   cheaper job than a deep clean and is priced as one. Deep clean is
-   benchmarked against what full-home deep cleaning actually costs in
-   Bengaluru (₹3,000–7,500 depending on size and furnishing). */
-export const cleaning = {
-  refresh: {
-    id: "cleaning",
-    name: "Refresh clean",
-    price: 899,
-    unit: "up to 2 BHK",
-    time: "~2 hours · 1 person",
-    tagline: "For a place that's just been shut a while.",
-    includes: [
-      "Cobwebs, ceiling corners and fans dusted",
-      "All floors swept and mopped",
-      "Surfaces, sills and wardrobe fronts wiped",
-      "Bathroom surfaces wiped, WC cleaned",
-      "Every tap and trap run so the seals don't dry out",
-      "Windows opened, house aired, waste cleared",
-    ],
-  },
-  deep: {
-    id: "deep",
-    name: "Full deep clean",
-    price: 3499,
-    price3: 4499,
-    price4: 5499,
-    unit: "2 BHK",
-    time: "4–6 hours · crew of 2–3",
-    tagline: "For when you're actually walking back in.",
-    rooms: [
-      { r: "Kitchen", b: "Chimney and hob degreased, cabinet fronts and interiors, backsplash tiles, sink descaled, appliance exteriors, floor scrubbed." },
-      { r: "Bathrooms", b: "Tiles and grout scrubbed, WC descaled inside and out, taps and shower descaled, mirror, exhaust fan, drains cleared." },
-      { r: "Bedrooms & living", b: "Cobwebs, fans, ceilings, reachable walls, switchboards, skirting, window glass and grills, furniture wiped down, floors scrubbed." },
-      { r: "Balcony & utility", b: "Railings, grills, floor scrubbed, drain cleared, washing area descaled." },
-      { r: "Throughout", b: "Doors and handles, light fittings, cupboard tops, and every floor mopped with disinfectant at the end." },
-    ],
-  },
-};
+/* ── Cleaning ─────────────────────────────────────────────────────
+   Two tiers, five sizes, itemised extras and the full method now live
+   in `lib/cleaning.ts` and on /cleaning. Prices here are the headline
+   numbers only — change them there, not in this file. */
+export const cleaningFrom = { refresh: 1999, deep: 4999, riderRefresh: 999, riderDeep: 3999 };
 
 /* ── The pre-arrival package — our sharpest use case ──────────────
    Urban Company and every other cleaning app need someone at home to
@@ -136,12 +99,12 @@ export const cleaning = {
    who can't. That gap is the product. */
 export const comingHome = {
   name: "Coming home",
-  from: 5498,
+  from: 4999,
   lead: "Book 2–3 days before you land",
   steps: [
     { t: "Day 0 — you book", b: "Tell us your arrival date. No keys to courier, no neighbour to co-ordinate, nothing for you to organise from another country." },
     { t: "Day 1 — inspector walks it", b: "A police-verified inspector opens with your OTP, runs the full checklist and films every room. You get the report within the hour — including anything broken, with a quote." },
-    { t: "Day 1 — crew cleans, supervised", b: "The cleaning crew works with your inspector on site the entire time. Before and after photographs of every room land in the same report." },
+    { t: "Day 1 — crew cleans, supervised", b: "The cleaning crew works with your inspector on site the entire time. Before and after photographs of every room land in the same report — and the crew brings its own ladder, buckets and machines, because nobody is home to hand them anything." },
     { t: "Day 2 — repairs, if you approved any", b: "Anything you said yes to gets fixed before you arrive, by a verified pro, inspector present, after-photos attached." },
     { t: "The day you land", b: "You open the door to a clean, working house — and you already know everything about it, because you read the report on the plane." },
   ],

@@ -17,7 +17,7 @@ export function Handles() {
       <div className="wrap">
         <Reveal>
           <h2 id="handles-title" className="t-1">
-            <span className="block">GroundPulse handles{" "}
+            <span className="block">Still Yours handles{" "}
               <span className="relative inline-flex items-baseline gap-2 whitespace-nowrap align-baseline text-accent">
                 <span className="inline-grid h-[0.8em] w-[0.8em] translate-y-[0.08em] place-items-center rounded-[6px] border-[1.5px] border-accent/50 text-accent"><Check size={14} strokeWidth={3} /></span>
                 <span className="relative inline-block overflow-hidden align-baseline" style={{ height: "1.1em" }}>

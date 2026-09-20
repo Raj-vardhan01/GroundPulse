@@ -8,13 +8,21 @@ import { SectionHead } from "@/components/shared/SectionHead";
 import { addOns, assets, inr, plans, plotPlans, visitCovers, visitUseCases } from "@/lib/pricing";
 import { Relax } from "@/components/shared/Relax";
 import { cn } from "@/lib/cn";
+import { bhkKeys, bhkLabel, coverage, tiers as cleanTiers } from "@/lib/cleaning";
 
 const assetIcon = { home: Home, plot: LandPlot, car: Car } as const;
 const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
+type Tab = "home" | "clean" | "plot";
+const tabNote: Record<Tab, string> = {
+  home: "Apartments, villas, independent houses · one visit or a year of them",
+  clean: "Refresh or deep, 1 to 5 BHK · the inspector is in the price, not on top of it",
+  plot: "Empty plots, farmland, ancestral land · any size",
+};
+
 export function Pricing({ full }: { full?: boolean }) {
-  const [tab, setTab] = useState<"home" | "plot">("home");
-  const list = tab === "home" ? plans : plotPlans;
+  const [tab, setTab] = useState<Tab>("home");
+  const list = tab === "home" ? plans : tab === "plot" ? plotPlans : [];
   return (
     <section id="pricing" className="section" aria-labelledby="pricing-title">
       <div className="wrap">
@@ -44,20 +52,67 @@ export function Pricing({ full }: { full?: boolean }) {
 
         {/* homes / plots toggle */}
         <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-12">
-          <div className="inline-flex rounded-[14px] bg-beige p-1" role="tablist" aria-label="Plan type">
-            {([["home", "Homes", Home], ["plot", "Plots & land", LandPlot]] as const).map(([k, l, I]) => (
-              <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("inline-flex h-11 items-center gap-2 rounded-[11px] px-4 text-[15px] font-medium transition", tab === k ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>
-                <I size={16} /> {l}
+          <div className="inline-flex w-full rounded-[14px] bg-beige p-1 sm:w-auto" role="tablist" aria-label="Plan type">
+            {([["home", "Inspections", Home], ["clean", "Cleaning", Sparkles], ["plot", "Plots & land", LandPlot]] as const).map(([k, l, I]) => (
+              <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[11px] px-2 text-[13.5px] font-medium transition sm:flex-none sm:px-4 sm:text-[15px]", tab === k ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>
+                <I size={16} className="hidden sm:block" /> {l}
               </button>
             ))}
           </div>
-          <p className="t-small">{tab === "home" ? "Apartments, villas, independent houses · up to 2 BHK for cleaning" : "Empty plots, farmland, ancestral land · any size"}</p>
+          <p className="t-small">{tabNote[tab]}</p>
         </div>
-        <div className={cn("mt-6 grid gap-4 lg:gap-5", tab === "home" ? "lg:grid-cols-3" : "lg:grid-cols-[1fr_1.5fr]")}>
+        <div className={cn("mt-6 grid gap-4 lg:gap-5", tab === "home" ? "lg:grid-cols-3" : tab === "clean" ? "lg:grid-cols-2" : "lg:grid-cols-[1fr_1.5fr]")}>
+          {tab === "clean" && cleanTiers.map((t, i) => {
+            const lead = i === 1;
+            return (
+              <Reveal key={t.id} delay={i * 0.07}>
+                <article className={cn("card relative flex h-full flex-col p-6 sm:p-7", lead ? "bg-accent text-white shadow-float lg:-my-3 lg:py-10" : "bg-white shadow-card")}>
+                  {lead && <span className="absolute -top-3 left-6 rounded-full bg-gold px-3 py-1 text-[12px] font-medium text-ink shadow-card">Most booked</span>}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-[20px] font-medium tracking-[-0.02em]">{t.name}</h3>
+                      <p className={cn("mt-1 text-[14px]", lead ? "text-white/80" : "text-text-2")}>{t.tagline}</p>
+                    </div>
+                    <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11.5px] font-medium", lead ? "bg-white/15 text-white" : "bg-accent-soft text-accent-2")}>inspector included</span>
+                  </div>
+                  <div className="mt-6 flex items-baseline gap-2">
+                    <span className="text-[40px] font-medium leading-none tracking-[-0.04em] sm:text-[44px]">{inr(t.price["1"])}</span>
+                    <span className={cn("text-[14px]", lead ? "text-white/75" : "text-text-2")}>1 BHK, all in</span>
+                  </div>
+                  <p className={cn("mt-1 text-[13px]", lead ? "text-white/70" : "text-text-2")}>{t.hours["2"]} for a {bhkLabel["2"]} · {t.crew["2"]} + inspector</p>
+                  <ul className="mt-6 space-y-2.5">
+                    {t.does.slice(0, 5).map((d) => (
+                      <li key={d} className="flex items-start gap-2.5 text-[14.5px] leading-snug">
+                        <span className={cn("mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full", lead ? "bg-white text-accent-2" : "bg-accent-soft text-accent-2")}><Check size={11} strokeWidth={3} /></span>
+                        <span className={lead ? "text-white/90" : "text-text"}>{d}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-6 grid grid-cols-5 gap-1.5 text-center">
+                    {bhkKeys.map((k) => (
+                      <div key={k} className={cn("rounded-[10px] px-1 py-2", lead ? "bg-white/12" : "bg-beige")}>
+                        <div className={cn("text-[11px]", lead ? "text-white/70" : "text-text-2")}>{bhkLabel[k]}</div>
+                        <div className="text-[13px] font-medium tabular-nums">{inr(t.price[k])}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className={cn("mt-2 text-[12px]", lead ? "text-white/60" : "text-text-3")}>
+                    {coverage["3"].bed} bed · {coverage["3"].bath} bath · {coverage["3"].balcony} balcony on a 3 BHK, plus living and kitchen. Or add it to a visit you already have for +{inr(t.rider["3"])}.
+                  </p>
+                  <div className="mt-auto pt-5">
+                    <Link href={`/access?service=cleaning&plan=${t.id}`} className={cn("btn w-full", lead ? "btn-white" : "btn-accent")}>Build your quote <ArrowRight size={16} /></Link>
+                    <Link href="/cleaning" className={cn("mt-2 flex items-center justify-center gap-1.5 py-1 text-[13px] font-medium hover:underline", lead ? "text-white/85" : "text-accent-2")}>
+                      How we clean, room by room <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </article>
+              </Reveal>
+            );
+          })}
           {list.map((p, i) => (
             <Reveal key={`${tab}-${p.id}`} delay={i * 0.07}>
               <article className={cn("card relative flex h-full flex-col p-6 sm:p-7", p.popular ? "bg-accent text-white shadow-float lg:-my-3 lg:py-10" : "bg-white shadow-card")}>
-                {p.popular && <span className="absolute -top-3 left-6 rounded-full bg-white px-3 py-1 text-[12px] font-medium text-accent-2 shadow-card">Most popular</span>}
+                {p.popular && <span className="absolute -top-3 left-6 rounded-full bg-gold px-3 py-1 text-[12px] font-medium text-ink shadow-card">Most popular</span>}
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-[20px] font-medium tracking-[-0.02em]">{p.name}</h3>
@@ -108,13 +163,14 @@ export function Pricing({ full }: { full?: boolean }) {
         <Reveal className="mt-8">
           <div className="card bg-beige p-5 sm:p-7">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div><div className="text-[18px] font-medium tracking-[-0.02em]">Add-ons — on any plan, any visit</div><div className="t-small">Book with a visit, or on their own in between.</div></div>
+              <div><div className="text-[18px] font-medium tracking-[-0.02em]">Add-ons — on any plan, any visit</div><div className="t-small">Book with a visit, or on their own in between. Cleaning prices are all-in and include the inspector.</div></div>
+              <Link href="/cleaning" className="btn btn-white btn-sm shrink-0">See the cleaning in full <ArrowRight size={15} /></Link>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               {addOns.map((a) => {
                 const I = addOnIcon[a.id as keyof typeof addOnIcon];
                 return (
-                  <Link key={a.id} href={`/access?plan=${a.id}`} className="card group flex items-start gap-3 bg-white p-4 shadow-card transition hover:-translate-y-0.5">
+                  <Link key={a.id} href={a.id === "cleaning" || a.id === "deep" ? "/cleaning" : `/access?plan=${a.id}`} className="card group flex items-start gap-3 bg-white p-4 shadow-card transition hover:-translate-y-0.5">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={17} /></span>
                     <div className="min-w-0">
                       <div className="flex items-baseline gap-2"><span className="text-[15px] font-medium">{a.name}</span></div>

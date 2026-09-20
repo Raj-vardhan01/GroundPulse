@@ -46,9 +46,9 @@ const declarations = [
   { I: AlertTriangle, t: "I have no criminal conviction and no pending case against me", b: "A false declaration here ends the engagement immediately, whenever it comes to light." },
   { I: Lock, t: "I will never enter a property without the owner's OTP", b: "No OTP, no checklist. The app will not open the visit without it." },
   { I: Lock, t: "I will never open cupboards, lockers, drawers or personal belongings", b: "Not even to check for damp. I photograph the outside and flag it instead." },
-  { I: FileCheck2, t: "I accept that every visit is video-recorded, GPS-tagged and time-stamped", b: "The footage belongs to the owner and to GroundPulse, and is admissible against me if I act badly." },
+  { I: FileCheck2, t: "I accept that every visit is video-recorded, GPS-tagged and time-stamped", b: "The footage belongs to the owner and to Still Yours, and is admissible against me if I act badly." },
   { I: Wallet, t: "I agree to place a refundable security deposit before my first solo visit", b: "Held for the duration of the engagement and returned in full when I leave in good standing. The amount is confirmed at the in-person interview." },
-  { I: FileCheck2, t: "I will sign an NDA and the GroundPulse code of conduct", b: "Owner addresses, photographs and personal details never leave the platform." },
+  { I: FileCheck2, t: "I will sign an NDA and the Still Yours code of conduct", b: "Owner addresses, photographs and personal details never leave the platform." },
   { I: BadgeCheck, t: "I understand ratings below the bar end the engagement", b: "Owners rate every visit. Sustained low ratings, or one serious breach, and I leave the network." },
 ];
 

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { serviceLd } from "@/lib/seo";
 import { Bell, Building2, Plane, Waves } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 import { FeatureRow } from "@/components/shared/FeatureRow";
@@ -11,7 +13,13 @@ import { ComingHome } from "@/components/home/ComingHome";
 import { Pricing } from "@/components/home/Pricing";
 import { CTA } from "@/components/home/CTA";
 
-export const metadata: Metadata = { title: "For owners" };
+export const metadata: Metadata = {
+  title: "For owners",
+  description:
+    "Own a home in India but live abroad? A verified inspector walks your flat or house on a fixed day, photographs every room and sends a timestamped report within the hour. Approve repairs from anywhere.",
+  alternates: { canonical: "/owners" },
+  openGraph: { title: "For owners · StillYours", description: "Own a home in India but live abroad? A verified inspector walks your flat or house on a fixed day, photographs every room and sends a timestamped report within the hour. Approve repairs from anywhere.", url: "/owners" },
+};
 
 const who = [
   { I: Plane, t: "NRIs with a home back home", b: "An ancestral flat or a parents' house that sits empty for months. You want to know it's safe — and to fix things without flying back." },
@@ -22,6 +30,7 @@ const who = [
 export default function Page() {
   return (
     <>
+      <JsonLd data={serviceLd({ name: "Home inspection for property owners abroad", serviceType: "Property inspection", path: "/owners", description: "A verified inspector walks a 42-item room-by-room checklist on a fixed day, photographs and films every room, and sends a timestamped report within the hour. No repair without the owner's approval." })} />
       <PageHero eyebrow="For owners" title={<>Built for the ones<br className="hidden md:block" /> who can't be there.</>} lede="One flat in Jaipur, five units across two cities, or an empty plot nobody has walked in months — you get the same thing: a true, timestamped picture, and control over every repair. Even the car parked in the basement." />
 
       <section className="wrap mt-6 grid gap-3 md:mt-8 md:grid-cols-3">

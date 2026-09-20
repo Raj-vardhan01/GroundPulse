@@ -19,7 +19,7 @@ export function Promise() {
           <div className="panel on-dark bg-accent px-5 py-12 sm:px-8 md:px-12 md:py-16">
             <div className="grid gap-8 lg:grid-cols-[1fr_1.6fr] lg:gap-12">
               <div>
-                <p className="text-[16px] font-medium text-white/70">The GroundPulse Promise</p>
+                <p className="text-[16px] font-medium text-white/70">The Still Yours Promise</p>
                 <h2 id="promise-title" className="t-1 mt-2 max-w-[12ch] text-white">Seven things we put in writing.</h2>
                 <p className="mt-4 max-w-[40ch] text-[16px] leading-relaxed text-white/80">Trust isn't a word on a website. These are the commitments in your agreement — every plan, every visit, homes and plots alike.</p>
               </div>

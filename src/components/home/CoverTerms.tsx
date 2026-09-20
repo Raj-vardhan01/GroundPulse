@@ -45,7 +45,7 @@ export function CoverTerms() {
                 </div>
               ))}
             </div>
-            <p className="t-small mt-4">Cover starts with your first inspection and resets every plan year. Every repair is quoted by a verified provider — quote + a flat 10% GroundPulse fee, shown to you in full — and approved by you before any work starts. Repairs inside the cover carry no fee. Full terms are shared at sign-up.</p>
+            <p className="t-small mt-4">Cover starts with your first inspection and resets every plan year. Every repair is quoted by a verified provider — quote + a flat 10% Still Yours fee, shown to you in full — and approved by you before any work starts. Repairs inside the cover carry no fee. Full terms are shared at sign-up.</p>
           </div>
         </Reveal>
 
@@ -53,7 +53,7 @@ export function CoverTerms() {
         <Reveal className="mt-10">
           <div id="guarantee" className="card grid gap-6 bg-ink p-6 text-white sm:p-8 md:grid-cols-[1.2fr_1fr] md:items-center md:p-10">
             <div>
-              <p className="text-[16px] font-medium text-white/70">The GroundPulse Guarantee · every plan, every visit</p>
+              <p className="text-[16px] font-medium text-white/70">The Still Yours Guarantee · every plan, every visit</p>
               <h3 className="t-2 mt-1 max-w-[16ch]">Every visit protected up to ₹1 lakh.</h3>
               <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">Theft or damage caused during a visit is covered — for one-time visits and every plan. It's built so that can't happen quietly in the first place; the guarantee is for the rare case.</p>
             </div>
