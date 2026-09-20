@@ -40,3 +40,41 @@ src/components/ui       FloorPlan, HealthRing, EvidenceFrame, Reveal, Logo
 ## Swapping in real photos
 
 `EvidenceFrame` renders a vector "photo" placeholder. Pass `src="/photos/your-file.jpg"` to any instance to use a real image — the annotation box, corner brackets and caption strip render on top of it unchanged.
+
+## Lead capture
+
+Both forms on `/access` POST to `/api/leads`, which writes to Postgres and
+optionally emails you. Before this existed, both forms called `setDone(true)`
+and threw the submission away.
+
+### Setup
+
+1. Create a Postgres database (Neon, Supabase and Vercel Postgres all work).
+2. Run the schema once:
+   ```bash
+   psql "$DATABASE_URL" -f migrations/001_leads.sql
+   ```
+3. Set `DATABASE_URL` in Vercel → Settings → Environment Variables, for all
+   environments. Copy `.env.example` to `.env.local` for local work.
+4. Optional, to be emailed on every submission: set `LEADS_EMAIL_TO` and
+   `LEADS_EMAIL_FROM`, then **either** `RESEND_API_KEY` **or** SMTP
+   (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`). Resend takes priority
+   if both are present. Gmail works as the SMTP option with an App Password —
+   see `.env.example`. With neither configured, leads still save; you just are
+   not notified.
+
+### Reading the leads
+
+```sql
+select created_at, name, email, phone, address, service, estimate_inr
+from owner_leads order by created_at desc;
+
+select created_at, name, phone, city, localities, experience
+from inspector_applications order by created_at desc;
+```
+
+### If the database is down
+
+The route returns 503 and the form shows the real failure with an email
+fallback — it never reports success it did not achieve. The full payload is
+written to the Vercel logs so any lead lost to an outage can be recovered.

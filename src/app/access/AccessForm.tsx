@@ -75,6 +75,8 @@ export function AccessForm() {
   const initialRole = (params.get("role") as Role) || "owner";
   const [role, setRole] = useState<Role>(["owner", "inspector"].includes(initialRole) ? initialRole : "owner");
   const [done, setDone] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const address = params.get("address") || "";
 
   // owner order state
@@ -150,6 +152,48 @@ export function AccessForm() {
   const total = planPrice + addTotal + extraTotal;
   const setQty = (id: string, d: number) => setAdds((s) => ({ ...s, [id]: Math.max(0, Math.min(addOnCap(id, rooms.parking, visits), (s[id] || 0) + d)) }));
 
+
+  async function submitOwner(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (sending) return;
+    setSending(true);
+    setSendError(null);
+    const fd = new FormData(e.currentTarget);
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "owner",
+          name: fd.get("name"),
+          email: fd.get("email"),
+          phone: fd.get("phone"),
+          livesIn: fd.get("livesIn"),
+          address: fd.get("address"),
+          propertyType: fd.get("propertyType"),
+          preferredDate: fd.get("preferredDate"),
+          liveCall: fd.get("liveCall") === "on",
+          valuablesAck: fd.get("valuablesAck") === "on",
+          company: fd.get("company"),
+          service,
+          planId,
+          size,
+          rooms,
+          addons: adds,
+          estimateInr: total,
+          source: typeof window === "undefined" ? "" : window.location.search,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "We could not save that just now.");
+      setDone(true);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "We could not save that just now.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <section className="pt-[88px] md:pt-[100px]">
       <div className="wrap">
@@ -176,7 +220,7 @@ export function AccessForm() {
               <Link href="/" className="btn btn-white mt-8">Back to home</Link>
             </motion.div>
           ) : role === "owner" ? (
-            <motion.form key="owner" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} onSubmit={(e) => { e.preventDefault(); setDone(true); }} className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
+            <motion.form key="owner" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} onSubmit={submitOwner} className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
               <div className="grid grid-cols-1 gap-6">
                 {/* 1. what are you here for */}
                 <div className="card bg-white p-6 shadow-card sm:p-7">
@@ -351,20 +395,20 @@ export function AccessForm() {
                 <div className="card bg-white p-6 shadow-card sm:p-7">
                   <h2 className="text-[18px] font-medium">{isClean ? "5" : isPlot ? "3" : "6"}. Your details</h2>
                   <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="Full name"><input required className={input} placeholder="Priya Sharma" /></Field>
-                    <Field label="Email"><input required type="email" className={input} placeholder="priya@example.com" /></Field>
-                    <Field label="Phone / WhatsApp"><input className={input} placeholder="+971 50 000 0000" /></Field>
-                    <Field label="You live in"><input className={input} placeholder="Dubai, UAE" /></Field>
-                    <Field label={isPlot ? "Plot address / survey no." : "Property address"} className="sm:col-span-2"><input required defaultValue={address} className={input} placeholder={isPlot ? "Khasra 112, Village Bagru, Jaipur" : "C-14 Malviya Nagar, Jaipur"} /></Field>
-                    {!isPlot && <Field label="Property type"><select className={input} defaultValue="Apartment">{["Apartment", "Villa", "Independent house"].map((o) => <option key={o}>{o}</option>)}</select></Field>}
-                    <Field label={isClean ? "Preferred clean date" : "Preferred first visit"}><input type="date" className={input} /></Field>
+                    <Field label="Full name"><input required name="name" className={input} placeholder="Priya Sharma" /></Field>
+                    <Field label="Email"><input required name="email" type="email" className={input} placeholder="priya@example.com" /></Field>
+                    <Field label="Phone / WhatsApp"><input name="phone" className={input} placeholder="+971 50 000 0000" /></Field>
+                    <Field label="You live in"><input name="livesIn" className={input} placeholder="Dubai, UAE" /></Field>
+                    <Field label={isPlot ? "Plot address / survey no." : "Property address"} className="sm:col-span-2"><input required name="address" defaultValue={address} className={input} placeholder={isPlot ? "Khasra 112, Village Bagru, Jaipur" : "C-14 Malviya Nagar, Jaipur"} /></Field>
+                    {!isPlot && <Field label="Property type"><select name="propertyType" className={input} defaultValue="Apartment">{["Apartment", "Villa", "Independent house"].map((o) => <option key={o}>{o}</option>)}</select></Field>}
+                    <Field label={isClean ? "Preferred clean date" : "Preferred first visit"}><input name="preferredDate" type="date" className={input} /></Field>
                   </div>
                   <label className="mt-4 flex items-start gap-3 rounded-[12px] bg-accent-tint p-3.5 text-[13.5px]">
-                    <input type="checkbox" defaultChecked className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
+                    <input type="checkbox" name="liveCall" defaultChecked className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
                     <span><span className="font-medium">Call me live at the start and end of every visit.</span> The inspector video-calls the number above — you, your parents or your caretaker can watch live.</span>
                   </label>
                   <label className="mt-3 flex items-start gap-3 rounded-[12px] bg-paper p-3.5 text-[13.5px]">
-                    <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
+                    <input type="checkbox" name="valuablesAck" required className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
                     <span><span className="font-medium">Valuables are locked away.</span> Cash, jewellery and documents are in a locked cupboard or not at the property. Inspectors never open cupboards or lockers, and every visit is protected up to ₹1 lakh under the Still Yours Guarantee.</span>
                   </label>
                 </div>
@@ -404,7 +448,7 @@ export function AccessForm() {
                         <div className="text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums">{inr(clean.total)}</div>
                       </div>
                     </div>
-                    <button type="submit" className="btn btn-accent w-full">Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></button>
+                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in and we will pick it up straight away.</p>}
                     <p className="mt-3 text-[12px] leading-relaxed text-white/55">
                       Nobody needs to be home — entry on your OTP. Inspection on its own for a {bhkLabel[clean.size]} is {inr(visitPrice[clean.size])}; booked with a visit you already have, this clean is +{inr(clean.tier.rider[clean.size])}.
                     </p>
@@ -453,7 +497,7 @@ export function AccessForm() {
                         <div className="text-[30px] font-medium leading-none tracking-[-0.04em]">{inr(total)}</div>
                       </div>
                     </div>
-                    <button type="submit" className="btn btn-accent mt-2 w-full">Confirm {plan.name} <ArrowRight size={16} /></button>
+                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in and we will pick it up straight away.</p>}
                     <p className="mt-3 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
                   </>
                 )}
