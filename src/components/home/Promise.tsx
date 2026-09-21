@@ -7,7 +7,7 @@ export const promises = [
   ["Nobody earns from flagging", "Inspectors are paid a flat fee. Repairs go to a different verified pro at a fixed rate card + 10%, which you approve."],
   ["Cancel any time", "Yearly plans: cancel inside 30 days and 75% comes back, a flat 25% retained. Pause any time after."],
   ["Protected up to ₹1,00,000", "For the very, very rare case — theft or damage during a visit is on us, not you."],
-  ["No brokerage, no commission", "We never find tenants or take a cut. Inspection, proof and approved repairs are the whole product."],
+  ["No brokerage, nothing hidden", "We never find tenants. On repairs we charge a flat 10% you see before you approve. Inspection, proof and approved repairs are the whole product."],
   ["Your data stays yours", "Videos and photos on private, expiring links. Delete your account and they're gone in 30 days."],
 ];
 

@@ -399,7 +399,7 @@ export function AccessForm() {
                     <Field label="Email"><input required name="email" type="email" className={input} placeholder="priya@example.com" /></Field>
                     <Field label="Phone / WhatsApp"><input name="phone" className={input} placeholder="+971 50 000 0000" /></Field>
                     <Field label="You live in"><input name="livesIn" className={input} placeholder="Dubai, UAE" /></Field>
-                    <Field label={isPlot ? "Plot address / survey no." : "Property address"} className="sm:col-span-2"><input required name="address" defaultValue={address} className={input} placeholder={isPlot ? "Khasra 112, Village Bagru, Jaipur" : "C-14 Malviya Nagar, Jaipur"} /></Field>
+                    <Field label={isPlot ? "Plot address / survey no." : "Property address"} className="sm:col-span-2"><input required name="address" defaultValue={address} className={input} placeholder={isPlot ? "Sy. No. 112, Devanahalli, Bengaluru Rural" : "C-14 Indiranagar, Bengaluru"} /></Field>
                     {!isPlot && <Field label="Property type"><select name="propertyType" className={input} defaultValue="Apartment">{["Apartment", "Villa", "Independent house"].map((o) => <option key={o}>{o}</option>)}</select></Field>}
                     <Field label={isClean ? "Preferred clean date" : "Preferred first visit"}><input name="preferredDate" type="date" className={input} /></Field>
                   </div>

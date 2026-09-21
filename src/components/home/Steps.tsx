@@ -20,7 +20,7 @@ export function Steps() {
   return (
     <section className="section" aria-labelledby="steps-title">
       <div className="wrap">
-        <SectionHead title={<span id="steps-title">Know your home the easy way</span>} lede="Three moves. One record. Home, plot or car — no flight home." action={<Link href="/how-it-works" className="btn btn-accent btn-sm">See all six steps <ArrowRight size={15} /></Link>} />
+        <SectionHead title={<span id="steps-title">Know your home the easy way</span>} lede="Three steps, one report you can keep. Home, plot or car — no flight home." action={<Link href="/how-it-works" className="btn btn-accent btn-sm">See all six steps <ArrowRight size={15} /></Link>} />
         <div className="mt-12 grid gap-8 md:mt-16 md:gap-12">
           {steps.map((s, i) => (
             <Reveal key={s.k}>

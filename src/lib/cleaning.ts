@@ -366,7 +366,7 @@ export const kit = [
   "Degreaser, descaler & disinfectant",
   "Grout brushes & detail brushes",
   "Squeegee, wiper & dusting broomstick",
-  "Our own ladder, buckets and extension lead",
+  "Their own ladder, buckets and extension lead",
 ];
 
 /* The positioning line of the entire page. Every cleaning app in the

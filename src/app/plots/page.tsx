@@ -12,11 +12,11 @@ import { FAQ } from "@/components/home/FAQ";
 import { CTA } from "@/components/home/CTA";
 
 export const metadata: Metadata = {
-  title: "Plots & land",
+  title: "Plot & Land Inspection in Bengaluru, ₹1,999",
   description:
-    "Plot or farmland sitting empty? A verified inspector does a full boundary walk with a GPS track, photographs every corner, fence, gate and signboard, and flags encroachment or unauthorised construction. From ₹1,999.",
+    "We walk your plot's full boundary, photograph every corner with GPS, and flag encroachment or new construction. Report within an hour. ₹1,999 a visit.",
   alternates: { canonical: "/plots" },
-  openGraph: { title: "Plots & land · StillYours", description: "Plot or farmland sitting empty? A verified inspector does a full boundary walk with a GPS track, photographs every corner, fence, gate and signboard, and flags encroachment or unauthorised construction. From ₹1,999.", url: "/plots" },
+  openGraph: { title: "Plot & Land Inspection in Bengaluru, ₹1,999 | StillYours", description: "We walk your plot's full boundary, photograph every corner with GPS, and flag encroachment or new construction. Report within an hour. ₹1,999 a visit.", url: "/plots" },
 };
 
 const steps = [

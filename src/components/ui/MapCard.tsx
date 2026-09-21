@@ -4,9 +4,9 @@ import { cn } from "@/lib/cn";
 /** Abstract map tile (Opendoor-style) with city pins. No geography — roads, blocks, water. */
 export function MapCard({ className }: { className?: string }) {
   const pins = [
-    { x: 30, y: 52, l: "Whitefield", n: "38 homes & plots" },
-    { x: 66, y: 70, l: "Koramangala · HSR", n: "54 homes & plots" },
-    { x: 24, y: 88, l: "Yelahanka · Devanahalli", n: "21 plots" },
+    { x: 30, y: 52, l: "Whitefield", n: "homes & plots" },
+    { x: 66, y: 70, l: "Koramangala · HSR", n: "homes & plots" },
+    { x: 24, y: 88, l: "Yelahanka · Devanahalli", n: "plots & land" },
   ];
   return (
     <div className={cn("card relative overflow-hidden bg-[#e9efe6] shadow-card", className)}>

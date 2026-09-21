@@ -10,11 +10,11 @@ import { Trust } from "@/components/home/Trust";
 import { Guarantee } from "@/components/home/Guarantee";
 
 export const metadata: Metadata = {
-  title: "Our inspectors",
+  title: "How We Verify Every Inspector",
   description:
-    "Every StillYours inspector is referred or scouted, then vetted in person — Aadhaar, address proof, police verification, two references we call, and a supervised trial visit. Invite-only, never off the street.",
+    "Every inspector is referred, met in person and checked: Aadhaar, address proof, police verification, two references and a supervised trial visit.",
   alternates: { canonical: "/network" },
-  openGraph: { title: "Our inspectors · StillYours", description: "Every StillYours inspector is referred or scouted, then vetted in person — Aadhaar, address proof, police verification, two references we call, and a supervised trial visit. Invite-only, never off the street.", url: "/network" },
+  openGraph: { title: "How We Verify Every Inspector | StillYours", description: "Every inspector is referred, met in person and checked: Aadhaar, address proof, police verification, two references and a supervised trial visit.", url: "/network" },
 };
 
 const steps = [
@@ -27,10 +27,10 @@ const steps = [
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="Our inspectors" title={<>Hand-picked. Verified.<br className="hidden md:block" /> Invite-only.</>} lede="We don't take applications off the street. Every Still Yours inspector and service provider is referred or scouted, vetted in person, and verified before their first visit — the kind of person we'd hand our own keys to.">
+      <PageHero eyebrow="Our inspectors" title={<>How we choose and<br className="hidden md:block" /> verify every inspector</>} lede="We don't take applications off the street. Every Still Yours inspector is referred or scouted, vetted in person, and verified before their first visit — the kind of person we'd hand our own keys to. Repairs and cleaning are done by rated professionals from established home-service companies, always with your inspector in the room.">
         <Reveal delay={0.1} className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/access?role=inspector" className="btn btn-accent">Request an invitation <ArrowRight size={16} /></Link>
-          <Link href="/access?role=provider" className="btn btn-white">Refer someone you trust <ArrowRight size={16} /></Link>
+          <Link href="/access" className="btn btn-accent">Book an inspection <ArrowRight size={16} /></Link>
+          <Link href="/access?role=inspector" className="btn btn-white">Apply to be an inspector <ArrowRight size={16} /></Link>
         </Reveal>
       </PageHero>
 
@@ -78,7 +78,7 @@ export default function Page() {
       <section className="section bg-white">
         <div className="wrap grid gap-14 md:gap-20">
           <FeatureRow k="Inspectors" title="Your day, already planned." body="Assigned inspections grouped by date with the address and status. Open today's job, walk the rooms — or the plot boundary with GPS photos — attach the proof, flag what needs flagging, submit." bullets={["Save as draft and resume — drafts survive bad signal", "Every item needs a status; every flagged issue needs a photo", "Elapsed timer and one-tap Flag Issue on the checklist"]}><div className="grid gap-3 sm:grid-cols-2"><InspectorJobsMock /><InspectMock /></div></FeatureRow>
-          <FeatureRow k="Service providers" title="Only jobs the owner already approved." body="No quoting into the void. A job reaches a verified provider after the owner has approved the repair and an admin has matched it by service type and locality. Accept, do the work, mark it complete." flip bullets={["Accept or decline each assignment", "A confirmation note is required to mark complete", "After-photos close the loop for the owner"]}><div className="mx-auto max-w-[440px]"><ProviderJobsMock /></div></FeatureRow>
+          <FeatureRow k="Service providers" title="Only jobs the owner already approved." body="No quoting into the void. A job reaches a verified provider after the owner has approved the repair and we've matched the right professional near the property. Accept, do the work, mark it complete." flip bullets={["Accept or decline each assignment", "A confirmation note is required to mark complete", "After-photos close the loop for the owner"]}><div className="mx-auto max-w-[440px]"><ProviderJobsMock /></div></FeatureRow>
         </div>
       </section>
 

@@ -4,9 +4,9 @@ import { SectionHead } from "@/components/shared/SectionHead";
 import { cn } from "@/lib/cn";
 
 const providers = [
-  { n: "Suresh M.", init: "SM", t: "Plumbing", loc: "Malviya Nagar", r: "4.9", jobs: 212, ok: true },
-  { n: "Nadeem A.", init: "NA", t: "Plumbing", loc: "Tonk Road", r: "4.7", jobs: 96, ok: true },
-  { n: "R. Meena", init: "RM", t: "Plumbing", loc: "Sanganer", r: "—", jobs: 0, ok: false },
+  { n: "Suresh M.", init: "SM", t: "Plumbing", loc: "Indiranagar", r: "4.9", jobs: 212, ok: true },
+  { n: "Nadeem A.", init: "NA", t: "Plumbing", loc: "Jayanagar", r: "4.7", jobs: 96, ok: true },
+  { n: "R. Meena", init: "RM", t: "Plumbing", loc: "BTM Layout", r: "—", jobs: 0, ok: false },
 ];
 const audit = [
   ["13:41", "ISSUE_FLAGGED", "Ravi K. (inspector)"],
@@ -41,14 +41,14 @@ export function Trust() {
           <div className="grid gap-4 lg:col-span-7">
             <Reveal>
               <div className="card shadow-card bg-white p-5 sm:p-6">
-                <div className="flex items-center justify-between"><span className="text-[14px] font-semibold">Assign a provider · Plumbing · Jaipur</span><span className="chip">Admin view</span></div>
+                <div className="flex items-center justify-between"><span className="text-[14px] font-semibold">Assign a provider · Plumbing · Bengaluru</span><span className="chip">Admin view</span></div>
                 <ul className="mt-3 divide-y divide-line">
                   {providers.map((p) => (
                     <li key={p.n} className={cn("flex items-center gap-3 py-3.5", !p.ok && "opacity-60")}>
                       <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full text-[12px] font-bold", p.ok ? "bg-accent text-white" : "bg-beige text-text-3")}>{p.init}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-[14px] font-semibold">{p.n} {p.ok ? <BadgeCheck size={14} className="text-accent" /> : <Ban size={13} className="text-fail" />}</div>
-                        <div className="t-small">{p.t} · {p.loc} · <span className="inline-flex items-center gap-0.5"><Star size={9} className="fill-warn text-warn" /> {p.r}</span>{p.jobs ? ` · ${p.jobs} jobs` : ""}</div>
+                        <div className="t-small">{p.t} · {p.loc} · {p.ok ? "verified" : "not verified"}</div>
                       </div>
                       {p.ok ? <span className="btn btn-accent h-9 px-4 text-[13px]">Assign</span> : <span className="rounded-full bg-fail-soft px-3 py-1.5 text-[11.5px] font-semibold text-fail">Not verified · blocked</span>}
                     </li>

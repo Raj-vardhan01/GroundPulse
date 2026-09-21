@@ -32,9 +32,9 @@ function Trend() {
 }
 
 const portfolio = [
-  { n: "Ancestral Apartment", a: "Malviya Nagar, Jaipur", s: 84, open: 1, last: "2 days ago", v: "entrance" as const, src: "/photos/living.jpg" },
-  { n: "Sea-view Villa", a: "Candolim, Goa", s: 62, open: 2, last: "3 weeks ago", v: "balcony" as const, src: "/photos/goa.jpg" },
-  { n: "Unit 3 · Kharadi", a: "Pune", s: 91, open: 0, last: "5 days ago", v: "living" as const, src: "/photos/pune.jpg" },
+  { n: "Ancestral Apartment", a: "Indiranagar, Bengaluru", s: 84, open: 1, last: "2 days ago", v: "entrance" as const, src: "/photos/living.jpg" },
+  { n: "Garden Villa", a: "Whitefield, Bengaluru", s: 62, open: 2, last: "3 weeks ago", v: "balcony" as const, src: "/photos/goa.jpg" },
+  { n: "Unit 3 · HSR Layout", a: "Bengaluru", s: 91, open: 0, last: "5 days ago", v: "living" as const, src: "/photos/pune.jpg" },
 ];
 
 export function Health() {

@@ -13,11 +13,11 @@ import { CTA } from "@/components/home/CTA";
 import { inr, tiers } from "@/lib/cleaning";
 
 export const metadata: Metadata = {
-  title: "Cleaning",
+  title: "Home Cleaning When Nobody Is Home",
   description:
-    "Refresh clean from ₹1,999 and deep clean from ₹4,999 — priced by the size of your home, verified inspector included, before and after photographs of every room. Nobody needs to be at home.",
+    "Refresh clean from ₹1,999, deep clean from ₹4,999. Our inspector lets the crew in with your OTP, stays the whole time and sends before/after photos.",
   alternates: { canonical: "/cleaning" },
-  openGraph: { title: "Cleaning · StillYours", description: "Refresh or deep clean priced by the size of your home, with a verified inspector on site and before/after photographs of every room.", url: "/cleaning" },
+  openGraph: { title: "Home Cleaning When Nobody Is Home | StillYours", description: "Refresh clean from ₹1,999, deep clean from ₹4,999. Our inspector lets the crew in with your OTP, stays the whole time and sends before/after photos.", url: "/cleaning" },
 };
 
 const [refresh, deep] = tiers;
@@ -101,7 +101,7 @@ export default function Page() {
         <div className="wrap">
           <SectionHead
             eyebrow="See the difference"
-            title={<span id="wall-title">Drag any of these.</span>}
+            title={<span id="wall-title">Drag the slider to compare before and after.</span>}
             lede="Thirteen surfaces a deep clean has to get right, each shown from the same angle before and after. This is the standard the crew is measured against — and from your first visit these are replaced by photographs of your own rooms."
           />
           <div className="mt-8"><CleanWall /></div>

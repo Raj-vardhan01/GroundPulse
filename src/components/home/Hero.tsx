@@ -41,7 +41,7 @@ export function Hero() {
           <motion.div {...up(0.34)} className="mt-7 w-full"><AddressBar /></motion.div>
           <motion.div {...up(0.42)} className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
             <Link href="/sample-report" className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/[0.16] px-4 text-[13.5px] font-medium text-white backdrop-blur-sm transition hover:bg-white/25 [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.28)]">
-              See a real sample report <ArrowRight size={14} />
+              See a sample report <ArrowRight size={14} />
             </Link>
           </motion.div>
           <motion.div {...up(0.5)} className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[14px] font-medium text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]">
@@ -55,7 +55,7 @@ export function Hero() {
             <HealthRing score={84} size={72} stroke={7} label="Health" delay={1.5} />
             <div className="min-w-0">
               <div className="truncate text-[15px] font-medium">Ancestral Apartment</div>
-              <div className="truncate text-[13px] text-text-2">Malviya Nagar, Jaipur</div>
+              <div className="truncate text-[13px] text-text-2">Indiranagar, Bengaluru</div>
               <div className="mt-2 flex gap-1.5"><span className="chip chip-fail">1 issue</span><span className="chip chip-pass">39 pass</span></div>
             </div>
           </div>

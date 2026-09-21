@@ -4,7 +4,7 @@ import { Logo } from "@/components/ui/Logo";
 
 const rows = [
   { k: "Who checks", a: "A background-verified inspector, on schedule", b: "A neighbour or relative, whenever they can" },
-  { k: "Local agents", a: "No brokerage, no commission — inspection is the job", b: "\"We'll inspect once we find you a tenant\" — commission first, work rarely" },
+  { k: "Local agents", a: "No brokerage, no tenant commission — inspection is the job", b: "\"We'll inspect once we find you a tenant\" — commission first, work rarely" },
   { k: "What you get", a: "42-item home checklist or GPS boundary walk · photos & video", b: "\"Sab theek hai\" 👍" },
   { k: "How fast", a: "Report within the hour (usually minutes)", b: "Days — if at all" },
   { k: "Repairs", a: "Only after you approve, by a verified provider", b: "Whoever the caretaker knows, whenever" },

@@ -21,7 +21,6 @@ export const navLinks: NavEntry[] = [
     label: "Company",
     items: [
       { href: "/network", label: "Our inspectors", note: "How every inspector is vetted, and how to apply" },
-      { href: "/platform", label: "Platform", note: "The app, the audit log and where your media lives" },
       { href: "/sample-report", label: "Sample report", note: "See exactly what lands in your inbox" },
     ],
   },
