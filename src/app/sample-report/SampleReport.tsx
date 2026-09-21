@@ -45,8 +45,8 @@ function HomeReport({ approved, setApproved }: { approved: boolean; setApproved:
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-[13px] text-text-2">Inspection report · RPT-2026-0412</div>
-              <h1 className="mt-1 text-[26px] font-medium tracking-[-0.03em]">Ancestral Apartment</h1>
-              <div className="mt-1 flex items-center gap-1.5 text-[14px] text-text-2"><MapPin size={14} /> C-14 Malviya Nagar, Jaipur · 2 BHK</div>
+              <h2 className="mt-1 text-[26px] font-medium tracking-[-0.03em]">Ancestral Apartment</h2>
+              <div className="mt-1 flex items-center gap-1.5 text-[14px] text-text-2"><MapPin size={14} /> C-14 Indiranagar, Bengaluru · 2 BHK</div>
             </div>
             <HealthRing score={84} size={96} stroke={8} label="Health" delay={0.3} />
           </div>
@@ -83,7 +83,7 @@ function HomeReport({ approved, setApproved }: { approved: boolean; setApproved:
           </div>
           <div className="rounded-[14px] bg-paper p-5">
             <div className="text-[13px] font-medium text-text-2">Quote from a verified pro · rate card</div>
-            <div className="mt-2 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-accent text-[13px] font-medium text-white">SM</span><div><div className="flex items-center gap-1 text-[14.5px] font-medium">Suresh M. <BadgeCheck size={14} className="text-accent" /></div><div className="text-[12.5px] text-text-2">Plumbing · 4.9 ★ · 212 jobs</div></div></div>
+            <div className="mt-2 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-accent text-[13px] font-medium text-white">SM</span><div><div className="flex items-center gap-1 text-[14.5px] font-medium">Suresh M. <BadgeCheck size={14} className="text-accent" /></div><div className="text-[12.5px] text-text-2">Plumbing · verified</div></div></div>
             <div className="mt-4 space-y-1.5 text-[14px]">
               <div className="flex justify-between"><span className="text-text-2">Replace P-trap + reseal (labour)</span><span>₹1,800</span></div>
               <div className="flex justify-between"><span className="text-text-2">Parts (trap, sealant)</span><span>₹1,200</span></div>
@@ -128,7 +128,7 @@ function PlotReport() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-[13px] text-text-2">Plot visit report · RPT-2026-0388</div>
-              <h1 className="mt-1 text-[26px] font-medium tracking-[-0.03em]">Plot 22, Survey No. 118/2</h1>
+              <h2 className="mt-1 text-[26px] font-medium tracking-[-0.03em]">Plot 22, Survey No. 118/2</h2>
               <div className="mt-1 flex items-center gap-1.5 text-[14px] text-text-2"><MapPin size={14} /> Yelahanka – Doddaballapur Rd, Bengaluru · 2,400 sq ft</div>
             </div>
             <div className="rounded-[14px] bg-pass-soft px-4 py-3 text-center"><div className="text-[13px] font-medium text-[#157a44]">No change</div><div className="text-[11px] text-text-2">vs. last visit</div></div>
@@ -179,7 +179,7 @@ export function SampleReport() {
     <section className="pt-[88px] md:pt-[100px]">
       <div className="wrap">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="t-label">Sample report</p><h2 className="t-1 mt-1">This is what lands in your inbox</h2><p className="t-body mt-2 max-w-[56ch] text-text-2">Within the hour of every visit. Every room on video, every item with a verdict, every issue with a quote you approve. Tap around — it's interactive.</p></div>
+          <div><p className="t-label">Sample report</p><h1 className="t-1 mt-1">Sample inspection report</h1><p className="t-body mt-2 max-w-[56ch] text-text-2">Within the hour of every visit. Every room on video, every item with a verdict, every issue with a quote you approve. Tap around — it's interactive.</p></div>
           <div className="inline-flex rounded-[14px] bg-beige p-1" role="tablist">
             {([["home", "Home report", Home], ["plot", "Plot report", LandPlot]] as const).map(([k, l, I]) => (
               <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("inline-flex h-11 items-center gap-2 rounded-[11px] px-4 text-[15px] font-medium transition", tab === k ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}><I size={16} /> {l}</button>

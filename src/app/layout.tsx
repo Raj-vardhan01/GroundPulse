@@ -12,9 +12,9 @@ const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin"], weigh
 const hand = Caveat({ variable: "--font-hand", subsets: ["latin"], weight: ["500", "600"] });
 
 export const metadata: Metadata = {
-  title: { default: "StillYours — Far away. Still yours.", template: "%s · StillYours" },
+  title: { default: "Home & Property Inspection in Bengaluru | StillYours", template: "%s | StillYours" },
   description:
-    "Verified inspectors for your home, your plot and even the car in the basement. Photo-and-video reports within the hour, and repairs that never happen without your approval.",
+    "A verified inspector checks your home, plot or car in Bengaluru and sends a photo-and-video report within an hour. No repair without your approval.",
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: "/" },
   applicationName: "StillYours",
@@ -39,14 +39,14 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
   },
   openGraph: {
-    title: "StillYours — Far away. Still yours.",
-    description: "Verified inspections for homes, plots and cars — reports within the hour, owner-approved repairs.",
+    title: "StillYours — Home & Property Inspection in Bengaluru",
+    description: "A verified inspector checks your home, plot or car in Bengaluru. Photo-and-video report within an hour. No repair without your approval.",
     type: "website",
     siteName: "StillYours",
     url: SITE_URL,
     locale: "en_IN",
   },
-  twitter: { card: "summary_large_image", title: "StillYours — Far away. Still yours.", description: "Verified inspections for homes, plots and cars — reports within the hour, owner-approved repairs." },
+  twitter: { card: "summary_large_image", title: "StillYours — Home & Property Inspection in Bengaluru", description: "A verified inspector checks your home, plot or car in Bengaluru. Photo-and-video report within an hour. No repair without your approval." },
 };
 
 export const viewport: Viewport = { themeColor: "#fcfaf0", width: "device-width", initialScale: 1, viewportFit: "cover" };

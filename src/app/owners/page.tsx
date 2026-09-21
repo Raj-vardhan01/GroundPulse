@@ -6,24 +6,24 @@ import { PageHero } from "@/components/shared/PageHero";
 import { FeatureRow } from "@/components/shared/FeatureRow";
 import { Reveal } from "@/components/ui/Reveal";
 import { OwnerDashMock, ReportMock, ResolveMock } from "@/components/shared/Mocks";
-import { Owners } from "@/components/home/Owners";
 import { Compare } from "@/components/home/Compare";
 import { Neighbour } from "@/components/home/Neighbour";
 import { ComingHome } from "@/components/home/ComingHome";
 import { Pricing } from "@/components/home/Pricing";
 import { CTA } from "@/components/home/CTA";
+import { Founders } from "@/components/home/Founders";
 
 export const metadata: Metadata = {
-  title: "For owners",
+  title: "Property Care for NRIs & Out-of-Town Owners",
   description:
-    "Own a home in India but live abroad? A verified inspector walks your flat or house on a fixed day, photographs every room and sends a timestamped report within the hour. Approve repairs from anywhere.",
+    "Live abroad or in another city? We inspect your Bengaluru flat, house or plot, report within an hour with photos and video, and fix only what you approve.",
   alternates: { canonical: "/owners" },
-  openGraph: { title: "For owners · StillYours", description: "Own a home in India but live abroad? A verified inspector walks your flat or house on a fixed day, photographs every room and sends a timestamped report within the hour. Approve repairs from anywhere.", url: "/owners" },
+  openGraph: { title: "Property Care for NRIs & Out-of-Town Owners | StillYours", description: "Live abroad or in another city? We inspect your Bengaluru flat, house or plot, report within an hour with photos and video, and fix only what you approve.", url: "/owners" },
 };
 
 const who = [
-  { I: Plane, t: "NRIs with a home back home", b: "An ancestral flat or a parents' house that sits empty for months. You want to know it's safe — and to fix things without flying back." },
-  { I: Building2, t: "Investors with a portfolio", b: "Units across cities, each with a different local agent and a different story. You want one source of truth and one number per unit." },
+  { I: Plane, t: "Living abroad or in another city", b: "A flat or your parents' house in Bengaluru that sits empty while you live in Dubai, Pune or Delhi. You want to know it's safe — and to fix things without flying back." },
+  { I: Building2, t: "Investors with a portfolio", b: "Several units across Bengaluru, each with a different local agent and a different story. You want one source of truth and one number per unit." },
   { I: Waves, t: "Vacation-home & plot owners", b: "A holiday home you visit twice a year, or a plot nobody has walked in months. Idle time is exactly when leaks, pests and encroachment get expensive." },
 ];
 
@@ -31,7 +31,7 @@ export default function Page() {
   return (
     <>
       <JsonLd data={serviceLd({ name: "Home inspection for property owners abroad", serviceType: "Property inspection", path: "/owners", description: "A verified inspector walks a 42-item room-by-room checklist on a fixed day, photographs and films every room, and sends a timestamped report within the hour. No repair without the owner's approval." })} />
-      <PageHero eyebrow="For owners" title={<>Built for the ones<br className="hidden md:block" /> who can't be there.</>} lede="One flat in Jaipur, five units across two cities, or an empty plot nobody has walked in months — you get the same thing: a true, timestamped picture, and control over every repair. Even the car parked in the basement." />
+      <PageHero eyebrow="For owners" title={<>For owners who live<br className="hidden md:block" /> away from their property</>} lede="One flat in Indiranagar, five units across the city, or an empty plot nobody has walked in months — you get the same thing: a true, timestamped picture, and control over every repair. Even the car parked in the basement." />
 
       <section className="wrap mt-6 grid gap-3 md:mt-8 md:grid-cols-3">
         {who.map(({ I, t, b }, i) => (
@@ -66,7 +66,7 @@ export default function Page() {
       <Pricing />
       <Compare />
       <Neighbour />
-      <Owners />
+      <Founders />
       <CTA />
     </>
   );

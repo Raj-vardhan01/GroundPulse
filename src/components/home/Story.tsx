@@ -22,7 +22,7 @@ export function Story() {
       <div className="wrap">
         <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-5">
-            <SectionHead title={<span id="story-title">Your home is full of memories. Someone should be checking on it.</span>} lede="Millions of people own a place they can't stand inside — NRIs, investors, vacation-home owners. Today the only update they get is a thumbs-up on WhatsApp. Small leaks turn into big bills. And every few months, an anxious flight home just to look." />
+            <SectionHead title={<span id="story-title">Your home is full of memories. Someone should be checking on it.</span>} lede="Millions of people own a home they can't check on — NRIs, people who moved to another city, and investors. Today the only update they get is a thumbs-up on WhatsApp. Small leaks turn into big bills. And every few months, an anxious flight home just to look." />
           </div>
           <div className="relative h-[400px] sm:h-[440px] lg:col-span-7">
             {/* tilted phone with the chat */}

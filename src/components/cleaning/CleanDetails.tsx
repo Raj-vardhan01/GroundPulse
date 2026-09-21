@@ -129,7 +129,7 @@ export function CleanKit() {
             gets made.
           </p>
           <div className="mt-6">
-            <div className="text-[13px] font-medium uppercase tracking-[0.08em] text-white/50">What our crew carries in</div>
+            <div className="text-[13px] font-medium uppercase tracking-[0.08em] text-white/50">What the cleaning crew brings</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {bringVsNeed.weBring.map((k) => (
                 <span key={k} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px]"><Package size={11} className="text-white/60" /> {k}</span>

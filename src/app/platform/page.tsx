@@ -10,11 +10,11 @@ import { CTA } from "@/components/home/CTA";
 import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = {
-  title: "Platform",
+  title: "Inside the StillYours App",
   description:
-    "Four roles, one audit trail. Owners schedule and approve, inspectors walk the checklist, providers quote, admin verifies — every photo GPS- and time-stamped, every decision written to a log nobody can edit.",
+    "How owners, inspectors and our team work in one app: every photo GPS- and time-stamped, private media, and a record of every decision nobody can edit.",
   alternates: { canonical: "/platform" },
-  openGraph: { title: "Platform · StillYours", description: "Four roles, one audit trail. Owners schedule and approve, inspectors walk the checklist, providers quote, admin verifies — every photo GPS- and time-stamped, every decision written to a log nobody can edit.", url: "/platform" },
+  openGraph: { title: "Inside the StillYours App | StillYours", description: "How owners, inspectors and our team work in one app: every photo GPS- and time-stamped, private media, and a record of every decision nobody can edit.", url: "/platform" },
 };
 
 const seats = [
@@ -36,7 +36,7 @@ const next = ["Provider ratings", "In-app thread per issue", "Cost estimates bef
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="The platform" title={<>One platform.<br className="hidden md:block" /> Four seats.</>} lede="Owner, inspector, admin and provider all work inside the same record — each seeing only what their role should. Not hidden in the interface. Enforced by the server." />
+      <PageHero eyebrow="The platform" title={<>Inside the StillYours app</>} lede="Owner, inspector, admin and provider all work inside the same record — each seeing only what their role should. Not hidden in the interface. Enforced by the server." />
 
       <section className="wrap mt-6 grid gap-3 sm:grid-cols-2 md:mt-8 lg:grid-cols-4">
         {seats.map((s, i) => (

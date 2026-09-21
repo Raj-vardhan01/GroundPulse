@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BadgeCheck, Bell, Check, RotateCcw, Star, X } from "lucide-react";
+import { BadgeCheck, Bell, Check, RotateCcw, X } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { EvidenceFrame } from "@/components/ui/EvidenceFrame";
@@ -75,7 +75,7 @@ export function WhenWrong() {
                     {idx >= 0 && (
                       <motion.div key="f" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
                         <div className="flex items-center gap-2 text-[13px] font-semibold text-[#157a44]"><span className="grid h-5 w-5 place-items-center rounded-full bg-pass text-white"><Check size={11} strokeWidth={3} /></span> Approved ₹3,300 · 16:22 IST</div>
-                        <p className="t-small mt-2">Written to the audit log. Admin notified to assign a verified plumber in Malviya Nagar.</p>
+                        <p className="t-small mt-2">Written to the audit log. Admin notified to assign a verified plumber in Indiranagar.</p>
                         <button onClick={reset} className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-accent"><RotateCcw size={11} /> Replay</button>
                       </motion.div>
                     )}
@@ -109,7 +109,7 @@ export function WhenWrong() {
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-[12px] font-bold text-white">SM</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 text-[13.5px] font-semibold">Suresh M. <BadgeCheck size={13} className="text-accent" /></div>
-                  <div className="t-small">Plumbing · Malviya Nagar · <span className="inline-flex items-center gap-0.5"><Star size={9} className="fill-warn text-warn" /> 4.9 · 212 jobs</span></div>
+                  <div className="t-small">Plumbing · Indiranagar · verified</div>
                 </div>
               </div>
               <AnimatePresence>

@@ -30,11 +30,10 @@ export const organizationLd = {
     addressRegion: "Karnataka",
     addressCountry: "IN",
   },
+  // Only list cities that are live. Search engines show this to people in these
+  // cities, so an unlaunched city here sends visitors we can't serve.
   areaServed: [
     { "@type": "City", name: "Bengaluru" },
-    { "@type": "City", name: "Pune" },
-    { "@type": "City", name: "Hyderabad" },
-    { "@type": "City", name: "Jaipur" },
   ],
   knowsLanguage: ["en-IN", "hi-IN"],
   priceRange: "₹₹",

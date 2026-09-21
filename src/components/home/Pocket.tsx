@@ -10,7 +10,7 @@ import { Mark } from "@/components/ui/Logo";
 import { EASE, viewportOnce } from "@/lib/motion";
 
 function PhoneDash() {
-  const props = [{ n: "Ancestral Apartment", a: "Jaipur", s: 84, o: 1 }, { n: "Plot 22 · Jagatpura", a: "Jaipur · boundary clear", s: 96, o: 0 }, { n: "Sea-view Villa", a: "Goa", s: 62, o: 2 }];
+  const props = [{ n: "Ancestral Apartment", a: "Indiranagar", s: 84, o: 1 }, { n: "Plot 22 · Devanahalli", a: "Devanahalli · boundary clear", s: 96, o: 0 }, { n: "Garden Villa", a: "Whitefield", s: 62, o: 2 }];
   return (
     <div>
       <div className="flex items-center justify-between"><span className="text-[13px] font-medium">My properties</span><span className="grid h-7 w-7 place-items-center rounded-full bg-white shadow-card"><Bell size={13} /></span></div>
@@ -61,7 +61,7 @@ export function Pocket() {
               <MapCard className="h-full !rounded-none !shadow-none" />
               <div className="absolute left-4 top-4 max-w-[360px] rounded-[14px] bg-white/95 p-4 shadow-card backdrop-blur sm:left-5">
                 <div className="text-[18px] font-medium tracking-[-0.02em]">Live in Bengaluru</div>
-                <p className="t-small mt-1">Homes, plots and cars across the city — Whitefield to Yelahanka. We open a city only when its verified inspector and provider bench is ready. Next: Pune, Hyderabad, Jaipur.</p>
+                <p className="t-small mt-1">Homes, plots and cars across the city — Whitefield to Yelahanka. We open a new city only when we have verified inspectors and repair professionals there. Next: Pune, Hyderabad, Jaipur.</p>
               </div>
             </div>
           </Reveal>

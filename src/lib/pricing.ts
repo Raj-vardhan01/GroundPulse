@@ -64,12 +64,10 @@ export const plans: Plan[] = [
     price4: 24999,
     period: "per year",
     tagline: "Inspections, cleaning and the repairs handled — up to ₹25,000 covered.",
-    worth: "₹35,000+ value",
     includes: [
       "Everything in Care — 4 inspections + 2 refresh cleans",
       "2 maintenance services (plumbing, electrical, anything) — done during a visit, inspector supervising",
-      "Repairs covered up to ₹25,000 a year · ₹12,500 per incident",
-      "Labour on us · parts: we pay up to ₹5,000 per incident, rest at cost",
+      "Repairs covered up to ₹25,000 a year (₹12,500 max per repair). Labour is always covered; parts are covered up to ₹5,000 per repair.",
       "Priority assignment of verified pros",
       "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],

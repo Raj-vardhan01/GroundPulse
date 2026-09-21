@@ -28,7 +28,7 @@ export function Pricing({ full }: { full?: boolean }) {
       <div className="wrap">
         <SectionHead
           title={<span id="pricing-title">Simple pricing. No surprises.</span>}
-          lede="Start with a one-time visit or pick a yearly plan. Every visit is by a verified inspector who stays for the whole job — however long it takes. No brokerage, no commission."
+          lede="Start with a one-time visit or pick a yearly plan. Every visit is by a verified inspector who stays for the whole job — however long it takes. No brokerage. No hidden commission — just a flat 10% on repairs, shown before you approve."
           action={!full ? <Link href="/pricing" className="btn btn-white btn-sm">Full pricing <ArrowRight size={15} /></Link> : undefined}
         />
 
@@ -163,7 +163,7 @@ export function Pricing({ full }: { full?: boolean }) {
         <Reveal className="mt-8">
           <div className="card bg-beige p-5 sm:p-7">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div><div className="text-[18px] font-medium tracking-[-0.02em]">Add-ons — on any plan, any visit</div><div className="t-small">Book with a visit, or on their own in between. Cleaning prices are all-in and include the inspector.</div></div>
+              <div><div className="text-[18px] font-medium tracking-[-0.02em]">Add-ons — on any plan, any visit</div><div className="t-small">Book with a visit, or on their own in between. Cleaning prices are all-in and include the inspector — and cost less when added to an inspection you've already booked, because the inspector is already there.</div></div>
               <Link href="/cleaning" className="btn btn-white btn-sm shrink-0">See the cleaning in full <ArrowRight size={15} /></Link>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">

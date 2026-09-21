@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { SampleReport } from "./SampleReport";
 
 export const metadata: Metadata = {
-  title: "Sample report",
+  title: "Sample Home Inspection Report",
   description:
-    "See the actual report that lands in your inbox within the hour — every room on video, all 42 items with a Pass, Fail or Attention verdict, and every flagged issue with a quote you approve or decline.",
+    "See what you receive after every visit: every room on video, each checklist item marked Pass, Fail or Attention, and a quote for anything broken.",
   alternates: { canonical: "/sample-report" },
-  openGraph: { title: "Sample report · StillYours", description: "See the actual report that lands in your inbox within the hour — every room on video, all 42 items with a Pass, Fail or Attention verdict, and every flagged issue with a quote you approve or decline.", url: "/sample-report" },
+  openGraph: { title: "Sample Home Inspection Report | StillYours", description: "See what you receive after every visit: every room on video, each checklist item marked Pass, Fail or Attention, and a quote for anything broken.", url: "/sample-report" },
 };
 
 export default function Page() {

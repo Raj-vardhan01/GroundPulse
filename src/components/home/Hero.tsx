@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { heroBlur } from "@/lib/heroBlur";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { HealthRing } from "@/components/ui/HealthRing";
 import { AddressBar } from "@/components/shared/AddressBar";
 import { EASE } from "@/lib/motion";
@@ -41,7 +41,7 @@ export function Hero() {
           <motion.div {...up(0.34)} className="mt-7 w-full"><AddressBar /></motion.div>
           <motion.div {...up(0.42)} className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
             <Link href="/sample-report" className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/[0.16] px-4 text-[13.5px] font-medium text-white backdrop-blur-sm transition hover:bg-white/25 [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.28)]">
-              See a real sample report <ArrowRight size={14} />
+              See a sample report <ArrowRight size={14} />
             </Link>
           </motion.div>
           <motion.div {...up(0.5)} className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[14px] font-medium text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]">
@@ -55,7 +55,7 @@ export function Hero() {
             <HealthRing score={84} size={72} stroke={7} label="Health" delay={1.5} />
             <div className="min-w-0">
               <div className="truncate text-[15px] font-medium">Ancestral Apartment</div>
-              <div className="truncate text-[13px] text-text-2">Malviya Nagar, Jaipur</div>
+              <div className="truncate text-[13px] text-text-2">Indiranagar, Bengaluru</div>
               <div className="mt-2 flex gap-1.5"><span className="chip chip-fail">1 issue</span><span className="chip chip-pass">39 pass</span></div>
             </div>
           </div>
@@ -64,11 +64,8 @@ export function Hero() {
 
         {/* stats row */}
         <motion.dl {...up(0.9)} className="relative z-10 mt-auto grid grid-cols-3 gap-4 px-5 pb-8 pt-16 text-center">
-          <div>
-            <dt className="flex items-center justify-center gap-0.5 text-white">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={15} className="fill-white" />)}</dt>
-            <dd className="mt-1 text-[13px] text-white/80">4.9 from early owners</dd>
-          </div>
-          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">38 min</dt><dd className="mt-0.5 text-[13px] text-white/80">median report time (1-hour promise)</dd></div>
+          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">1 hr</dt><dd className="mt-0.5 text-[13px] text-white/80">report after every visit</dd></div>
+          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">₹1 lakh</dt><dd className="mt-0.5 text-[13px] text-white/80">if we're ever wrong</dd></div>
           <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">100%</dt><dd className="mt-0.5 text-[13px] text-white/80">repairs owner-approved</dd></div>
         </motion.dl>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Bell, Camera, Check, ChevronRight, Flag, MapPin, Star, X } from "lucide-react";
+import { BadgeCheck, Bell, Camera, Check, ChevronRight, Flag, MapPin, X } from "lucide-react";
 import { EvidenceFrame } from "@/components/ui/EvidenceFrame";
 import { HealthRing } from "@/components/ui/HealthRing";
 import { cn } from "@/lib/cn";
@@ -21,7 +21,7 @@ export function RegisterMock() {
   return (
     <Card title="Add property" meta="4:12">
       <Lbl c="Address" />
-      <div className="flex h-10 items-center gap-2 rounded-[10px] border border-line-2 px-3 text-[13px]"><MapPin size={13} className="text-text-3" /> C-14 Malviya Nagar, Jaipur</div>
+      <div className="flex h-10 items-center gap-2 rounded-[10px] border border-line-2 px-3 text-[13px]"><MapPin size={13} className="text-text-3" /> C-14 Indiranagar, Bengaluru</div>
       <div className="mt-3"><Lbl c="Type" />
         <div className="grid grid-cols-3 gap-1.5">{["Apartment", "Villa", "House"].map((t, i) => <span key={t} className={cn("flex h-9 items-center justify-center rounded-[10px] border text-[12px] font-medium", i === 0 ? "border-accent bg-accent-soft text-accent-2" : "border-line-2 text-text-2")}>{t}</span>)}</div>
       </div>
@@ -123,7 +123,7 @@ export function ResolveMock({ stage = 3 }: { stage?: number }) {
       </ol>
       <div className="mt-3 flex items-center gap-3 rounded-[10px] bg-paper p-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-[12px] font-bold text-white">SM</span>
-        <div className="min-w-0 flex-1"><div className="flex items-center gap-1 text-[13px] font-semibold">Suresh M. <BadgeCheck size={13} className="text-accent" /></div><div className="text-[11.5px] text-text-3">Plumbing · Malviya Nagar · <span className="inline-flex items-center gap-0.5"><Star size={9} className="fill-warn text-warn" /> 4.9</span></div></div>
+        <div className="min-w-0 flex-1"><div className="flex items-center gap-1 text-[13px] font-semibold">Suresh M. <BadgeCheck size={13} className="text-accent" /></div><div className="text-[11.5px] text-text-3">Plumbing · Indiranagar · verified</div></div>
         <span className="chip chip-pass">Done</span>
       </div>
       <div className="mt-2 grid grid-cols-[1fr_1.5fr] gap-1.5">
@@ -137,9 +137,9 @@ export function ResolveMock({ stage = 3 }: { stage?: number }) {
 /* Inspector home */
 export function InspectorJobsMock() {
   const jobs = [
-    { t: "Today · 13:30", a: "C-14 Malviya Nagar, Jaipur", s: "In progress", c: "chip-accent" },
-    { t: "Today · 16:00", a: "B-7 Vaishali Nagar, Jaipur", s: "Assigned", c: "" },
-    { t: "Tomorrow · 10:00", a: "Plot 22, Jagatpura", s: "Assigned", c: "" },
+    { t: "Today · 13:30", a: "C-14 Indiranagar, Bengaluru", s: "In progress", c: "chip-accent" },
+    { t: "Today · 16:00", a: "B-7 Koramangala, Bengaluru", s: "Assigned", c: "" },
+    { t: "Tomorrow · 10:00", a: "Plot 22, Devanahalli", s: "Assigned", c: "" },
   ];
   return (
     <Card title="Assigned inspections" meta="Ravi K. · verified">
@@ -161,7 +161,7 @@ export function ProviderJobsMock() {
     <Card title="My jobs" meta="Suresh M. · Plumbing">
       <div className="rounded-[12px] border border-line p-3">
         <div className="flex items-center justify-between"><span className="text-[13px] font-semibold">Water leakage · Bathroom</span><span className="chip chip-accent">In progress</span></div>
-        <div className="t-small mt-1">C-14 Malviya Nagar · Owner approved 16:22</div>
+        <div className="t-small mt-1">C-14 Indiranagar · Owner approved 16:22</div>
         <div className="mt-3"><Lbl c="Completion note (required)" /><div className="min-h-[52px] rounded-[10px] border border-line-2 px-3 py-2 text-[12.5px] text-text-2">Replaced P-trap, resealed joint, dried cabinet. Tested 20 min — no drip.</div></div>
         <div className="mt-2 flex items-center gap-2"><span className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-line-2 px-2.5 text-[12px] font-medium"><Camera size={12} /> 1 after-photo</span></div>
         <span className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-accent text-[13px] font-semibold text-white"><Check size={14} /> Mark complete</span>
@@ -173,9 +173,9 @@ export function ProviderJobsMock() {
 /* Admin dashboard */
 export function AdminMock() {
   const counts = [["128", "Active properties"], ["14", "Pending inspections"], ["9", "Open issues"], ["4", "Repairs in progress"]];
-  const queue = [{ n: "Aisha P.", r: "Inspector · Pune", ok: true }, { n: "Karan V.", r: "Electrician · Jaipur", ok: true }, { n: "R. Meena", r: "Plumber · Jaipur", ok: false }];
+  const queue = [{ n: "Aisha P.", r: "Inspector · Bengaluru", ok: true }, { n: "Karan V.", r: "Electrician · Bengaluru", ok: true }, { n: "R. Meena", r: "Plumber · Bengaluru", ok: false }];
   return (
-    <Card title="Admin dashboard" meta="live counts">
+    <Card title="Admin dashboard" meta="example data">
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {counts.map(([n, l]) => <div key={l} className="rounded-[10px] bg-paper px-3 py-2.5"><div className="text-[1.5rem] font-bold leading-none tracking-[-0.04em]">{n}</div><div className="mt-1 text-[10.5px] font-semibold text-text-3">{l}</div></div>)}
       </div>
@@ -196,9 +196,9 @@ export function AdminMock() {
 /* Owner dashboard */
 export function OwnerDashMock() {
   const props = [
-    { n: "Ancestral Apartment", a: "Jaipur", s: 84, open: 1 },
-    { n: "Sea-view Villa", a: "Goa", s: 62, open: 2 },
-    { n: "Unit 3 · Kharadi", a: "Pune", s: 91, open: 0 },
+    { n: "Ancestral Apartment", a: "Indiranagar", s: 84, open: 1 },
+    { n: "Garden Villa", a: "Whitefield", s: 62, open: 2 },
+    { n: "Unit 3 · HSR Layout", a: "Bengaluru", s: 91, open: 0 },
   ];
   return (
     <Card title="My properties" meta="Priya S.">
