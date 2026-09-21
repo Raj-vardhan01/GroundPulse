@@ -6,6 +6,8 @@ import { FeatureRow } from "@/components/shared/FeatureRow";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { Reveal } from "@/components/ui/Reveal";
 import { InspectMock, InspectorJobsMock, ProviderJobsMock } from "@/components/shared/Mocks";
+import { Trust } from "@/components/home/Trust";
+import { Guarantee } from "@/components/home/Guarantee";
 
 export const metadata: Metadata = {
   title: "Our inspectors",
@@ -95,6 +97,8 @@ export default function Page() {
         </div>
       </section>
 
+      <Trust />
+      <Guarantee />
       <section className="section pt-0 md:pt-0">
         <div className="wrap">
           <Reveal>

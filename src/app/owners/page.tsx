@@ -12,6 +12,7 @@ import { Neighbour } from "@/components/home/Neighbour";
 import { ComingHome } from "@/components/home/ComingHome";
 import { Pricing } from "@/components/home/Pricing";
 import { CTA } from "@/components/home/CTA";
+import { Founders } from "@/components/home/Founders";
 
 export const metadata: Metadata = {
   title: "For owners",
@@ -67,6 +68,7 @@ export default function Page() {
       <Compare />
       <Neighbour />
       <Owners />
+      <Founders />
       <CTA />
     </>
   );

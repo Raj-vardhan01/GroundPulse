@@ -6,6 +6,10 @@ import { SectionHead } from "@/components/shared/SectionHead";
 import { Reveal } from "@/components/ui/Reveal";
 import { DecideMock, InspectMock, RegisterMock, ReportMock, ResolveMock, ScheduleMock } from "@/components/shared/Mocks";
 import { CTA } from "@/components/home/CTA";
+import { WhenWrong } from "@/components/home/WhenWrong";
+import { Health } from "@/components/home/Health";
+import { Pocket } from "@/components/home/Pocket";
+import { Handles } from "@/components/home/Handles";
 
 export const metadata: Metadata = {
   title: "How it works",
@@ -72,6 +76,10 @@ export default function Page() {
         </div>
       </section>
 
+      <WhenWrong />
+      <Health />
+      <Pocket />
+      <Handles />
       <div className="h-16 md:h-24" />
       <CTA title="Book the first inspection today." lede="Register a property in five minutes. The report reaches you within an hour of the visit." />
     </>

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { heroBlur } from "@/lib/heroBlur";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { HealthRing } from "@/components/ui/HealthRing";
 import { AddressBar } from "@/components/shared/AddressBar";
 import { EASE } from "@/lib/motion";
@@ -64,11 +64,8 @@ export function Hero() {
 
         {/* stats row */}
         <motion.dl {...up(0.9)} className="relative z-10 mt-auto grid grid-cols-3 gap-4 px-5 pb-8 pt-16 text-center">
-          <div>
-            <dt className="flex items-center justify-center gap-0.5 text-white">{[0, 1, 2, 3, 4].map((i) => <Star key={i} size={15} className="fill-white" />)}</dt>
-            <dd className="mt-1 text-[13px] text-white/80">4.9 from early owners</dd>
-          </div>
-          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">38 min</dt><dd className="mt-0.5 text-[13px] text-white/80">median report time (1-hour promise)</dd></div>
+          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">1 hr</dt><dd className="mt-0.5 text-[13px] text-white/80">report after every visit</dd></div>
+          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">₹1 lakh</dt><dd className="mt-0.5 text-[13px] text-white/80">if we're ever wrong</dd></div>
           <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">100%</dt><dd className="mt-0.5 text-[13px] text-white/80">repairs owner-approved</dd></div>
         </motion.dl>
       </div>
