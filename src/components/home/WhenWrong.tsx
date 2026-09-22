@@ -120,7 +120,7 @@ export function WhenWrong() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {phase !== "completed" && <p className="t-small mt-3">The work happens during a scheduled visit with the inspector on-site. Status updates push live — no refreshing.</p>}
+              {phase !== "completed" && <p className="t-small mt-3">The work happens during a scheduled visit with the inspector on-site. You get an update at every step.</p>}
             </div>
           </Reveal>
         </div>

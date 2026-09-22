@@ -15,9 +15,9 @@ import { inr, tiers } from "@/lib/cleaning";
 export const metadata: Metadata = {
   title: "Home Cleaning When Nobody Is Home",
   description:
-    "Refresh clean from ₹1,999, deep clean from ₹4,999. Our inspector lets the crew in with your OTP, stays the whole time and sends before/after photos.",
+    "Refresh clean from ₹1,999, deep clean from ₹4,999. Our inspector lets the crew in once you confirm, stays the whole time and sends before/after photos.",
   alternates: { canonical: "/cleaning" },
-  openGraph: { title: "Home Cleaning When Nobody Is Home | StillYours", description: "Refresh clean from ₹1,999, deep clean from ₹4,999. Our inspector lets the crew in with your OTP, stays the whole time and sends before/after photos.", url: "/cleaning" },
+  openGraph: { title: "Home Cleaning When Nobody Is Home | StillYours", description: "Refresh clean from ₹1,999, deep clean from ₹4,999. Our inspector lets the crew in once you confirm, stays the whole time and sends before/after photos.", url: "/cleaning" },
 };
 
 const [refresh, deep] = tiers;
@@ -29,7 +29,7 @@ export default function Page() {
       <PageHero
         eyebrow="Cleaning"
         title={<>A clean house,<br className="hidden md:block" /> with nobody at home.</>}
-        lede="Two honest tiers, priced by the size of the home. A verified inspector opens on your OTP, stays the entire time the crew works, photographs every room before and after, and sends you the condition report within the hour."
+        lede="Two honest tiers, priced by the size of the home. A verified inspector goes in once you confirm, stays the entire time the crew works, photographs every room before and after, and sends you the condition report within the hour."
       >
         <Reveal delay={0.1} className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
           {[

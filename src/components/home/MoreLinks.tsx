@@ -8,7 +8,7 @@ import { SectionHead } from "@/components/shared/SectionHead";
  * on its own page — this is the one place that points to all of it.
  */
 const links = [
-  { I: Wrench, t: "When something goes wrong", b: "What happens when a problem is flagged, the health score, and the app in your pocket.", href: "/how-it-works" },
+  { I: Wrench, t: "When something goes wrong", b: "What happens when a problem is flagged, and the app we're building.", href: "/how-it-works" },
   { I: LandPlot, t: "Plots & land", b: "Is anyone sitting on your land? Boundary walks with a GPS photo of every corner.", href: "/plots" },
   { I: Sparkles, t: "Coming home", b: "Flying in on Friday? A house that's cleaned and checked before you land.", href: "/cleaning" },
   { I: BadgeCheck, t: "Our inspectors", b: "How every inspector is verified, and the promises we hold ourselves to.", href: "/network" },

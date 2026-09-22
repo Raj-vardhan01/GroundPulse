@@ -29,7 +29,7 @@ export const plans: Plan[] = [
     includes: [
       "1 verified inspector visit — stays as long as it takes",
       "Room-by-room checklist, photos & video on every item",
-      "Report within the hour + health score",
+      "Report within the hour, with photos and video",
       "Approve or decline any flagged repair",
       "Add cleaning to the same visit — refresh +₹999, deep clean from +₹3,999 — or a car check (₹700)",
     ],
@@ -49,7 +49,7 @@ export const plans: Plan[] = [
     includes: [
       "4 inspections a year (one every quarter)",
       "2 refresh cleans a year — your whole home, at its size, inspector on site",
-      "Reports within the hour, health score trend",
+      "Reports within the hour, compared with your last visit",
       "Owner-approved repairs by verified pros",
       "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],
@@ -101,7 +101,7 @@ export const comingHome = {
   lead: "Book 2–3 days before you land",
   steps: [
     { t: "Day 0 — you book", b: "Tell us your arrival date. No keys to courier, no neighbour to co-ordinate, nothing for you to organise from another country." },
-    { t: "Day 1 — inspector walks it", b: "A police-verified inspector opens with your OTP, runs the full checklist and films every room. You get the report within the hour — including anything broken, with a quote." },
+    { t: "Day 1 — inspector walks it", b: "A verified inspector goes in once you confirm, runs the full checklist and films every room. You get the report within the hour — including anything broken, with a quote." },
     { t: "Day 1 — crew cleans, supervised", b: "The cleaning crew works with your inspector on site the entire time. Before and after photographs of every room land in the same report — and the crew brings its own ladder, buckets and machines, because nobody is home to hand them anything." },
     { t: "Day 2 — repairs, if you approved any", b: "Anything you said yes to gets fixed before you arrive, by a verified pro, inspector present, after-photos attached." },
     { t: "The day you land", b: "You open the door to a clean, working house — and you already know everything about it, because you read the report on the plane." },
