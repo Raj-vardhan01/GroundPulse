@@ -6,10 +6,10 @@ import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { cn } from "@/lib/cn";
 
-import { InspectMock, RegisterMock, ReportMock, ScheduleMock } from "@/components/shared/Mocks";
+import { InspectReportLive, RegisterScheduleLive } from "@/components/home/StepsLive";
 
-const RegisterSchedule = () => <div className="grid gap-3 sm:grid-cols-2"><RegisterMock /><ScheduleMock /></div>;
-const InspectReport = () => <div className="grid gap-3 sm:grid-cols-2"><InspectMock /><ReportMock /></div>;
+const RegisterSchedule = RegisterScheduleLive;
+const InspectReport = InspectReportLive;
 
 const steps = [
   { n: "01", k: "Register & schedule", t: "Five minutes to your first inspection.", b: "Add the address — a flat, a villa or an empty plot — and list the rooms: bedrooms, bathrooms, kitchen, balconies, parking. Every room becomes a mandatory video slot in the inspector's app. Pick a date and a rhythm, and a verified inspector is assigned automatically.", V: RegisterSchedule },
@@ -30,7 +30,15 @@ export function Steps() {
                   <h3 className="t-2 mt-4 max-w-[16ch]">{s.t}</h3>
                   <p className="t-body mt-4 max-w-[44ch] text-text-2">{s.b}</p>
                 </div>
-                <div className="lg:col-span-8"><div className="panel bg-tint p-2.5 sm:p-6"><s.V /></div></div>
+                <div className="lg:col-span-8">
+                  <div className="panel relative overflow-hidden bg-tint p-2.5 sm:p-6">
+                    {/* slow light sweep behind the cards */}
+                    <div aria-hidden className="pointer-events-none absolute -inset-x-1/2 -top-1/2 h-[200%] w-[200%] animate-[sweep_14s_linear_infinite] bg-[conic-gradient(from_0deg,transparent_0deg,rgba(19,64,39,0.05)_60deg,transparent_120deg)]" />
+                    <div className="relative">
+                      <s.V />
+                    </div>
+                  </div>
+                </div>
               </div>
             </Reveal>
           ))}
