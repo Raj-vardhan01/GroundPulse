@@ -31,7 +31,7 @@ export async function propertyViews(ownerId: string): Promise<PropertyView[]> {
   const mine = d.properties.filter((p) => p.ownerId === ownerId && !p.archivedAt);
   return mine.map((property) => {
     const visits = d.visits.filter((v) => v.propertyId === property.id).sort((a, b) => byDateDesc(a.scheduledFor, b.scheduledFor));
-    const reports = d.reports.filter((r) => r.propertyId === property.id).sort((a, b) => byDateDesc(a.publishedAt, b.publishedAt));
+    const reports = d.reports.filter((r) => r.propertyId === property.id && !r.heldForReview).sort((a, b) => byDateDesc(a.publishedAt, b.publishedAt));
     const openIssues = d.issues.filter((i) => i.propertyId === property.id && i.decision === "pending");
     const lastReport = reports[0] ?? null;
     return {
@@ -61,13 +61,13 @@ export async function visitView(ownerId: string, id: string) {
     visit,
     property: d.properties.find((p) => p.id === visit.propertyId)!,
     inspector: d.inspectors.find((i) => i.id === visit.inspectorId) ?? null,
-    report: visit.reportId ? d.reports.find((r) => r.id === visit.reportId) ?? null : null,
+    report: visit.reportId ? d.reports.find((r) => r.id === visit.reportId && !r.heldForReview) ?? null : null,
   };
 }
 
 export async function reportView(ownerId: string, id: string) {
   const d = await db();
-  const report = d.reports.find((r) => r.id === id && r.ownerId === ownerId);
+  const report = d.reports.find((r) => r.id === id && r.ownerId === ownerId && !r.heldForReview);
   if (!report) return null;
   return {
     report,

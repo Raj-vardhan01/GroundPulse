@@ -15,7 +15,7 @@ import { AccessNotes } from "@/components/app/AccessNotes";
 import { blocksFor, itemCount } from "@/lib/checklist";
 import { bhkLabel } from "@/lib/cleaning";
 import { fmtDate, fmtDayDate, relative } from "@/lib/format";
-import { plans, plotPlans } from "@/lib/pricing";
+import { plans, plotPlans, carePlusCover } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
 
 export default async function Page({ params }: PageProps<"/app/properties/[id]">) {
@@ -161,7 +161,7 @@ export default async function Page({ params }: PageProps<"/app/properties/[id]">
                   {subscription.planId === "care-plus" && (
                     <div className="mt-4 rounded-[12px] bg-paper p-3.5">
                       <div className="flex items-center gap-2 text-[13.5px] font-medium"><ShieldCheck size={14} className="text-accent" /> Repair cover</div>
-                      <div className="t-small mt-1">{money(subscription.coverUsedInr)} of {money(25000)} used this year</div>
+                      <div className="t-small mt-1">{money(subscription.coverUsedInr)} of {money(carePlusCover.yearly)} used this year</div>
                     </div>
                   )}
                 </div>

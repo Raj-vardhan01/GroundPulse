@@ -10,8 +10,9 @@
    Sign in as +91 90000 00000 to land in it.
    ════════════════════════════════════════════════════════════════ */
 
-import type { DB, Property, ReportRoom, Event, EventType } from "@/lib/types";
+import type { DB, Property, ReportRoom, Event, EventType, Visit, VisitKind, DraftRoom, ItemState } from "@/lib/types";
 import { blocksFor, countItems, scoreOf } from "@/lib/checklist";
+import { payoutFor } from "@/lib/payout";
 
 const DAY = 86_400_000;
 const at = (days: number, hh = 10, mm = 0) => {
@@ -84,6 +85,74 @@ const plot = property({
   createdAt: at(-60),
 });
 
+/* ── other owners ─────────────────────────────────────────────────
+   The job board would be a very short list with one customer on it.
+   These two exist so an inspector opening /field sees a real morning:
+   work spread across the city, at different distances. */
+const OWNER2 = "usr_vikram";
+const OWNER3 = "usr_anita";
+
+const boardProps: Property[] = [
+  property({ id: "prp_kora", ownerId: OWNER2, label: "Koramangala flat", address: "302, 5th Block, Koramangala", locality: "Koramangala", type: "Apartment", size: "3", rooms: { bed: 3, bath: 3, living: 1, kitchen: 1, balcony: 2, study: 0, terrace: 0, parking: 1 }, accessNote: "Watchman has the spare. Lift is on the left.", keyHolderName: "Security desk", keyHolderPhone: "+91 99860 33221", cover: "living" }),
+  property({ id: "prp_white", ownerId: OWNER2, label: "Whitefield villa", address: "14, Prestige Ozone, Whitefield", locality: "Whitefield", type: "Villa", size: "4", rooms: { bed: 4, bath: 4, living: 2, kitchen: 1, balcony: 2, study: 1, terrace: 1, parking: 2 }, accessNote: "Clubhouse gate, not the main one. Say which villa at the boom barrier.", keyHolderName: "Estate office", keyHolderPhone: "+91 80456 77110", cover: "entrance" }),
+  property({ id: "prp_jaya", ownerId: OWNER3, label: "Amma's house", address: "78, 9th Main, Jayanagar 4th Block", locality: "Jayanagar", type: "Independent house", size: "2", rooms: { bed: 2, bath: 2, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 1, parking: 1 }, accessNote: "Blue gate. The dog next door barks but does not come out.", keyHolderName: "Sudha (next door)", keyHolderPhone: "+91 98860 22110", cover: "entrance" }),
+  property({ id: "prp_hsr", ownerId: OWNER3, label: "HSR rental", address: "B-7, 27th Main, HSR Layout Sector 2", locality: "HSR Layout", type: "Builder floor", size: "2", rooms: { bed: 2, bath: 2, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 0, parking: 1 }, accessNote: "Tenant moved out last week. Meter box is outside, to the right of the door.", keyHolderName: "", keyHolderPhone: "", cover: "living" }),
+  property({ id: "prp_yela", ownerId: OWNER2, label: "Yelahanka plot", kind: "plot", address: "Site 41, Attur Layout, Yelahanka", locality: "Yelahanka", type: "", size: "1", rooms: { bed: 0, bath: 0, living: 0, kitchen: 0, balcony: 0, study: 0, terrace: 0, parking: 0 }, accessNote: "Corner site, opposite the water tank. Survey stones are painted white.", keyHolderName: "", keyHolderPhone: "", cover: "balcony" }),
+  property({ id: "prp_malle", ownerId: OWNER3, label: "Malleshwaram flat", address: "5, 8th Cross, Malleshwaram", locality: "Malleshwaram", type: "Apartment", size: "1", rooms: { bed: 1, bath: 1, living: 1, kitchen: 1, balcony: 1, study: 0, terrace: 0, parking: 0 }, accessNote: "Third floor, no lift. Keys with the ground-floor tenant.", keyHolderName: "Mr. Rao (ground floor)", keyHolderPhone: "+91 99001 88220", cover: "living" }),
+];
+
+/* A half-walked checklist, so the live plot visit opens where an
+   inspector would actually find it: two areas done, two to go. */
+function partialDraft(p: Property, done: number): DraftRoom[] {
+  return blocksFor(p).map((b, i) => ({
+    name: b.name,
+    variant: b.variant,
+    video: i < done,
+    items: b.items.map((t, j) => ({
+      t,
+      s: i < done ? ((i === 1 && j === 1 ? "attn" : "pass") as ItemState) : null,
+      note: i === 1 && j === 1 ? "Someone has tipped building rubble over the north line. Roughly a truckload, and it was not here in the last photos." : "",
+      photos: [],
+    })),
+  }));
+}
+
+/* Every visit needs a dozen fields that are the same on almost all of
+   them. Spelling those out eleven times buries the two or three that
+   actually differ. */
+type VisitSeed = Partial<Visit> & Pick<Visit, "id" | "ref" | "propertyId"> & { property: Property };
+const visit = ({ property, ...v }: VisitSeed): Visit => {
+  const kind: VisitKind = v.kind ?? "inspection";
+  const addOns = v.addOns ?? {};
+  return {
+    ownerId: property.ownerId,
+    kind,
+    planId: "one-time",
+    tierId: "",
+    addOns,
+    scheduledFor: dateOf(3),
+    slot: "10:00 – 13:00",
+    status: "scheduled",
+    inspectorId: "",
+    amountInr: 0,
+    paid: false,
+    liveCall: false,
+    notes: "",
+    founding: false,
+    payoutInr: payoutFor(property, kind, addOns),
+    otp: String(1000 + (property.id.charCodeAt(4) * 7 + (v.ref?.charCodeAt(9) ?? 3) * 13) % 9000),
+    claimedAt: null,
+    checkIn: null,
+    draft: null,
+    recording: false,
+    createdAt: at(-3),
+    startedAt: null,
+    endedAt: null,
+    reportId: null,
+    ...v,
+  } as Visit;
+};
+
 /* Clip lengths are made up, but not identical — a real walkthrough spends
    longer in a bathroom than on a balcony. Derived from the room name so the
    same room always reads the same length. */
@@ -149,10 +218,24 @@ export function seed(): DB {
         livesIn: "Dubai, UAE",
         createdAt: at(-240),
         onboardedAt: at(-240),
+        /* Founding owner number one, who went straight onto a plan and
+           never claimed the free inspection — so the launch offer is
+           live in this account, and only the 2 BHK in Bengaluru
+           qualifies for it. */
+        foundingNo: 1,
+        freeVisitUsedAt: null,
       },
+      { id: OWNER2, role: "owner", name: "Vikram Rao", phone: "9000000011", email: "vikram@example.in", livesIn: "Singapore", createdAt: at(-150), onboardedAt: at(-150), foundingNo: 2, freeVisitUsedAt: at(-140) },
+      { id: OWNER3, role: "owner", name: "Anita Nair", phone: "9000000012", email: "anita@example.in", livesIn: "London, UK", createdAt: at(-95), onboardedAt: at(-95), foundingNo: 3, freeVisitUsedAt: at(-90) },
+
+      /* Verified inspectors. Their number is their sign-in, exactly like
+         an owner's — the role on this row is what sends them to /field. */
+      { id: "usr_ravi", role: "inspector", name: "Ravi K.", phone: "9000000001", email: "ravi@example.in", livesIn: "Marathahalli, Bengaluru", createdAt: at(-620), onboardedAt: at(-620), foundingNo: null, freeVisitUsedAt: null },
+      { id: "usr_meena", role: "inspector", name: "Meena S.", phone: "9000000002", email: "meena@example.in", livesIn: "HSR Layout, Bengaluru", createdAt: at(-240), onboardedAt: at(-240), foundingNo: null, freeVisitUsedAt: null },
+      { id: "usr_arun", role: "inspector", name: "Arun P.", phone: "9000000003", email: "arun@example.in", livesIn: "Yelahanka, Bengaluru", createdAt: at(-200), onboardedAt: at(-200), foundingNo: null, freeVisitUsedAt: null },
     ],
 
-    properties: [indira, villa, plot],
+    properties: [indira, villa, plot, ...boardProps],
 
     subscriptions: [
       { id: "sub_indira", ownerId: OWNER, propertyId: "prp_indira", planId: "care", visitsTotal: 4, visitsUsed: 2, amountInr: 7999, startedAt: at(-240), renewsAt: dateOf(125), status: "active", coverUsedInr: 0 },
@@ -160,14 +243,24 @@ export function seed(): DB {
     ],
 
     visits: [
+      /* ── Priya's history ─────────────────────────────────────── */
       /* delivered last week — the report with a decision still waiting */
-      { id: "vis_indira_2", ref: "VIS-2026-0411", ownerId: OWNER, propertyId: "prp_indira", kind: "inspection", planId: "care", tierId: "", addOns: { cleaning: 1 }, scheduledFor: dateOf(-6), slot: "13:00 – 16:00", status: "ready", inspectorId: "ins_ravi", amountInr: 0, paid: true, liveCall: false, notes: "", createdAt: at(-20), startedAt: at(-6, 13, 2), endedAt: at(-6, 14, 11), reportId: "rep_indira_2" },
+      visit({ id: "vis_indira_2", ref: "VIS-2026-0411", property: indira, propertyId: indira.id, kind: "inspection", planId: "care", addOns: { cleaning: 1 }, scheduledFor: dateOf(-6), slot: "13:00 – 16:00", status: "ready", inspectorId: "ins_ravi", paid: true, createdAt: at(-20), startedAt: at(-6, 13, 2), endedAt: at(-6, 14, 11), reportId: "rep_indira_2", claimedAt: at(-9) }),
       /* the villa's first visit — issue approved, repair closed */
-      { id: "vis_villa_1", ref: "VIS-2026-0388", ownerId: OWNER, propertyId: "prp_villa", kind: "inspection", planId: "care-plus", tierId: "", addOns: {}, scheduledFor: dateOf(-38), slot: "10:00 – 13:00", status: "closed", inspectorId: "ins_meena", amountInr: 0, paid: true, liveCall: true, notes: "", createdAt: at(-50), startedAt: at(-38, 10, 5), endedAt: at(-38, 12, 1), reportId: "rep_villa_1" },
-      /* happening right now */
-      { id: "vis_plot_1", ref: "VIS-2026-0414", ownerId: OWNER, propertyId: "prp_plot", kind: "plot", planId: "plot-once", tierId: "", addOns: {}, scheduledFor: dateOf(0), slot: "09:00 – 12:00", status: "on_site", inspectorId: "ins_arun", amountInr: 1999, paid: true, liveCall: false, notes: "Please photograph the north-east stone first.", createdAt: at(-4), startedAt: at(0, 9, 14), endedAt: null, reportId: null },
-      /* next week, inspector already assigned */
-      { id: "vis_indira_3", ref: "VIS-2026-0419", ownerId: OWNER, propertyId: "prp_indira", kind: "inspection", planId: "care", tierId: "refresh", addOns: { cleaning: 1 }, scheduledFor: dateOf(8), slot: "10:00 – 13:00", status: "assigned", inspectorId: "ins_ravi", amountInr: 999, paid: false, liveCall: true, notes: "", createdAt: at(-2), startedAt: null, endedAt: null, reportId: null },
+      visit({ id: "vis_villa_1", ref: "VIS-2026-0388", property: villa, propertyId: villa.id, kind: "inspection", planId: "care-plus", scheduledFor: dateOf(-38), slot: "10:00 – 13:00", status: "closed", inspectorId: "ins_meena", paid: true, liveCall: true, createdAt: at(-50), startedAt: at(-38, 10, 5), endedAt: at(-38, 12, 1), reportId: "rep_villa_1", claimedAt: at(-42) }),
+      /* happening right now — Arun is on site, mid-checklist */
+      visit({ id: "vis_plot_1", ref: "VIS-2026-0414", property: plot, propertyId: plot.id, kind: "plot", planId: "plot-once", scheduledFor: dateOf(0), slot: "09:00 – 12:00", status: "on_site", inspectorId: "ins_arun", amountInr: 1999, paid: true, notes: "Please photograph the north-east stone first.", createdAt: at(-4), startedAt: at(0, 9, 14), claimedAt: at(-2), otp: "4417", checkIn: { at: at(0, 9, 14), lat: 13.2440, lng: 77.7121, distanceM: 38, doorPhoto: null }, draft: partialDraft(plot, 2) }),
+      /* next week, Ravi has already claimed it */
+      visit({ id: "vis_indira_3", ref: "VIS-2026-0419", property: indira, propertyId: indira.id, kind: "inspection", planId: "care", tierId: "refresh", addOns: { cleaning: 1 }, scheduledFor: dateOf(8), slot: "10:00 – 13:00", status: "assigned", inspectorId: "ins_ravi", amountInr: 999, liveCall: true, createdAt: at(-2), claimedAt: at(-1) }),
+
+      /* ── the open board: nobody has claimed these yet ─────────── */
+      visit({ id: "job_kora", ref: "VIS-2026-0421", property: boardProps[0], propertyId: "prp_kora", kind: "inspection", planId: "care", scheduledFor: dateOf(1), slot: "10:00 – 13:00", notes: "Third bathroom geyser was making a noise last time.", createdAt: at(-1) }),
+      visit({ id: "job_jaya", ref: "VIS-2026-0422", property: boardProps[2], propertyId: "prp_jaya", kind: "inspection", planId: "one-time", addOns: { camera: 1 }, scheduledFor: dateOf(1), slot: "13:00 – 16:00", amountInr: 2499, notes: "Amma's house. Please be gentle with the wooden almirah doors — just photograph them shut.", createdAt: at(-1), liveCall: true }),
+      visit({ id: "job_hsr", ref: "VIS-2026-0423", property: boardProps[3], propertyId: "prp_hsr", kind: "inspection", planId: "one-time", scheduledFor: dateOf(2), slot: "07:00 – 10:00", amountInr: 1999, notes: "Tenant just moved out — I need to know what they broke before I return the deposit.", createdAt: at(-1) }),
+      visit({ id: "job_white", ref: "VIS-2026-0424", property: boardProps[1], propertyId: "prp_white", kind: "cleaning", planId: "one-time", tierId: "deep", scheduledFor: dateOf(2), slot: "10:00 – 13:00", amountInr: 7999, notes: "Crew is booked. You stay with them the whole time.", createdAt: at(-2) }),
+      visit({ id: "job_yela", ref: "VIS-2026-0425", property: boardProps[4], propertyId: "prp_yela", kind: "plot", planId: "plot-once", scheduledFor: dateOf(3), slot: "07:00 – 10:00", amountInr: 1999, notes: "Somebody dumped construction debris on the north edge last month. Check if it has grown.", createdAt: at(-2) }),
+      visit({ id: "job_malle", ref: "VIS-2026-0426", property: boardProps[5], propertyId: "prp_malle", kind: "inspection", planId: "one-time", addOns: { car: 1 }, scheduledFor: dateOf(4), slot: "16:00 – 19:00", amountInr: 2199, notes: "Car in the basement has not been started since March.", createdAt: at(-1) }),
+      visit({ id: "job_kora2", ref: "VIS-2026-0427", property: boardProps[0], propertyId: "prp_kora", kind: "inspection", planId: "care", addOns: { cleaning: 1, camera: 1 }, scheduledFor: dateOf(6), slot: "13:00 – 16:00", createdAt: at(0) }),
     ],
 
     reports: [
@@ -176,14 +269,14 @@ export function seed(): DB {
         score: scoreOf(indiraCounts), counts: indiraCounts, rooms: indiraRooms,
         summary: "The house is in good order for a place that has been shut five months. One thing needs a decision — a slow leak under the first bathroom sink that is already swelling the cabinet base. The window latch and the balcony drain are small and can wait for the next visit if you would rather.",
         inspectorId: "ins_ravi", otpAt: "13:02", onSite: "13:02 → 14:11 (1h 09m)", gps: "12.9784° N, 77.6408° E", videos: "12 of 12 slots · all filled",
-        publishedAt: at(-6, 14, 49), readAt: null,
+        publishedAt: at(-6, 14, 49), readAt: null, heldForReview: false,
       },
       {
         id: "rep_villa_1", ref: "RPT-2026-0388", visitId: "vis_villa_1", propertyId: "prp_villa", ownerId: OWNER,
         score: scoreOf(villaCounts), counts: villaCounts, rooms: villaRooms,
         summary: "Terrace waterproofing is the real problem here — water is standing two days after rain and the parapet wall will start taking it. Everything else is maintenance: a chewed cable sleeve in the garage run and early grout darkening in the third bathroom.",
         inspectorId: "ins_meena", otpAt: "10:05", onSite: "10:05 → 12:01 (1h 56m)", gps: "12.9698° N, 77.7500° E", videos: "21 of 21 slots · all filled",
-        publishedAt: at(-38, 12, 44), readAt: at(-37, 8, 12),
+        publishedAt: at(-38, 12, 44), readAt: at(-37, 8, 12), heldForReview: false,
       },
     ],
 
@@ -233,14 +326,62 @@ export function seed(): DB {
       ev("repair.completed", "Repair completed", "Garden Villa · terrace waterproofing · after-photos attached", -30, { propertyId: "prp_villa", href: "/app/reports/rep_villa_1" }),
       ev("issue.approved", "You approved a repair", "Garden Villa · ISS-0902 · ₹3,630 · ₹3,300 covered by Care+", -37, { propertyId: "prp_villa", href: "/app/reports/rep_villa_1" }),
       ev("report.ready", "Your report is ready", "Garden Villa · health " + scoreOf(villaCounts) + " · 2 issues flagged", -38, { propertyId: "prp_villa", visitId: "vis_villa_1", href: "/app/reports/rep_villa_1" }),
-      ev("plan.started", "Care+ started", "Garden Villa · 4 inspections a year · repairs covered to ₹25,000", -120, { propertyId: "prp_villa", href: "/app/plan" }),
+      ev("plan.started", "Care+ started", "Garden Villa · 4 inspections a year · repairs covered to ₹20,000", -120, { propertyId: "prp_villa", href: "/app/plan" }),
       ev("property.added", "Ancestral Apartment added", "C-14, 100 Ft Road, Indiranagar", -240, { propertyId: "prp_indira", href: "/app/properties/prp_indira" }),
     ],
 
     inspectors: [
-      { id: "ins_ravi", name: "Ravi K.", initials: "RK", area: "Whitefield · Marathahalli · Indiranagar", rating: 4.9, visits: 212, since: "2024", bg: "Ex-facility supervisor, 11 yrs", verified: true },
-      { id: "ins_meena", name: "Meena S.", initials: "MS", area: "Koramangala · HSR", rating: 5.0, visits: 148, since: "2025", bg: "Ex-bank operations, 8 yrs", verified: true },
-      { id: "ins_arun", name: "Arun P.", initials: "AP", area: "Yelahanka · Devanahalli", rating: 4.8, visits: 96, since: "2025", bg: "Ex-Army JCO, plots & land", verified: true },
+      {
+        id: "ins_ravi", userId: "usr_ravi", name: "Ravi K.", initials: "RK", phone: "9000000001",
+        area: "Whitefield · Marathahalli · Indiranagar", city: "Bengaluru", baseLocality: "Marathahalli",
+        areas: ["Marathahalli", "Whitefield", "Indiranagar", "Bellandur", "Koramangala", "HSR Layout"],
+        rating: 4.9, visits: 212, since: "2024", bg: "Ex-facility supervisor, 11 yrs",
+        verified: true, status: "active", depositInr: 5000, reviewedReports: 5,
+        availability: ["Weekday mornings", "Weekday afternoons", "Saturdays"],
+        docs: [
+          { name: "Aadhaar card", ok: true, expiresAt: null },
+          { name: "PAN card", ok: true, expiresAt: null },
+          { name: "Permanent address proof", ok: true, expiresAt: null },
+          { name: "Police verification certificate", ok: true, expiresAt: dateOf(210) },
+          { name: "Passport photograph", ok: true, expiresAt: null },
+          { name: "Bank account / UPI", ok: true, expiresAt: null },
+          { name: "Two references, both called", ok: true, expiresAt: null },
+        ],
+      },
+      {
+        id: "ins_meena", userId: "usr_meena", name: "Meena S.", initials: "MS", phone: "9000000002",
+        area: "Koramangala · HSR", city: "Bengaluru", baseLocality: "HSR Layout",
+        areas: ["HSR Layout", "Koramangala", "Sarjapur Road", "Bellandur", "Jayanagar"],
+        rating: 5.0, visits: 148, since: "2025", bg: "Ex-bank operations, 8 yrs",
+        verified: true, status: "probation", depositInr: 5000, reviewedReports: 3,
+        availability: ["Weekday mornings", "Weekday evenings", "Sundays"],
+        docs: [
+          { name: "Aadhaar card", ok: true, expiresAt: null },
+          { name: "PAN card", ok: true, expiresAt: null },
+          { name: "Permanent address proof", ok: true, expiresAt: null },
+          { name: "Police verification certificate", ok: true, expiresAt: dateOf(95) },
+          { name: "Passport photograph", ok: true, expiresAt: null },
+          { name: "Bank account / UPI", ok: true, expiresAt: null },
+          { name: "Two references, both called", ok: true, expiresAt: null },
+        ],
+      },
+      {
+        id: "ins_arun", userId: "usr_arun", name: "Arun P.", initials: "AP", phone: "9000000003",
+        area: "Yelahanka · Devanahalli", city: "Bengaluru", baseLocality: "Yelahanka",
+        areas: ["Yelahanka", "Devanahalli", "Hebbal", "RT Nagar", "Malleshwaram"],
+        rating: 4.8, visits: 96, since: "2025", bg: "Ex-Army JCO, plots & land",
+        verified: true, status: "active", depositInr: 5000, reviewedReports: 5,
+        availability: ["Weekday mornings", "Saturdays", "Sundays"],
+        docs: [
+          { name: "Aadhaar card", ok: true, expiresAt: null },
+          { name: "PAN card", ok: true, expiresAt: null },
+          { name: "Permanent address proof", ok: true, expiresAt: null },
+          { name: "Police verification certificate", ok: true, expiresAt: dateOf(40) },
+          { name: "Passport photograph", ok: true, expiresAt: null },
+          { name: "Bank account / UPI", ok: true, expiresAt: null },
+          { name: "Two references, both called", ok: true, expiresAt: null },
+        ],
+      },
     ],
 
     sessions: [],

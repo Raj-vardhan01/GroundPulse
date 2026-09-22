@@ -14,6 +14,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, mutate, now, uid } from "@/lib/store";
+import { LIMIT } from "@/lib/offer";
 import type { User } from "@/lib/types";
 
 const COOKIE = "sy_session";
@@ -63,19 +64,32 @@ export async function verifyOtp(rawPhone: string, rawCode: string) {
     return { ok: false as const, error: "That code is not right." };
   }
 
-  const isNew = !d.users.some((u) => u.phone === phone && u.role === "owner");
+  /* One sign-in for everybody. An inspector's number is already on a
+     row with role "inspector" — put there by an admin when they were
+     verified — so the same six digits land them on /field instead. */
+  const existing = d.users.find((u) => u.phone === phone);
+  const isNew = !existing;
   const user = await mutate((s) => {
     s.otps = s.otps.filter((o) => o.phone !== phone);
-    let u = s.users.find((x) => x.phone === phone && x.role === "owner");
+    let u = s.users.find((x) => x.phone === phone);
     if (!u) {
-      u = { id: uid(), role: "owner", name: "", phone, email: "", livesIn: "", createdAt: now(), onboardedAt: null };
+      /* The launch offer is the first ten owners, in the order they
+         arrive. Handing the number out here means it is decided once,
+         at sign-up, rather than re-counted on every screen. */
+      const taken = s.users.filter((x) => x.foundingNo !== null).length;
+      u = {
+        id: uid(), role: "owner", name: "", phone, email: "", livesIn: "",
+        createdAt: now(), onboardedAt: null,
+        foundingNo: taken < LIMIT ? taken + 1 : null,
+        freeVisitUsedAt: null,
+      };
       s.users.push(u);
     }
     return u;
   });
 
   await openSession(user.id);
-  return { ok: true as const, isNew, onboarded: !!user.onboardedAt };
+  return { ok: true as const, isNew, onboarded: !!user.onboardedAt, role: user.role };
 }
 
 async function openSession(userId: string) {
@@ -117,7 +131,20 @@ export async function currentUser(): Promise<User | null> {
     owners to the welcome flow, before any page body renders. */
 export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
   const user = await currentUser();
-  if (!user || user.role !== "owner") redirect("/signin");
+  if (!user) redirect("/signin");
+  if (user.role === "inspector") redirect("/field");
+  if (user.role !== "owner") redirect("/signin");
   if (!user.onboardedAt && !opts.allowOnboarding) redirect("/welcome");
+  return user;
+}
+
+/** Guard for everything under /field. An inspector without a profile
+    row has an account but no work yet — that is a real state, not an
+    error, so it is handled by the page rather than bounced. */
+export async function requireInspector() {
+  const user = await currentUser();
+  if (!user) redirect("/signin");
+  if (user.role === "owner") redirect("/app");
+  if (user.role !== "inspector") redirect("/signin");
   return user;
 }

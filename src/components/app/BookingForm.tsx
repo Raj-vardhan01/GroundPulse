@@ -2,14 +2,16 @@
 
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
-import { Car, Check, ClipboardCheck, Clock, LandPlot, MapPin, Minus, Plus, Sparkles, Video } from "lucide-react";
+import { Car, Check, ClipboardCheck, Clock, Gift, Info, LandPlot, MapPin, Minus, Plus, Sparkles, Video } from "lucide-react";
 import { bookVisit, type FormState } from "@/lib/actions";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { quote, SLOTS, inr } from "@/lib/quote";
 import { plans } from "@/lib/pricing";
 import { tiers, bhkLabel } from "@/lib/cleaning";
 import { cn } from "@/lib/cn";
-import type { Property, VisitKind } from "@/lib/types";
+import { addOns } from "@/lib/pricing";
+import { blockedBecause, eligible, hasFreeVisit, terms } from "@/lib/offer";
+import type { Property, User, VisitKind } from "@/lib/types";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
@@ -33,7 +35,7 @@ const Group = ({ n, title, lede, children }: { n: number; title: string; lede?: 
   </section>
 );
 
-export function BookingForm({ properties, initialProperty, welcome = false }: { properties: Property[]; initialProperty?: string; welcome?: boolean }) {
+export function BookingForm({ user, properties, initialProperty, welcome = false }: { user: Pick<User, "foundingNo" | "freeVisitUsedAt">; properties: Property[]; initialProperty?: string; welcome?: boolean }) {
   const [state, submit] = useActionState(bookVisit, { ok: false } as FormState);
   const [propertyId, setPropertyId] = useState(initialProperty && properties.some((p) => p.id === initialProperty) ? initialProperty : properties[0]?.id ?? "");
   const property = properties.find((p) => p.id === propertyId)!;
@@ -49,7 +51,15 @@ export function BookingForm({ properties, initialProperty, welcome = false }: { 
 
   const kind: VisitKind = isPlot ? "plot" : service;
   const size = property?.size ?? "2";
-  const q = useMemo(() => quote({ kind, planId, size, tierId: kind === "cleaning" ? tierId : "", addOns: adds }), [kind, planId, size, tierId, adds]);
+  /* Shown live as they choose, and re-decided on the server when they
+     submit — this copy is for the price on screen, not for the bill. */
+  const founding = eligible(user, property, kind, planId);
+  const offerOpen = hasFreeVisit(user);
+  const blocked = offerOpen && !founding ? blockedBecause(property, kind, planId) : null;
+  const q = useMemo(
+    () => quote({ kind, planId, size, tierId: kind === "cleaning" ? tierId : "", addOns: adds, founding }),
+    [kind, planId, size, tierId, adds, founding]
+  );
 
   const bump = (k: string, d: number, max = 4) =>
     setAdds((a) => { const n = Math.max(0, Math.min(max, (a[k] ?? 0) + d)); const next = { ...a }; if (n) next[k] = n; else delete next[k]; return next; });
@@ -71,9 +81,38 @@ export function BookingForm({ properties, initialProperty, welcome = false }: { 
       <input type="hidden" name="tierId" value={kind === "cleaning" ? tierId : ""} />
       <input type="hidden" name="scheduledFor" value={date} />
       <input type="hidden" name="slot" value={slot} />
-      {["cleaning", "deep", "car"].map((k) => <input key={k} type="hidden" name={`add_${k}`} value={adds[k] ?? 0} />)}
+      {["cleaning", "deep", "car", "camera"].map((k) => <input key={k} type="hidden" name={`add_${k}`} value={adds[k] ?? 0} />)}
 
       <div className="grid gap-4">
+        {/* the launch offer, stated before they start choosing */}
+        {offerOpen && (
+          <section className="on-dark card bg-ink p-5 shadow-card sm:p-6">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/12 text-white"><Gift size={18} /></span>
+              <div className="min-w-0">
+                <h2 className="text-[17px] font-semibold text-white">
+                  {founding ? "This one is free." : "Your first inspection is free."}
+                </h2>
+                <p className="mt-1 text-[14px] leading-snug text-white/70">
+                  You are owner #{user.foundingNo} of our first ten. One inspection at no cost, body camera included.
+                </p>
+              </div>
+            </div>
+            <ul className="mt-4 grid gap-1.5">
+              {terms.slice(0, 4).map((t) => (
+                <li key={t} className="flex items-start gap-2 text-[13.5px] leading-snug text-white/75">
+                  <Check size={13} className="mt-[3px] shrink-0" /> {t}
+                </li>
+              ))}
+            </ul>
+            {blocked && (
+              <p className="mt-4 flex items-start gap-2 rounded-[12px] bg-white/[0.08] px-4 py-3 text-[13.5px] leading-snug text-white/80">
+                <Info size={14} className="mt-0.5 shrink-0" /> {blocked}
+              </p>
+            )}
+          </section>
+        )}
+
         {/* 1 — where */}
         <Group n={1} title="Which property?">
           <div className="grid gap-2">
@@ -175,6 +214,11 @@ export function BookingForm({ properties, initialProperty, welcome = false }: { 
                   price={inr(t.rider[size])} n={adds[t.id === "refresh" ? "cleaning" : "deep"] ?? 0}
                   onChange={(d) => bump(t.id === "refresh" ? "cleaning" : "deep", d, 2)} />
               ))}
+              <Counter on={!!adds.camera} I={Video}
+                title={addOns.find((a) => a.id === "camera")!.name}
+                note="Body camera from the moment they walk in until they leave · the whole video on a private link"
+                price={founding ? "free" : inr(addOns.find((a) => a.id === "camera")!.price)}
+                n={adds.camera ?? 0} onChange={(d) => bump("camera", d, 1)} />
               <Counter on={!!adds.car} I={Car} title="Car inspection" note="Started & idled, battery, tyres, leaks, odometer photo"
                 price={inr(700)} n={adds.car ?? 0} onChange={(d) => bump("car", d, 4)} />
             </div>
@@ -229,7 +273,10 @@ export function BookingForm({ properties, initialProperty, welcome = false }: { 
            Sticky on both, but on a phone it shows only what it has to:
            a full itemised panel pinned to the bottom of a 375px screen
            covers the choices it is meant to be reporting on. */}
-      <aside className="sticky bottom-0 z-20 lg:top-[76px] lg:bottom-auto">
+      {/* Sits above the phone's tab bar, not behind it — a sticky
+          bottom-0 pins to the viewport, which is where the tab bar
+          already is, and the submit button ends up unclickable. */}
+      <aside className="sticky bottom-[calc(72px+env(safe-area-inset-bottom))] z-20 lg:bottom-auto lg:top-[76px]">
         <div className="card border border-line bg-white p-5 shadow-float">
           <div className="t-label hidden lg:block">Your order</div>
           <ul className="mt-3 hidden gap-3 lg:grid">
@@ -239,7 +286,10 @@ export function BookingForm({ properties, initialProperty, welcome = false }: { 
                   <span className="block text-[14px] font-medium">{l.k}</span>
                   <span className="t-small block leading-snug">{l.note}</span>
                 </span>
-                <span className="shrink-0 text-[14px] font-medium tabular-nums">{inr(l.v)}</span>
+                <span className="shrink-0 text-right text-[14px] font-medium tabular-nums">
+                  {l.was !== undefined && <span className="mr-1.5 font-normal text-text-3 line-through">{inr(l.was)}</span>}
+                  {l.v === 0 ? "free" : inr(l.v)}
+                </span>
               </li>
             ))}
           </ul>
@@ -250,12 +300,14 @@ export function BookingForm({ properties, initialProperty, welcome = false }: { 
             </span>
             <span className="text-[24px] font-medium tabular-nums tracking-[-0.03em]">{inr(q.total)}</span>
           </div>
-          <p className="t-small mt-1 hidden text-right lg:block">{q.period} · all in, no surprises at the door</p>
+          <p className="t-small mt-1 hidden text-right lg:block">
+            {q.saved > 0 ? `${inr(q.saved)} off — launch offer` : `${q.period} · all in, no surprises at the door`}
+          </p>
 
           {state.error && <p className="mt-3 rounded-[10px] bg-fail-soft px-3 py-2.5 text-[13px] text-[#b03434]">{state.error}</p>}
 
           <SubmitButton className="mt-4 w-full" pendingLabel="Booking…">
-            {welcome ? "Book my first visit" : "Confirm booking"}
+            {founding ? "Book my free inspection" : welcome ? "Book my first visit" : "Confirm booking"}
           </SubmitButton>
           <p className="t-small mt-3 hidden leading-snug lg:block">
             Nothing is charged now. We confirm the inspector first, then send the bill — and you can move or cancel the visit free until the day before.

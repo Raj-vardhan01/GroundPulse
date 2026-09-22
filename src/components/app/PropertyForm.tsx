@@ -163,7 +163,7 @@ export function PropertyForm({ welcome = false }: { welcome?: boolean }) {
 
       {state.error && <p className="rounded-[12px] bg-fail-soft px-4 py-3 text-[13.5px] text-[#b03434]">{state.error}</p>}
 
-      <div className="sticky bottom-[96px] z-10 lg:static">
+      <div className="sticky bottom-[calc(72px+env(safe-area-inset-bottom))] z-10 lg:static">
         <SubmitButton className="w-full" icon={<ArrowRight size={16} />} pendingLabel="Saving…">
           {welcome ? "Save and pick a visit" : "Save property"}
         </SubmitButton>

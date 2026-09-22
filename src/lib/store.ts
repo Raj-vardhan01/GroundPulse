@@ -17,7 +17,14 @@ import path from "node:path";
 import type { DB } from "@/lib/types";
 import { seed } from "@/lib/seed";
 
-const DIR = path.join(process.cwd(), ".data");
+/* Locally this sits next to the code, where it is easy to inspect and
+   easy to delete. On a serverless host the working directory is
+   read-only, so it falls back to the one writable path there — which
+   survives between requests on the same instance, but not between
+   instances and not across a redeploy. That is a stopgap, not a
+   database: see the note in the README before relying on it. */
+const WRITABLE = process.env.VERCEL ? "/tmp" : process.cwd();
+const DIR = path.join(WRITABLE, ".data");
 const FILE = path.join(DIR, "store.json");
 
 const globalForStore = globalThis as unknown as { _db?: DB };

@@ -5,7 +5,7 @@
    case, not a fixed list.
    ════════════════════════════════════════════════════════════════ */
 
-import type { Property, ReportRoom, RoomKey } from "@/lib/types";
+import type { DraftRoom, Property, ReportRoom, RoomKey } from "@/lib/types";
 
 type Block = { name: string; variant: ReportRoom["variant"]; items: string[] };
 
@@ -75,3 +75,20 @@ export const countItems = (rooms: ReportRoom[]) => {
   for (const r of rooms) for (const i of r.items) c[i.s]++;
   return c;
 };
+
+/** What is still missing on a checklist, in the order an inspector
+    would fix it. The submit button reads this, and so does the server —
+    a validation that only runs in the browser is a suggestion. */
+export function outstanding(draft: DraftRoom[]) {
+  const out: string[] = [];
+  for (const r of draft) {
+    const unanswered = r.items.filter((i) => i.s === null).length;
+    if (unanswered) out.push(`${r.name} — ${unanswered} item${unanswered > 1 ? "s" : ""} unanswered`);
+    for (const i of r.items) {
+      if (i.s && i.s !== "pass" && !i.photos.length) out.push(`${r.name} · ${i.t} — flagged with no photograph`);
+      if (i.s && i.s !== "pass" && !i.note.trim()) out.push(`${r.name} · ${i.t} — flagged with no note`);
+    }
+    if (!r.video) out.push(`${r.name} — video slot empty`);
+  }
+  return out;
+}

@@ -10,6 +10,19 @@ import type { BhkKey } from "@/lib/cleaning";
 
 export type Role = "owner" | "inspector" | "admin";
 
+/* An inspector does not go from "applied" to "trusted with a key" in one
+   step, and the app cannot pretend they do — the trial inspection needs
+   app access *before* verification finishes, and the first five solo
+   reports are read by a person before an owner ever sees them. */
+export type InspectorStatus =
+  | "applied"      // form in, nothing else yet — no app access
+  | "screened"     // phone screen done
+  | "interviewed"  // originals checked in person, police verification filed
+  | "trial"        // app access, shadow and supervised jobs only
+  | "probation"    // solo jobs, every report reviewed before it is published
+  | "active"       // full access
+  | "paused";      // rating below the bar, or a breach under review
+
 export type User = {
   id: string;
   role: Role;
@@ -20,6 +33,10 @@ export type User = {
   createdAt: string;
   /** owners who have not finished the welcome flow still see it */
   onboardedAt: string | null;
+  /** 1–10 for the launch cohort, null for everyone after them */
+  foundingNo: number | null;
+  /** the offer is one free inspection per owner, so it is spent once */
+  freeVisitUsedAt: string | null;
 };
 
 export type PropertyKind = "home" | "plot" | "car";
@@ -95,6 +112,22 @@ export type Visit = {
   paid: boolean;
   liveCall: boolean;
   notes: string;
+  /** booked against the launch offer: nothing charged, and repairs
+      flagged on it carry no StillYours fee */
+  founding: boolean;
+  /** what the inspector earns for it — shown on the job board before
+      they claim, because nobody should have to accept work blind */
+  payoutInr: number;
+  /** the owner's entry code. No OTP, no checklist — the inspectors'
+      own declaration, enforced here rather than trusted */
+  otp: string;
+  claimedAt: string | null;
+  checkIn: { at: string; lat: number; lng: number; distanceM: number; doorPhoto: Photo | null } | null;
+  /** the working checklist, saved on every tap so a dropped signal
+      never costs somebody a room they already walked */
+  draft: DraftRoom[] | null;
+  /** body camera rolling for the whole visit, when it was booked */
+  recording: boolean;
   createdAt: string;
   startedAt: string | null;
   endedAt: string | null;
@@ -102,6 +135,27 @@ export type Visit = {
 };
 
 export type ItemState = "pass" | "attn" | "fail";
+
+/* What the inspector is filling in while they are standing in the room.
+   Separate from ReportItem because a draft item has no verdict yet, and a
+   report with an unanswered item must never be publishable. */
+export type Photo = {
+  id: string;
+  /** a 320px JPEG data URL — the full-resolution original goes to object
+      storage in production; this is what the local store can hold */
+  thumb: string;
+  at: string;
+  lat: number | null;
+  lng: number | null;
+};
+export type DraftItem = { t: string; s: ItemState | null; note: string; photos: Photo[] };
+export type DraftRoom = {
+  name: string;
+  variant: "bathroom" | "kitchen" | "bedroom" | "balcony" | "electrical" | "entrance" | "living";
+  items: DraftItem[];
+  /** the room's video slot — the visit cannot be submitted with one empty */
+  video: boolean;
+};
 export type ReportItem = { t: string; s: ItemState; note?: string };
 export type ReportRoom = {
   name: string;
@@ -128,6 +182,10 @@ export type Report = {
   videos: string;
   publishedAt: string;
   readAt: string | null;
+  /* An inspector on probation has every report read by a person before
+     it reaches the owner. The report exists from the moment it is
+     submitted; this is what keeps it out of the owner's app until then. */
+  heldForReview: boolean;
 };
 
 export type Decision = "pending" | "approved" | "declined";
@@ -197,16 +255,35 @@ export type Event = {
   action: boolean;
 };
 
+export type InspectorDoc = { name: string; ok: boolean; expiresAt: string | null };
+
 export type Inspector = {
   id: string;
+  /** set the moment they are given app access — this is what turns a
+      phone number into a sign-in that lands on /field */
+  userId: string | null;
   name: string;
   initials: string;
+  phone: string;
+  /** human summary, shown to owners */
   area: string;
+  /** where they start their day, for the nearby sort */
+  city: string;
+  baseLocality: string;
+  /** localities they will travel to — the job board is filtered by city,
+      then sorted by distance from base */
+  areas: string[];
   rating: number;
   visits: number;
   since: string;
   bg: string;
   verified: boolean;
+  status: InspectorStatus;
+  docs: InspectorDoc[];
+  depositInr: number;
+  availability: string[];
+  /** how many of the five probation reports a person has already read */
+  reviewedReports: number;
 };
 
 export type Session = { id: string; userId: string; createdAt: string; expiresAt: string };

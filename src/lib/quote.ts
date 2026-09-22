@@ -20,10 +20,12 @@ export type QuoteInput = {
   size: BhkKey;
   tierId: "refresh" | "deep" | "";
   addOns: Record<string, number>;
+  /** the launch offer applies to this booking — see `lib/offer.ts` */
+  founding?: boolean;
 };
 
-export type Line = { k: string; note: string; v: number };
-export type Quote = { lines: Line[]; total: number; recurring: boolean; period: string };
+export type Line = { k: string; note: string; v: number; was?: number };
+export type Quote = { lines: Line[]; total: number; recurring: boolean; period: string; saved: number };
 
 const allPlans = [...plans, ...plotPlans];
 const tier = (id: string) => tiers.find((t) => t.id === id);
@@ -51,7 +53,14 @@ export function quote(q: QuoteInput): Quote {
   } else {
     const price = planPriceAt(q.planId, q.size);
     const visitsNote = plan?.visits && plan.visits > 1 ? `${plan.visits} inspections a year` : "one verified inspector visit";
-    lines.push({ k: plan?.name ?? "Inspection", note: visitsNote, v: price });
+    /* The launch offer does not discount the visit, it removes the
+       charge — so the old price stays on the line, struck through, and
+       the owner can see exactly what they are not paying. */
+    lines.push(
+      q.founding
+        ? { k: plan?.name ?? "Inspection", note: "free — your launch-offer inspection", v: 0, was: price }
+        : { k: plan?.name ?? "Inspection", note: visitsNote, v: price }
+    );
 
     /* A clean booked onto a visit an inspector is already making costs
        the rider price, not the standalone one. */
@@ -63,6 +72,15 @@ export function quote(q: QuoteInput): Quote {
     }
   }
 
+  if (q.addOns.camera) {
+    const a = addOns.find((x) => x.id === "camera")!;
+    lines.push(
+      q.founding
+        ? { k: a.name, note: "free on your launch-offer inspection", v: 0, was: a.price }
+        : { k: a.name, note: a.note, v: a.price }
+    );
+  }
+
   const cars = q.addOns.car ?? 0;
   if (cars) {
     const a = addOns.find((x) => x.id === "car")!;
@@ -70,8 +88,9 @@ export function quote(q: QuoteInput): Quote {
   }
 
   const total = lines.reduce((n, l) => n + l.v, 0);
+  const saved = lines.reduce((n, l) => n + ((l.was ?? l.v) - l.v), 0);
   const recurring = (plan?.visits ?? 1) > 1 && q.kind === "inspection";
-  return { lines, total, recurring, period: recurring ? "per year" : "one visit" };
+  return { lines, total, saved, recurring, period: recurring ? "per year" : "one visit" };
 }
 
 /* Slots an inspector can actually be given. Deliberately wide — the

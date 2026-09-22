@@ -4,6 +4,7 @@ import { ArrowRight, Check, Minus, ShieldCheck, Sparkles } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { propertyViews } from "@/lib/queries";
 import { Empty, PageHead, Panel, PanelHead, money } from "@/components/app/ui";
+import { FoundingCard } from "@/components/app/FoundingCard";
 import { Reveal } from "@/components/ui/Reveal";
 import { plans, carePlusCover } from "@/lib/pricing";
 import { fmtDate } from "@/lib/format";
@@ -27,6 +28,8 @@ export default async function Page() {
       />
 
       <div className="grid gap-4">
+        <Reveal><FoundingCard user={user} properties={views.map((v) => v.property)} /></Reveal>
+
         {withPlan.length === 0 && (
           <Panel><Empty icon={Sparkles} title="No plan running." body="Every visit so far has been a one-off. A yearly plan books the rhythm for you — and stops you having to remember."
             cta={<Link href="/app/book" className="btn btn-accent">See the plans <ArrowRight size={15} /></Link>} /></Panel>

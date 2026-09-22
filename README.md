@@ -48,6 +48,53 @@ report with a decision waiting, a visit happening right now, and a repair
 already closed out. Any other number creates a fresh account and walks the
 welcome flow.
 
+## The inspector app
+
+Same sign-in, different door: a number on a `role: "inspector"` row lands
+on `/field` instead of `/app`. That row is what an admin creates when
+somebody finishes verification — the application form itself only
+confirms which documents exist, because originals are checked in person.
+
+| Route | What it is |
+| --- | --- |
+| `/field` | Today — the one job they are holding, or the three nearest on the board |
+| `/field/jobs` | Every unclaimed job **in their city**, sorted by nearest, soonest or pays-most |
+| `/field/jobs/[id]` | The brief: access notes, key holder, owner's instructions, what the job pays and why — then Claim |
+| `/field/visit/[id]` | Check-in gate → checklist → review → submit |
+| `/field/earnings` | Per visit, this week, awaiting review, the rate card, the deposit |
+| `/field/record` | Rating, documents with expiry dates, localities, availability |
+
+### The rules the app enforces
+
+Not in a disabled button — in `src/lib/fieldActions.ts`, on the server:
+
+- **One live job at a time.** Claiming is refused while anything of theirs
+  is still `assigned`/`en_route`/`on_site`/`submitted`.
+- **City only.** A claim for a property outside their city is refused.
+- **No OTP, no checklist.** Check-in needs the owner's four-digit code,
+  a location inside 250 m (or a written reason), and a photo of the front
+  door. The draft checklist does not exist until all of it passes.
+- **A flag needs proof.** Anything not marked OK needs a photograph and a
+  note, and every room needs its video slot filled, or submit is refused
+  and names the first thing missing.
+- **Probation is real.** An inspector who is not `active` has every report
+  held — written, but invisible to the owner until a person reads it.
+
+Checklists are generated from the rooms the owner registered, so nobody
+can walk fewer rooms than were booked. Photos are shrunk to a 320px JPEG
+in the browser and stored as thumbnails; production uploads the
+full-resolution original to object storage and keeps only the pointer.
+
+### Signing in as an inspector
+
+| Number | Who | State |
+| --- | --- | --- |
+| `9000000001` | Ravi K. | Active, one job already claimed |
+| `9000000002` | Meena S. | On probation — 3 of 5 reports reviewed |
+| `9000000003` | Arun P. | Active, on site right now, mid-checklist |
+
+Owners are `9000000000` (Priya, the main demo), `9000000011`, `9000000012`.
+
 ### Where the data lives
 
 Locally, in one JSON file at `.data/store.json`, seeded on first run

@@ -11,6 +11,9 @@ import { redirect } from "next/navigation";
 import { currentUser, requireOwner, signOut, startOtp, verifyOtp } from "@/lib/auth";
 import { db, invoiceRef, mutate, now, uid, visitRef } from "@/lib/store";
 import { quote, inr } from "@/lib/quote";
+import { eligible } from "@/lib/offer";
+import { fmtDayDate } from "@/lib/format";
+import { newOtp, payoutFor } from "@/lib/payout";
 import type { BhkKey } from "@/lib/cleaning";
 import type { Event, EventType, Property, RoomKey, VisitKind } from "@/lib/types";
 
@@ -30,12 +33,22 @@ export async function requestCode(_prev: FormState, fd: FormData): Promise<FormS
 export async function confirmCode(_prev: FormState, fd: FormData): Promise<FormState> {
   const res = await verifyOtp(s(fd, "phone", 20), s(fd, "code", 8));
   if (!res.ok) return { ok: false, error: res.error };
-  redirect(res.onboarded ? "/app" : "/welcome");
+  redirect(res.role === "inspector" ? "/field" : res.onboarded ? "/app" : "/welcome");
 }
 
 export async function doSignOut() {
   await signOut();
   redirect("/");
+}
+
+/** Sign out and land back on the sign-in form, keeping whichever side
+    they were heading for. The owner and the inspector app share one
+    session, so switching between them has to be a real thing you can
+    do — not something you work out by hunting for Sign out. */
+export async function switchAccount(fd: FormData) {
+  const as = String(fd.get("as") ?? "");
+  await signOut();
+  redirect(as === "inspector" ? "/signin?as=inspector" : "/signin");
 }
 
 /* ── profile ─────────────────────────────────────────────────── */
@@ -140,7 +153,10 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
   const addOns: Record<string, number> = {};
   for (const k of ["cleaning", "deep", "car"]) { const v = n(fd, `add_${k}`); if (v > 0) addOns[k] = v; }
 
-  const q = quote({ kind, planId, size: property.size, tierId, addOns });
+  /* Whether the launch offer applies is decided here, never from the
+     form — the browser can send anything it likes. */
+  const founding = eligible(user, property, kind, planId);
+  const q = quote({ kind, planId, size: property.size, tierId, addOns, founding });
   const id = uid();
 
   await mutate((d) => {
@@ -148,16 +164,34 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
     d.visits.push({
       id, ref, ownerId: user.id, propertyId, kind, planId, tierId, addOns,
       scheduledFor, slot: s(fd, "slot", 40) || "10:00 – 13:00",
-      status: "scheduled", inspectorId: "", amountInr: q.total, paid: false,
-      liveCall: fd.get("liveCall") === "on",
+      status: "scheduled", inspectorId: "", amountInr: q.total, paid: founding,
+      liveCall: fd.get("liveCall") === "on", founding,
       notes: s(fd, "notes", 600), createdAt: now(), startedAt: null, endedAt: null, reportId: null,
+      /* Everything the visit needs before an inspector ever sees it:
+         what the job pays, and the code the owner reads out at the door. */
+      payoutInr: payoutFor(property, kind, addOns),
+      otp: newOtp(),
+      claimedAt: null, checkIn: null, draft: null, recording: !!addOns.camera,
     });
 
-    d.invoices.push({
-      id: uid(), ref: invoiceRef(d), ownerId: user.id, propertyId, visitId: id,
-      title: `${q.lines[0]?.k ?? "Visit"} · ${property.label}`,
-      amountInr: q.total, status: "due", method: "", createdAt: now(),
-    });
+    if (founding) {
+      /* One free inspection per owner: spend it the moment it is booked,
+         not when the visit happens, so it cannot be claimed twice. */
+      const u = d.users.find((x) => x.id === user.id)!;
+      u.freeVisitUsedAt = now();
+      pushEvent(d, {
+        ownerId: user.id, propertyId, visitId: id, type: "visit.booked",
+        title: "Your free inspection is booked",
+        body: `${property.label} · nothing to pay · launch offer, owner #${u.foundingNo}`,
+        href: `/app/visits/${id}`,
+      });
+    } else {
+      d.invoices.push({
+        id: uid(), ref: invoiceRef(d), ownerId: user.id, propertyId, visitId: id,
+        title: `${q.lines[0]?.k ?? "Visit"} · ${property.label}`,
+        amountInr: q.total, status: "due", method: "", createdAt: now(),
+      });
+    }
 
     /* A yearly plan is a subscription, not a one-off — record it so the
        plan screen can show visits left and when it renews. */
@@ -174,11 +208,16 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
       pushEvent(d, { ownerId: user.id, propertyId, type: "plan.started", title: `${q.lines[0].k} started`, body: `${property.label} · renews ${sub.renewsAt}`, href: "/app/plan" });
     }
 
-    pushEvent(d, {
-      ownerId: user.id, propertyId, visitId: id, type: "visit.booked",
-      title: "Visit booked", body: `${property.label} · ${scheduledFor} · ${s(fd, "slot", 40)}`,
-      href: `/app/visits/${id}`,
-    });
+    /* The founding booking already said its piece above — two entries
+       for one action just makes the timeline harder to read. */
+    if (!founding) {
+      pushEvent(d, {
+        ownerId: user.id, propertyId, visitId: id, type: "visit.booked",
+        title: "Visit booked",
+        body: `${property.label} · ${fmtDayDate(scheduledFor)} · ${s(fd, "slot", 40)}`,
+        href: `/app/visits/${id}`,
+      });
+    }
   });
 
   revalidatePath("/app", "layout");
@@ -194,6 +233,11 @@ export async function cancelVisit(fd: FormData) {
     v.status = "cancelled";
     const inv = d.invoices.find((i) => i.visitId === id && i.status === "due");
     if (inv) d.invoices = d.invoices.filter((i) => i.id !== inv.id);
+    /* Cancelling gives the free inspection back — it was never used. */
+    if (v.founding) {
+      const u = d.users.find((x) => x.id === user.id)!;
+      u.freeVisitUsedAt = null;
+    }
   });
   revalidatePath("/app", "layout");
   redirect("/app/visits");
@@ -211,7 +255,7 @@ export async function rescheduleVisit(_prev: FormState, fd: FormData): Promise<F
     v.slot = s(fd, "slot", 40) || v.slot;
     v.status = "scheduled";
     v.inspectorId = "";
-    pushEvent(d, { ownerId: user.id, propertyId: v.propertyId, visitId: id, type: "visit.booked", title: "Visit moved", body: `${date} · ${v.slot} — we will assign an inspector again`, href: `/app/visits/${id}` });
+    pushEvent(d, { ownerId: user.id, propertyId: v.propertyId, visitId: id, type: "visit.booked", title: "Visit moved", body: `${fmtDayDate(date)} · ${v.slot} — we will assign an inspector again`, href: `/app/visits/${id}` });
   });
   revalidatePath("/app", "layout");
   return { ok: true };
@@ -230,6 +274,13 @@ export async function decideIssue(fd: FormData) {
     iss.decision = approve ? "approved" : "declined";
     iss.decidedAt = now();
 
+    /* "Any repair you approve is at the professional's cost, with no
+       StillYours fee" — the launch offer's last term, applied here so
+       the bill matches what the site promised. */
+    const onFreeVisit = d.visits.find((v) => v.id === iss.visitId)?.founding === true;
+    const fee = onFreeVisit ? 0 : iss.quote?.fee ?? 0;
+    const charged = iss.quote ? iss.quote.labour + iss.quote.parts + fee : 0;
+
     if (approve && iss.quote) {
       iss.repair = {
         status: "assigned",
@@ -244,8 +295,11 @@ export async function decideIssue(fd: FormData) {
       d.invoices.push({
         id: uid(), ref: invoiceRef(d), ownerId: user.id, propertyId: iss.propertyId, visitId: iss.visitId,
         title: `${iss.title} · ${iss.ref}`,
-        amountInr: Math.max(0, iss.quote.total - iss.coveredInr),
-        status: "due", method: iss.coveredInr ? `Covered by your plan · ${inr(iss.coveredInr)} of ${inr(iss.quote.total)}` : "",
+        amountInr: Math.max(0, charged - iss.coveredInr),
+        status: "due",
+        method: onFreeVisit
+          ? `Launch offer · ${inr(iss.quote.fee)} StillYours fee waived`
+          : iss.coveredInr ? `Covered by your plan · ${inr(iss.coveredInr)} of ${inr(iss.quote.total)}` : "",
         createdAt: now(),
       });
     }
@@ -254,7 +308,7 @@ export async function decideIssue(fd: FormData) {
       ownerId: user.id, propertyId: iss.propertyId, visitId: iss.visitId,
       type: approve ? "issue.approved" : "issue.declined",
       title: approve ? "You approved a repair" : "You declined a repair",
-      body: `${iss.title} · ${iss.ref}${approve && iss.quote ? ` · ${inr(iss.quote.total)}` : ""}`,
+      body: `${iss.title} · ${iss.ref}${approve && iss.quote ? ` · ${inr(charged)}` : ""}`,
       href: `/app/reports/${iss.reportId}`,
     });
   });

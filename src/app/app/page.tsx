@@ -7,6 +7,7 @@ import {
 import { requireOwner } from "@/lib/auth";
 import { propertyViews, portfolioScore, openIssues, timeline, invoices, inspectorsById } from "@/lib/queries";
 import { PropertyCard } from "@/components/app/PropertyCard";
+import { FoundingCard } from "@/components/app/FoundingCard";
 import { Empty, Panel, PanelHead, Stat, StatusPill, money } from "@/components/app/ui";
 import { HealthRing } from "@/components/ui/HealthRing";
 import { Reveal } from "@/components/ui/Reveal";
@@ -76,6 +77,9 @@ export default async function Dashboard() {
           </div>
         </section>
       </Reveal>
+
+      {/* ── the launch offer, while it is still theirs ──────── */}
+      <Reveal delay={0.04}><FoundingCard user={user} properties={views.map((v) => v.property)} compact /></Reveal>
 
       {/* ── happening right now ─────────────────────────────── */}
       {live && liveProperty && (
