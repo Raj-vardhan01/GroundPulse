@@ -282,7 +282,7 @@ export const crew = (partner: string | null) => [
   },
   {
     t: "Who opens the door",
-    b: "Your inspector. That is the part none of them can solve — every cleaning company needs somebody at home at 10 a.m., and from another country that person does not exist. Ours goes in on your OTP.",
+    b: "Your inspector. That is the part none of them can solve — every cleaning company needs somebody at home at 10 a.m., and from another country that person does not exist. Ours goes in once you confirm.",
   },
   {
     t: "Who checks the work",
@@ -378,7 +378,7 @@ export const bringVsNeed = {
   weBring: kit,
   youDo: [
     { t: "Pick a date", b: "Two or three days before you land is ideal, so anything broken can be fixed before you walk in." },
-    { t: "Share one OTP", b: "The inspector's app only opens with it. No keys couriered, no spare set left with a neighbour, no code on WhatsApp." },
+    { t: "Say yes on WhatsApp", b: "Nobody goes in until you confirm. Your inspector collects the key from your caretaker or society office and returns it after." },
     { t: "Read the report", b: "It reaches you within the hour of the visit — before and after photos, the checklist, and anything that needs your yes." },
   ],
   onSite: "We only need a working water supply and one power point. Your inspector checks both at the start of the visit and tells you before the crew begins — if the supply is dead, we reschedule and you pay nothing.",

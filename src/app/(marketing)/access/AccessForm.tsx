@@ -40,7 +40,7 @@ const sizeLabel: Record<Size, string> = { "2": "2 BHK", "3": "3 BHK", "4": "4 BH
 /* Add-on ceilings. Cars are capped by the parking you listed (never below 1),
    and a clean can be added once per inspection the plan actually buys. */
 const addOnCap = (id: string, parking: number, visits: number) =>
-  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" ? visits : 5;
+  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" || id === "camera" ? visits : 5;
 
 /* Cleaning is priced on /cleaning as an all-in package — crew, inspector,
    report. Here the inspector is already in the order, so the clean is shown
@@ -68,13 +68,16 @@ const roomLabel = (k: RoomKey, i: number, n: number) => (n > 1 ? `${roomOne[k]} 
    also falls under its repair cover. Rounded to ₹25 so no price reads like ₹113. */
 const planRateMult = (planId: string) => (planId === "care-plus" ? 1.5 : 1);
 const rateAt = (base: number, planId: string) => Math.round((base * planRateMult(planId)) / 25) * 25;
-const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { camera: Video, cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 export function AccessForm() {
   const params = useSearchParams();
   const initialRole = (params.get("role") as Role) || "owner";
   const [role, setRole] = useState<Role>(["owner", "inspector"].includes(initialRole) ? initialRole : "owner");
   const [done, setDone] = useState(false);
+  // Switching tabs must clear a previous submission, or an owner who just booked
+  // sees "You're on the list." on the (empty) inspector tab.
+  const switchRole = (r: Role) => { setRole(r); setDone(false); setSendError(null); };
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const address = params.get("address") || "";
@@ -88,7 +91,7 @@ export function AccessForm() {
     qService === "cleaning" || (!qService && ["deep", "cleaning"].includes(qp)) ? "cleaning" : "inspection"
   );
   const initialAdd: Record<string, number> = {};
-  if (["cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
+  if (["camera", "cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
   const [planId, setPlanId] = useState(allPlans.some((p) => p.id === qp) ? qp : qp === "plot" ? "plot-once" : "care");
   const qsize = params.get("size");
   const [size, setSize] = useState<Size>(qsize === "3" ? "3" : qsize === "4" || qsize === "5" ? "4" : "2");
@@ -201,13 +204,13 @@ export function AccessForm() {
           <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">{role === "inspector" ? "Apply to inspect" : isClean ? "Build your cleaning quote" : "Set up your first visit"}</h1></div>
           <div className="hidden items-center gap-1 rounded-[12px] bg-beige p-1 sm:flex">
             {(["owner", "inspector"] as Role[]).map((r) => (
-              <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "inspector" ? "Apply as an inspector" : "Owner"}</button>
+              <button key={r} type="button" onClick={() => switchRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "inspector" ? "Apply as an inspector" : "Owner"}</button>
             ))}
           </div>
         </div>
         <div className="mb-6 grid grid-cols-2 gap-1 rounded-[12px] bg-beige p-1 sm:hidden">
           {(["owner", "inspector"] as Role[]).map((r) => (
-            <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "inspector" ? "Inspector" : "Owner"}</button>
+            <button key={r} type="button" onClick={() => switchRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "inspector" ? "Inspector" : "Owner"}</button>
           ))}
         </div>
 
@@ -228,7 +231,7 @@ export function AccessForm() {
                   <p className="t-small mt-1">Both put a verified inspector in your home and a report in your inbox within the hour. Pick the one you came for — you can add the other on the same visit.</p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Service">
                     {([
-                      ["inspection", "Inspection", ClipboardCheck, "Eyes on the place. A 42-item checklist, photos and video on every item, health score and quotes for anything broken.", `one visit from ${inr(1999)} · a year of them from ${inr(7999)}`],
+                      ["inspection", "Inspection", ClipboardCheck, "Eyes on the place. A 42-item checklist, photos and video on every item, and quotes for anything broken.", `one visit from ${inr(1999)} · a year of them from ${inr(7999)}`],
                       ["cleaning", "Cleaning", Sparkles, "The house put right. A refresh or a full deep clean, crew supervised by your inspector, before/after photos — and the inspection runs alongside it.", `refresh from ${inr(cleanTiers[0].price["1"])} · deep from ${inr(cleanTiers[1].price["1"])}`],
                     ] as const).map(([v, l, I, b, from]) => {
                       const on = service === v;
@@ -448,9 +451,9 @@ export function AccessForm() {
                         <div className="text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums">{inr(clean.total)}</div>
                       </div>
                     </div>
-                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in and we will pick it up straight away.</p>}
+                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com and we will pick it up straight away.</p>}
                     <p className="mt-3 text-[12px] leading-relaxed text-white/55">
-                      Nobody needs to be home — entry on your OTP. Inspection on its own for a {bhkLabel[clean.size]} is {inr(visitPrice[clean.size])}; booked with a visit you already have, this clean is +{inr(clean.tier.rider[clean.size])}.
+                      Nobody needs to be home — your inspector goes in once you confirm on WhatsApp. Inspection on its own for a {bhkLabel[clean.size]} is {inr(visitPrice[clean.size])}; booked with a visit you already have, this clean is +{inr(clean.tier.rider[clean.size])}.
                     </p>
                   </>
                 ) : (
@@ -497,8 +500,9 @@ export function AccessForm() {
                         <div className="text-[30px] font-medium leading-none tracking-[-0.04em]">{inr(total)}</div>
                       </div>
                     </div>
-                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in and we will pick it up straight away.</p>}
-                    <p className="mt-3 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
+                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com and we will pick it up straight away.</p>}
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/75">Launch offer: the first ten owners get their first inspection free, with full-visit video recording included — we&apos;ll confirm on WhatsApp.</p>
+                    <p className="mt-2 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
                   </>
                 )}
                 <div className="mt-5 border-t border-white/10 pt-5"><Relax variant="dark" /></div>

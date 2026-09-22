@@ -3,15 +3,15 @@ import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
 
 export const relaxPoints = [
-  { I: BadgeCheck, t: "You know who's coming.", b: "Name, photo and police-verified badge on your phone before the visit." },
-  { I: KeyRound, t: "They can't enter without you.", b: "The door opens with your (or your caretaker's) OTP. No OTP, no checklist." },
-  { I: Video, t: "Every room is on video.", b: "Each room you listed is a required video. Skip one and the visit can't be submitted. Exit walkthrough before leaving." },
+  { I: BadgeCheck, t: "You know who's coming.", b: "Your inspector's name and photo on WhatsApp before the visit." },
+  { I: KeyRound, t: "Nobody goes in without your OK.", b: "The key is handed over only after you — or your caretaker — confirm on WhatsApp." },
+  { I: Video, t: "Every room is on video.", b: "Every room you list is filmed, and we walk through the whole home on video before we leave." },
   { I: PhoneCall, t: "Watch the visit live, if you want.", b: "The inspector video-calls you at the start and the end — you, your parents or your caretaker see it live, from anywhere." },
   { I: ThumbsUp, t: "Nothing happens without your yes.", b: "Repairs, cleaning, money — your approval first, with the exact amount." },
   { I: ShieldCheck, t: "Protected up to ₹1,00,000.", b: "For the very, very rare case. With a system this tight it almost never comes up — but if it ever does, we pay. Not you.", hero: true },
 ];
 
-export const relaxTagline = "One verified person. Your OTP. Every room on video — live if you want. Your approval for everything. And ₹1,00,000 if we're ever wrong.";
+export const relaxTagline = "One verified person. Your go-ahead before anyone enters. Every room on video — live if you want. Your approval for everything. And ₹1,00,000 if we're ever wrong.";
 
 /** The same five lines everywhere — repetition is what builds the trust. */
 export function Relax({ variant = "strip", className }: { variant?: "strip" | "dark" | "list"; className?: string }) {

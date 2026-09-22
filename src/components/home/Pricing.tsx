@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Car, Check, Home, LandPlot, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Car, Check, Home, LandPlot, ShieldCheck, Sparkles, Video } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { addOns, assets, inr, plans, plotPlans, visitCovers, visitUseCases } from "@/lib/pricing";
 import { Relax } from "@/components/shared/Relax";
 import { cn } from "@/lib/cn";
 import { bhkKeys, bhkLabel, coverage, tiers as cleanTiers } from "@/lib/cleaning";
+import { FoundingOffer } from "@/components/home/FoundingOffer";
 
 const assetIcon = { home: Home, plot: LandPlot, car: Car } as const;
-const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { camera: Video, cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 type Tab = "home" | "clean" | "plot";
 const tabNote: Record<Tab, string> = {
@@ -31,6 +32,8 @@ export function Pricing({ full }: { full?: boolean }) {
           lede="Start with a one-time visit or pick a yearly plan. Every visit is by a verified inspector who stays for the whole job — however long it takes. No brokerage. No hidden commission — just a flat 10% on repairs, shown before you approve."
           action={!full ? <Link href="/pricing" className="btn btn-white btn-sm">Full pricing <ArrowRight size={15} /></Link> : undefined}
         />
+
+        <div className="mt-10"><FoundingOffer /></div>
 
         {/* what we inspect */}
         <div className="mt-10 grid gap-3 sm:grid-cols-3">

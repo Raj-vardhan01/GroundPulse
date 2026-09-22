@@ -12,6 +12,7 @@ import { ComingHome } from "@/components/home/ComingHome";
 import { Pricing } from "@/components/home/Pricing";
 import { CTA } from "@/components/home/CTA";
 import { Founders } from "@/components/home/Founders";
+import { BetaNote } from "@/components/shared/BetaNote";
 
 export const metadata: Metadata = {
   title: "Property Care for NRIs & Out-of-Town Owners",
@@ -32,6 +33,7 @@ export default function Page() {
     <>
       <JsonLd data={serviceLd({ name: "Home inspection for property owners abroad", serviceType: "Property inspection", path: "/owners", description: "A verified inspector walks a 42-item room-by-room checklist on a fixed day, photographs and films every room, and sends a timestamped report within the hour. No repair without the owner's approval." })} />
       <PageHero eyebrow="For owners" title={<>For owners who live<br className="hidden md:block" /> away from their property</>} lede="One flat in Indiranagar, five units across the city, or an empty plot nobody has walked in months — you get the same thing: a true, timestamped picture, and control over every repair. Even the car parked in the basement." />
+      <BetaNote className="mt-6" />
 
       <section className="wrap mt-6 grid gap-3 md:mt-8 md:grid-cols-3">
         {who.map(({ I, t, b }, i) => (

@@ -23,7 +23,7 @@ export function CoverTerms() {
           <Reveal delay={0.08}>
             <div className="card h-full bg-beige p-5 sm:p-6">
               <div className="text-[16px] font-medium">Not covered</div>
-              <p className="t-small mt-1">We'll still inspect it, quote it and fix it if you approve — it just isn't part of the ₹25,000.</p>
+              <p className="t-small mt-1">We'll still inspect it, quote it and fix it if you approve — it just isn't part of the ₹20,000.</p>
               <ul className="mt-4 space-y-2">
                 {c.excluded.map((e) => <li key={e} className="flex items-start gap-2.5 text-[14px]"><span className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-fail-soft text-fail"><X size={11} strokeWidth={3} /></span>{e}</li>)}
               </ul>
@@ -58,7 +58,7 @@ export function CoverTerms() {
               <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">Theft or damage caused during a visit is covered — for one-time visits and every plan. It's built so that can't happen quietly in the first place; the guarantee is for the rare case.</p>
             </div>
             <ol className="grid gap-2">
-              {["One verified person, in with your OTP · GPS + time on every photo", "Every room on video, plus an exit walkthrough before leaving", "Something off? Tap \"Something wrong?\" in your report — any time until your next visit", "Verified evidence → covered up to ₹1 lakh. Keep cash, jewellery and documents locked away."].map((t, i) => (
+              {["One verified person, in only after you confirm · GPS + time on every photo", "Every room on video, plus an exit walkthrough before leaving", "Something off? Tell us on WhatsApp — any time until your next visit", "Verified evidence → covered up to ₹1 lakh. Keep cash, jewellery and documents locked away."].map((t, i) => (
                 <li key={t} className="flex items-start gap-3 rounded-[12px] bg-white/[0.07] px-4 py-3 text-[14px]"><span className="mt-px shrink-0 text-white/40">0{i + 1}</span>{t}</li>
               ))}
             </ol>

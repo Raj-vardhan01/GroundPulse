@@ -10,6 +10,7 @@ import { WhenWrong } from "@/components/home/WhenWrong";
 import { Health } from "@/components/home/Health";
 import { Pocket } from "@/components/home/Pocket";
 import { Handles } from "@/components/home/Handles";
+import { BetaNote } from "@/components/shared/BetaNote";
 
 export const metadata: Metadata = {
   title: "How Our Home Inspection Works, Step by Step",
@@ -34,15 +35,16 @@ export default function Page() {
   return (
     <>
       <PageHero eyebrow="How it works" title={<>How StillYours works,<br className="hidden md:block" /> in six steps</>} lede="Home, plot or car — every step is visible to you the moment it happens, from the address you type to the after-photo that closes the loop." />
+      <BetaNote className="mt-6" />
 
       <section className="section">
         <div className="wrap grid gap-14 md:gap-20">
           <FeatureRow n="01" k="Register · under 5 minutes" title="Add your property." body="Address, type, a cover photo. That's the whole form. The moment it saves, the property is inspection-ready and you're prompted to book the first visit." bullets={["Apartment, villa or independent house", "At least one photo, so the inspector knows the door", "Saved instantly — come back and finish any time"]}><div className="mx-auto max-w-[420px]"><RegisterMock /></div></FeatureRow>
           <FeatureRow n="02" k="Schedule · recurring or one-off" title="Choose how often." body="Weekly, monthly, quarterly — or a single visit before tenants move in. A verified inspector is assigned automatically and the job lands on their calendar." flip bullets={["You're told the moment an inspector is assigned", "Change or cancel any time before the visit"]}><div className="mx-auto max-w-[420px]"><ScheduleMock /></div></FeatureRow>
           <FeatureRow n="03" k="Inspect · on-site" title="Every room, every item." body="Pass, Fail or Attention on a structured checklist, with photos and short video attached right there. Three taps per item, and no item can be left blank." bullets={["Drafts auto-save on patchy connections", "Flagged issues need a category, note and a photo", "Once submitted, the report can't be edited"]}><div className="mx-auto max-w-[460px]"><InspectMock /></div></FeatureRow>
-          <FeatureRow n="04" k="Report · within the hour" title="Proof in your inbox." body="Every item, status and attachment compiled automatically and pushed to your dashboard and email. Typically in minutes. Always within the hour." flip bullets={["Health score recalculated after every report", "Full inspection history per property"]}><div className="mx-auto max-w-[460px]"><ReportMock /></div></FeatureRow>
+          <FeatureRow n="04" k="Report · within the hour" title="Proof in your inbox." body="Every item, status and attachment compiled into one report and sent to you. Always within the hour." flip bullets={["Health score recalculated after every report", "Full inspection history per property"]}><div className="mx-auto max-w-[460px]"><ReportMock /></div></FeatureRow>
           <FeatureRow n="05" k="Decide · your call" title="You say yes. Or no." body="Flagged issues arrive with category, description and evidence. Approve, or decline with a reason. Either way the decision is timestamped forever." bullets={["You see the verified pro's quote + a flat 10% Still Yours fee — the exact amount, nothing hidden", "Decline closes the issue with your reason on record", "Nothing is dispatched without your approval"]}><div className="mx-auto max-w-[420px]"><DecideMock /></div></FeatureRow>
-          <FeatureRow n="06" k="Resolve · verified professionals only" title="Closed, with after-photos." body="Only a verified local professional can be assigned. Watch the status move to Completed in real time, with the completion note in the same record." flip bullets={["The repair happens during a scheduled visit — your inspector stays on-site the whole time", "Requested → Assigned → In progress → Completed, live", "Completion note + after-photos in the same report; rate the provider after"]}><div className="mx-auto max-w-[420px]"><ResolveMock /></div></FeatureRow>
+          <FeatureRow n="06" k="Resolve · verified professionals only" title="Closed, with after-photos." body="Only a verified local professional can be assigned. You get an update at every step, and the completion note and after-photos land in the same record." flip bullets={["The repair happens during a scheduled visit — your inspector stays on-site the whole time", "Requested → Assigned → In progress → Completed, live", "Completion note + after-photos in the same report; rate the provider after"]}><div className="mx-auto max-w-[420px]"><ResolveMock /></div></FeatureRow>
         </div>
       </section>
 

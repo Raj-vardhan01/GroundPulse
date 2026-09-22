@@ -29,7 +29,7 @@ export const plans: Plan[] = [
     includes: [
       "1 verified inspector visit — stays as long as it takes",
       "Room-by-room checklist, photos & video on every item",
-      "Report within the hour + health score",
+      "Report within the hour, with photos and video",
       "Approve or decline any flagged repair",
       "Add cleaning to the same visit — refresh +₹999, deep clean from +₹3,999 — or a car check (₹700)",
     ],
@@ -49,7 +49,7 @@ export const plans: Plan[] = [
     includes: [
       "4 inspections a year (one every quarter)",
       "2 refresh cleans a year — your whole home, at its size, inspector on site",
-      "Reports within the hour, health score trend",
+      "Reports within the hour, compared with your last visit",
       "Owner-approved repairs by verified pros",
       "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],
@@ -63,11 +63,11 @@ export const plans: Plan[] = [
     price3: 19999,
     price4: 24999,
     period: "per year",
-    tagline: "Inspections, cleaning and the repairs handled — up to ₹25,000 covered.",
+    tagline: "Inspections, cleaning and the repairs handled — up to ₹20,000 covered.",
     includes: [
       "Everything in Care — 4 inspections + 2 refresh cleans",
       "2 maintenance services (plumbing, electrical, anything) — done during a visit, inspector supervising",
-      "Repairs covered up to ₹25,000 a year (₹12,500 max per repair). Labour is always covered; parts are covered up to ₹5,000 per repair.",
+      "Repairs covered up to ₹20,000 a year (₹10,000 max per repair). We pay up to ₹7,000 of parts per repair; the rest of the cover goes to labour and miscellaneous expenses.",
       "Priority assignment of verified pros",
       "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],
@@ -79,6 +79,7 @@ export const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 /* ── Add-ons (any plan, any visit) ─────────────────────────────── */
 export const addOns = [
+  { id: "camera", name: "Full-visit video recording", price: 500, unit: "per visit", note: "Your inspector wears a body camera from the moment they walk in until they leave · you get the whole video on a private link" },
   { id: "cleaning", name: "Refresh clean", price: 999, unit: "on any visit", note: "Cobwebs, fans, floors, surfaces, taps run · added to a visit you are already booking · any size" },
   { id: "deep", name: "Deep clean", price: 3999, unit: "from · 1 BHK, on any visit", note: "Scrubbed, descaled, degreased · before/after photos · 2 BHK ₹4,499 · 3 BHK ₹5,499 · 4 BHK ₹6,499" },
   { id: "car", name: "Car inspection", price: 700, unit: "per car", note: "Start & idle, battery, tyres, leaks, odometer photo, cover check" },
@@ -101,7 +102,7 @@ export const comingHome = {
   lead: "Book 2–3 days before you land",
   steps: [
     { t: "Day 0 — you book", b: "Tell us your arrival date. No keys to courier, no neighbour to co-ordinate, nothing for you to organise from another country." },
-    { t: "Day 1 — inspector walks it", b: "A police-verified inspector opens with your OTP, runs the full checklist and films every room. You get the report within the hour — including anything broken, with a quote." },
+    { t: "Day 1 — inspector walks it", b: "A verified inspector goes in once you confirm, runs the full checklist and films every room. You get the report within the hour — including anything broken, with a quote." },
     { t: "Day 1 — crew cleans, supervised", b: "The cleaning crew works with your inspector on site the entire time. Before and after photographs of every room land in the same report — and the crew brings its own ladder, buckets and machines, because nobody is home to hand them anything." },
     { t: "Day 2 — repairs, if you approved any", b: "Anything you said yes to gets fixed before you arrive, by a verified pro, inspector present, after-photos attached." },
     { t: "The day you land", b: "You open the door to a clean, working house — and you already know everything about it, because you read the report on the plane." },
@@ -151,14 +152,14 @@ export const visitUseCases = ["Before you fly down", "After a storm or monsoon",
 
 /* ── Care+ cover terms (plain language) ──────────────────────── */
 export const carePlusCover = {
-  yearly: 25000,
-  perIncident: 12500,
-  partsPerIncident: 5000,
+  yearly: 20000,
+  perIncident: 10000,
+  partsPerIncident: 7000,
   terms: [
-    { t: "Up to ₹25,000 a year", b: "The total value of repairs we cover across your plan year." },
-    { t: "Up to ₹12,500 per incident", b: "One repair can use at most half the yearly cover. The rest stays for later." },
+    { t: "Up to ₹20,000 a year", b: "The total value of repairs we cover across your plan year." },
+    { t: "Up to ₹10,000 per incident", b: "One repair can use at most half the yearly cover. The rest stays for later." },
     { t: "Labour fully included", b: "The verified provider's work — plumbing, electrical, carpentry, masonry — is on us, every time." },
-    { t: "Parts: we pay up to ₹5,000 per incident", b: "Taps, traps, switches, wiring, small motors, fittings — we pay the first ₹5,000 of parts on every incident. If parts come to ₹7,000, we pay ₹5,000 and you pay ₹2,000 at cost — only after you approve the quote. Labour stays fully on us." },
+    { t: "Parts: we pay up to ₹7,000 per incident", b: "Taps, traps, switches, wiring, small motors, fittings — we pay up to ₹7,000 of parts on every incident. The rest of the per-incident cover goes to labour and miscellaneous expenses. Anything beyond the cover is quoted and only happens after you approve it." },
     { t: "Only through verified providers", b: "Cover applies to repairs assigned by us, done during a visit with your inspector present. Outside bills aren't covered." },
   ],
   excluded: [
@@ -171,7 +172,7 @@ export const carePlusCover = {
   examples: [
     { s: "Leak under the bathroom sink — new trap + sealing", cost: "₹1,800", r: "Fully covered", ok: true },
     { s: "Bedroom MCB tripping — 2 switches + rewiring a point", cost: "₹3,200", r: "Fully covered", ok: true },
-    { s: "Kitchen motor + pipe — parts ₹7,000 + labour ₹1,500", cost: "₹8,500", r: "We pay ₹6,500 (₹5,000 parts + all labour) · you pay ₹2,000", ok: true },
+    { s: "Kitchen motor + pipe — parts ₹9,000 + labour ₹1,500", cost: "₹10,500", r: "We pay ₹8,500 (₹7,000 parts + labour) · you pay ₹2,000", ok: true },
     { s: "Geyser burst — new geyser ₹11,000 + fitting ₹1,200", cost: "₹12,200", r: "Fitting covered · geyser excluded (appliance)", ok: false },
     { s: "Terrace waterproofing", cost: "₹40,000", r: "Excluded (structural) — we quote it, you decide", ok: false },
   ],

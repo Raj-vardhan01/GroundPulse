@@ -8,6 +8,7 @@ import { AdminMock, InspectorJobsMock, OwnerDashMock, ProviderJobsMock } from "@
 import { Trust } from "@/components/home/Trust";
 import { CTA } from "@/components/home/CTA";
 import { cn } from "@/lib/cn";
+import { BetaNote } from "@/components/shared/BetaNote";
 
 export const metadata: Metadata = {
   title: "Inside the StillYours App",
@@ -37,6 +38,7 @@ export default function Page() {
   return (
     <>
       <PageHero eyebrow="The platform" title={<>Inside the StillYours app</>} lede="Owner, inspector, admin and provider all work inside the same record — each seeing only what their role should. Not hidden in the interface. Enforced by the server." />
+      <BetaNote className="mt-6" />
 
       <section className="wrap mt-6 grid gap-3 sm:grid-cols-2 md:mt-8 lg:grid-cols-4">
         {seats.map((s, i) => (

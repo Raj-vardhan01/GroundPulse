@@ -62,7 +62,7 @@ export default function Page() {
                   [ShieldIcon, "Police-verification certificate"],
                   [UserCheck, "Two references, actually called"],
                   [ClipboardCheck, "Supervised trial inspection"],
-                  [KeyRound, "Every visit starts with the owner's OTP"],
+                  [KeyRound, "Every visit starts with the owner's go-ahead"],
                   [MapPinned, "GPS + time-stamp on every photo"],
                   [Star, "Rated by the owner after every job"],
                 ].map(([I, t], i) => {

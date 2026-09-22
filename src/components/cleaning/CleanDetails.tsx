@@ -240,7 +240,7 @@ export function ComingBack() {
       I: DoorOpen,
       t: "What happens on the day",
       list: [
-        "Your inspector opens on your OTP — no keys with a neighbour, nobody home",
+        "Your inspector lets the crew in — nobody from your family needs to be there",
         "The full 42-item inspection runs while the crew works, not instead of it",
         "The crew deep cleans room by room with the inspector on site the entire time",
         "Every room photographed from the same spot before they start and after they finish",
@@ -254,7 +254,7 @@ export function ComingBack() {
         "Before and after of every room, so you judge the clean yourself",
         "The condition report — leaks, damp, electricals, locks, water, gas",
         "Anything broken, photographed and quoted, with nothing touched until you say yes",
-        "A health score you can compare against the next visit",
+        "A report you can compare against the next visit",
         "Approve a repair from wherever you are and it is done before you land",
       ],
     },

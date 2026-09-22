@@ -17,7 +17,8 @@ export const organizationLd = {
   legalName: site.company.replace(" (registration in progress)", ""),
   slogan: site.tagline,
   url: SITE_URL,
-  email: site.email,
+  email: site.contactEmail,
+  sameAs: [site.instagram],
   logo: abs("/logo.png"),
   image: abs("/opengraph-image.png"),
   description:
