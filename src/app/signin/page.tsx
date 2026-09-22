@@ -6,6 +6,7 @@ import { Logo } from "@/components/ui/Logo";
 import { currentUser } from "@/lib/auth";
 import { switchAccount } from "@/lib/actions";
 import { SignInForm } from "./SignInForm";
+import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -89,16 +90,26 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
                 {mismatch && wants === "owner" && " Your properties are on a different number."}
               </p>
 
-              <Link href={home as Route} className="btn btn-accent mt-7 w-full">
-                {user.role === "inspector" ? "Go to my jobs" : "Go to my properties"} <ArrowRight size={16} />
-              </Link>
+              {/* On a mismatch the obvious button has to be the one that
+                  gets them out of the wrong account. Leading with "go to
+                  my properties" is how somebody following an inspector
+                  link ends up in the owner app. */}
+              <div className={cn("mt-7 grid gap-3", mismatch && "[&>form]:order-first")}>
+                <Link href={home as Route} className={cn("w-full", mismatch ? "btn btn-white" : "btn btn-accent")}>
+                  {user.role === "inspector" ? "Go to my jobs" : "Go to my properties"}
+                  {!mismatch && <ArrowRight size={16} />}
+                </Link>
 
-              <form action={switchAccount} className="mt-3">
-                <input type="hidden" name="as" value={wants} />
-                <button className="btn btn-white w-full">
-                  <LogOut size={15} /> Sign in as somebody else
-                </button>
-              </form>
+                <form action={switchAccount}>
+                  <input type="hidden" name="as" value={wants} />
+                  <button className={cn("w-full", mismatch ? "btn btn-accent" : "btn btn-white")}>
+                    <LogOut size={15} />
+                    {mismatch
+                      ? wants === "inspector" ? "Sign in as an inspector" : "Sign in as the owner"
+                      : "Sign in as somebody else"}
+                  </button>
+                </form>
+              </div>
 
               <p className="t-small mt-4 text-center leading-snug">
                 One number, one account. Signing in as somebody else ends this session on this device — nothing on either account changes.

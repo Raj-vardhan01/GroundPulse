@@ -19,6 +19,7 @@ import { LIMIT } from "@/lib/offer";
 import type { User } from "@/lib/types";
 
 const COOKIE = "sy_session";
+const OTP_COOKIE = "sy_otp";
 const SESSION_DAYS = 30;
 
 /* The session lives in the cookie itself, signed — not as an id looked
@@ -65,7 +66,6 @@ function unseal(token: string): { u: string; e: number } | null {
   }
 }
 const OTP_MINUTES = 10;
-const MAX_ATTEMPTS = 5;
 
 /** Digits only, so "+91 90000 00000" and "9000000000" are one person. */
 export const normalisePhone = (raw: string) => raw.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
@@ -80,42 +80,68 @@ async function sendSms(phone: string, code: string) {
   return false;
 }
 
+/* The pending code travels in its own short-lived cookie rather than in
+   the store, for the same reason the session does: the instance that
+   sends the code is not necessarily the one that checks it, and an
+   owner should not be told their code expired because their second
+   request landed somewhere else.
+
+   Only an HMAC of the code is in the cookie, so reading it — even your
+   own — tells you nothing without the server's secret. */
+const otpHash = (phone: string, code: string) => sign(`${phone}:${code}`);
+
 export async function startOtp(rawPhone: string) {
   const phone = normalisePhone(rawPhone);
   if (!isPhone(phone)) return { ok: false as const, error: "That does not look like an Indian mobile number." };
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = new Date(Date.now() + OTP_MINUTES * 60_000).toISOString();
-  await mutate((d) => {
-    d.otps = d.otps.filter((o) => o.phone !== phone);
-    d.otps.push({ phone, code, expiresAt, attempts: 0 });
+  const body = b64(JSON.stringify({ p: phone, h: otpHash(phone, code), e: Date.now() + OTP_MINUTES * 60_000 }));
+  const jar = await cookies();
+  jar.set(OTP_COOKIE, `${body}.${sign(body)}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: OTP_MINUTES * 60,
   });
 
   const sent = await sendSms(phone, code);
   return { ok: true as const, phone, devCode: sent ? null : code };
 }
 
+function openOtp(token: string | undefined): { p: string; h: string; e: number } | null {
+  if (!token) return null;
+  const [body, sig] = token.split(".");
+  if (!body || !sig) return null;
+  const expected = sign(body);
+  if (sig.length !== expected.length) return null;
+  if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    return JSON.parse(unb64(body)) as { p: string; h: string; e: number };
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyOtp(rawPhone: string, rawCode: string) {
   const phone = normalisePhone(rawPhone);
   const code = rawCode.replace(/\D/g, "");
-  const d = await db();
-  const otp = d.otps.find((o) => o.phone === phone);
+  const jar = await cookies();
+  const otp = openOtp(jar.get(OTP_COOKIE)?.value);
 
-  if (!otp) return { ok: false as const, error: "Ask for a new code — that one has expired." };
-  if (new Date(otp.expiresAt) < new Date()) return { ok: false as const, error: "That code has expired. Send a new one." };
-  if (otp.attempts >= MAX_ATTEMPTS) return { ok: false as const, error: "Too many tries. Send a new code." };
-  if (otp.code !== code) {
-    await mutate((s) => { const o = s.otps.find((x) => x.phone === phone); if (o) o.attempts++; });
-    return { ok: false as const, error: "That code is not right." };
-  }
+  if (!otp || otp.p !== phone) return { ok: false as const, error: "Ask for a new code — that one has expired." };
+  if (otp.e < Date.now()) return { ok: false as const, error: "That code has expired. Send a new one." };
+  if (otp.h !== otpHash(phone, code)) return { ok: false as const, error: "That code is not right." };
+
+  jar.delete(OTP_COOKIE);
+
+  const d = await db();
+  const isNew = !d.users.some((u) => u.phone === phone);
 
   /* One sign-in for everybody. An inspector's number is already on a
      row with role "inspector" — put there by an admin when they were
      verified — so the same six digits land them on /field instead. */
-  const existing = d.users.find((u) => u.phone === phone);
-  const isNew = !existing;
   const user = await mutate((s) => {
-    s.otps = s.otps.filter((o) => o.phone !== phone);
     let u = s.users.find((x) => x.phone === phone);
     if (!u) {
       /* The launch offer is the first ten owners, in the order they
