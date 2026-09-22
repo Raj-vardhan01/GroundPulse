@@ -95,6 +95,25 @@ full-resolution original to object storage and keeps only the pointer.
 
 Owners are `9000000000` (Priya, the main demo), `9000000011`, `9000000012`.
 
+### What persists, and what does not
+
+Sessions are a signed cookie, so staying signed in works everywhere —
+locally, and across serverless instances in production.
+
+Everything else still lives in the JSON store, and that is per-process:
+
+- **The seeded demo** (Priya, the three inspectors, their properties,
+  reports and jobs) is rebuilt identically wherever the app runs, so
+  browsing it in production is solid.
+- **Anything created at runtime** — a new booking, an approved repair, a
+  brand-new account — lives only on the instance that handled the
+  request. Locally that is one process and it persists. In production it
+  may not survive the next request.
+
+So: demo and click through anywhere; test the flows that *write*
+something on localhost. Moving `store.ts` onto Postgres removes the
+distinction entirely.
+
 ### Where the data lives
 
 Locally, in one JSON file at `.data/store.json`, seeded on first run
