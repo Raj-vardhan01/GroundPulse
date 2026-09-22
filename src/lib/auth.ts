@@ -11,6 +11,7 @@
    MSG91 or Twilio and that stops happening on its own.
    ════════════════════════════════════════════════════════════════ */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, mutate, now, uid } from "@/lib/store";
@@ -19,6 +20,50 @@ import type { User } from "@/lib/types";
 
 const COOKIE = "sy_session";
 const SESSION_DAYS = 30;
+
+/* The session lives in the cookie itself, signed — not as an id looked
+   up in a table.
+
+   A stored session needs every server that might answer a request to
+   see the same store. On a serverless host they do not: each instance
+   has its own memory, so an owner who signed in on one instance was a
+   stranger to the next and got thrown back to the sign-in page
+   mid-booking. A signed cookie any instance can verify removes the
+   lookup entirely — and it is the same shape a real deployment uses,
+   so none of this is throwaway. */
+const SECRET =
+  process.env.SESSION_SECRET ||
+  // Fine locally, where the only person holding a cookie is you. In
+  // production set SESSION_SECRET; without it a redeploy changes the
+  // key and signs everybody out, which is the safe way to fail.
+  "stillyours-dev-secret-not-for-production";
+
+const b64 = (s: string) => Buffer.from(s).toString("base64url");
+const unb64 = (s: string) => Buffer.from(s, "base64url").toString();
+const sign = (body: string) => createHmac("sha256", SECRET).update(body).digest("base64url");
+
+/** `<payload>.<signature>` — unreadable to nobody, unforgeable to everybody. */
+function seal(userId: string, expiresAt: number) {
+  const body = b64(JSON.stringify({ u: userId, e: expiresAt }));
+  return `${body}.${sign(body)}`;
+}
+
+function unseal(token: string): { u: string; e: number } | null {
+  const [body, sig] = token.split(".");
+  if (!body || !sig) return null;
+  const expected = sign(body);
+  /* Constant-time, so the comparison cannot be used to guess a signature
+     one character at a time. */
+  if (sig.length !== expected.length) return null;
+  if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    const payload = JSON.parse(unb64(body)) as { u: string; e: number };
+    if (!payload.u || payload.e < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 const OTP_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
 
@@ -93,14 +138,9 @@ export async function verifyOtp(rawPhone: string, rawCode: string) {
 }
 
 async function openSession(userId: string) {
-  const id = uid();
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString();
-  await mutate((d) => {
-    d.sessions = d.sessions.filter((s) => new Date(s.expiresAt) > new Date());
-    d.sessions.push({ id, userId, createdAt: now(), expiresAt });
-  });
+  const expiresAt = Date.now() + SESSION_DAYS * 86_400_000;
   const jar = await cookies();
-  jar.set(COOKIE, id, {
+  jar.set(COOKIE, seal(userId, expiresAt), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -111,20 +151,18 @@ async function openSession(userId: string) {
 
 export async function signOut() {
   const jar = await cookies();
-  const id = jar.get(COOKIE)?.value;
-  if (id) await mutate((d) => { d.sessions = d.sessions.filter((s) => s.id !== id); });
   jar.delete(COOKIE);
 }
 
 /** The signed-in user, or null. Safe to call from any server component. */
 export async function currentUser(): Promise<User | null> {
   const jar = await cookies();
-  const id = jar.get(COOKIE)?.value;
-  if (!id) return null;
+  const token = jar.get(COOKIE)?.value;
+  if (!token) return null;
+  const session = unseal(token);
+  if (!session) return null;
   const d = await db();
-  const session = d.sessions.find((s) => s.id === id);
-  if (!session || new Date(session.expiresAt) < new Date()) return null;
-  return d.users.find((u) => u.id === session.userId) ?? null;
+  return d.users.find((u) => u.id === session.u) ?? null;
 }
 
 /** Guard for everything under /app. Sends people to sign in, and new

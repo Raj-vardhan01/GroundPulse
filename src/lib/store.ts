@@ -31,13 +31,19 @@ const globalForStore = globalThis as unknown as { _db?: DB };
 
 function load(): DB {
   if (globalForStore._db) return globalForStore._db;
-  try {
+
+  if (fs.existsSync(FILE)) {
+    /* Only a missing file means "first run". Re-seeding because a read
+       glitched would quietly delete somebody's properties, so a damaged
+       file is left exactly where it is and the request fails loudly
+       instead. */
     const raw = fs.readFileSync(FILE, "utf8");
     globalForStore._db = JSON.parse(raw) as DB;
-  } catch {
-    globalForStore._db = seed();
-    flush();
+    return globalForStore._db!;
   }
+
+  globalForStore._db = seed();
+  flush();
   return globalForStore._db!;
 }
 
