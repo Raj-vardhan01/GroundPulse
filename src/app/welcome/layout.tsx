@@ -2,10 +2,16 @@ import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { requireOwner } from "@/lib/auth";
 import { doSignOut } from "@/lib/actions";
+import { notFound } from "next/navigation";
+import { APPS_LIVE } from "@/lib/flags";
 
 export const metadata = { title: "Welcome", robots: { index: false } };
 
 export default async function WelcomeLayout({ children }: LayoutProps<"/welcome">) {
+  /* Hiding the links is not enough — anybody with the URL would still
+     reach a sign-in form we are not ready for. */
+  if (!APPS_LIVE) notFound();
+
   await requireOwner({ allowOnboarding: true });
   return (
     <div className="app-scope min-h-dvh bg-paper">

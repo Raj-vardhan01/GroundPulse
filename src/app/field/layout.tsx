@@ -5,6 +5,8 @@ import { requireInspector } from "@/lib/auth";
 import { inspectorFor, STATUS_COPY } from "@/lib/field";
 import { FieldShell } from "@/components/field/FieldShell";
 import { doSignOut } from "@/lib/actions";
+import { notFound } from "next/navigation";
+import { APPS_LIVE } from "@/lib/flags";
 
 export const metadata: Metadata = {
   title: { default: "Today", template: "%s · StillYours field" },
@@ -12,6 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function FieldLayout({ children }: LayoutProps<"/field">) {
+  /* Hiding the links is not enough — anybody with the URL would still
+     reach a sign-in form we are not ready for. */
+  if (!APPS_LIVE) notFound();
+
   const user = await requireInspector();
   const ins = await inspectorFor(user.id);
 

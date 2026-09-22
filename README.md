@@ -25,6 +25,21 @@ npm run build && npm start
 | `/platform` | Four roles, admin dashboard, tech stack, roadmap |
 | `/access` | Early-access / application form (`?role=owner|inspector|provider`, `?address=`) |
 
+## Turning the apps on
+
+The owner and inspector apps are **off in production** and always on
+locally. In production every link to them is unrendered and the routes
+themselves 404, so nobody reaches a sign-in form before we are ready.
+
+```bash
+# when it is time to go live
+vercel env add NEXT_PUBLIC_APPS_LIVE production   # value: 1
+vercel --prod
+```
+
+That is the only switch — `src/lib/flags.ts`. Do it after the data
+layer is on Postgres, not before: see "What persists" below.
+
 ## The owner app
 
 | Route | What it is |

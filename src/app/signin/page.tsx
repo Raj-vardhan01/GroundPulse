@@ -7,6 +7,8 @@ import { currentUser } from "@/lib/auth";
 import { switchAccount } from "@/lib/actions";
 import { SignInForm } from "./SignInForm";
 import { cn } from "@/lib/cn";
+import { notFound } from "next/navigation";
+import { APPS_LIVE } from "@/lib/flags";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -38,6 +40,10 @@ const PANELS = {
 } as const;
 
 export default async function Page({ searchParams }: PageProps<"/signin">) {
+  /* Hiding the links is not enough — anybody with the URL would still
+     reach a sign-in form we are not ready for. */
+  if (!APPS_LIVE) notFound();
+
   const user = await currentUser();
   const sp = await searchParams;
   const wants = sp.as === "inspector" ? "inspector" : "owner";
