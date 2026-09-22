@@ -79,6 +79,7 @@ export const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
 
 /* ── Add-ons (any plan, any visit) ─────────────────────────────── */
 export const addOns = [
+  { id: "camera", name: "Full-visit video recording", price: 500, unit: "per visit", note: "Your inspector wears a body camera from the moment they walk in until they leave · you get the whole video on a private link" },
   { id: "cleaning", name: "Refresh clean", price: 999, unit: "on any visit", note: "Cobwebs, fans, floors, surfaces, taps run · added to a visit you are already booking · any size" },
   { id: "deep", name: "Deep clean", price: 3999, unit: "from · 1 BHK, on any visit", note: "Scrubbed, descaled, degreased · before/after photos · 2 BHK ₹4,499 · 3 BHK ₹5,499 · 4 BHK ₹6,499" },
   { id: "car", name: "Car inspection", price: 700, unit: "per car", note: "Start & idle, battery, tyres, leaks, odometer photo, cover check" },
