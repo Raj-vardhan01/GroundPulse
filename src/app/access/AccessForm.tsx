@@ -40,7 +40,7 @@ const sizeLabel: Record<Size, string> = { "2": "2 BHK", "3": "3 BHK", "4": "4 BH
 /* Add-on ceilings. Cars are capped by the parking you listed (never below 1),
    and a clean can be added once per inspection the plan actually buys. */
 const addOnCap = (id: string, parking: number, visits: number) =>
-  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" ? visits : 5;
+  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" || id === "camera" ? visits : 5;
 
 /* Cleaning is priced on /cleaning as an all-in package — crew, inspector,
    report. Here the inspector is already in the order, so the clean is shown
@@ -68,7 +68,7 @@ const roomLabel = (k: RoomKey, i: number, n: number) => (n > 1 ? `${roomOne[k]} 
    also falls under its repair cover. Rounded to ₹25 so no price reads like ₹113. */
 const planRateMult = (planId: string) => (planId === "care-plus" ? 1.5 : 1);
 const rateAt = (base: number, planId: string) => Math.round((base * planRateMult(planId)) / 25) * 25;
-const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { camera: Video, cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 export function AccessForm() {
   const params = useSearchParams();
@@ -91,7 +91,7 @@ export function AccessForm() {
     qService === "cleaning" || (!qService && ["deep", "cleaning"].includes(qp)) ? "cleaning" : "inspection"
   );
   const initialAdd: Record<string, number> = {};
-  if (["cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
+  if (["camera", "cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
   const [planId, setPlanId] = useState(allPlans.some((p) => p.id === qp) ? qp : qp === "plot" ? "plot-once" : "care");
   const qsize = params.get("size");
   const [size, setSize] = useState<Size>(qsize === "3" ? "3" : qsize === "4" || qsize === "5" ? "4" : "2");
@@ -501,7 +501,7 @@ export function AccessForm() {
                       </div>
                     </div>
                     <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com and we will pick it up straight away.</p>}
-                    <p className="mt-3 text-[12px] leading-relaxed text-white/75">Launch offer: the first ten owners get their first inspection free — we&apos;ll confirm on WhatsApp.</p>
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/75">Launch offer: the first ten owners get their first inspection free, with full-visit video recording included — we&apos;ll confirm on WhatsApp.</p>
                     <p className="mt-2 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
                   </>
                 )}

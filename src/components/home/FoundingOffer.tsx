@@ -13,6 +13,7 @@ const terms = [
   "For the first 10 owners — one free inspection per owner, not per visit",
   "Homes up to 2 BHK, in Bengaluru",
   "The full 42-item check, photos and video of every room, and your report within the hour",
+  "Your whole visit recorded on a body camera, start to finish — free for you (normally ₹500), and you get the full video",
   "Cleaning and repairs aren't included. Any repair you approve is at the professional's actual cost, with no StillYours fee",
   "No card needed. It never turns into a paid plan unless you choose one",
 ];
