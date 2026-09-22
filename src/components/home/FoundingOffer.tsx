@@ -23,12 +23,12 @@ export function FoundingOffer() {
       <Reveal>
         <div className="card grid gap-8 bg-ink p-6 text-white sm:p-10 md:grid-cols-[1fr_1.15fr] md:gap-10 md:p-12">
           <div>
-            <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-white/55">Founding 10 · Bengaluru</p>
+            <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-white/55">Launch offer · Bengaluru</p>
             <h3 className="t-2 mt-3 max-w-[14ch]">Your first inspection is free.</h3>
             <p className="mt-4 max-w-[42ch] text-[15.5px] leading-relaxed text-white/75">
               We&apos;re taking our first ten owners at no cost — to learn from you and get the service right before we charge anyone.
             </p>
-            <Link href="/access?plan=one-time" className="btn btn-white mt-7">Claim a founding spot <ArrowRight size={16} /></Link>
+            <Link href="/access?plan=one-time" className="btn btn-white mt-7">Book your free inspection <ArrowRight size={16} /></Link>
             <p className="mt-3 text-[13px] text-white/50">The offer closes when ten owners have booked.</p>
           </div>
 

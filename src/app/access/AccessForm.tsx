@@ -501,7 +501,7 @@ export function AccessForm() {
                       </div>
                     </div>
                     <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com and we will pick it up straight away.</p>}
-                    <p className="mt-3 text-[12px] leading-relaxed text-white/75">Founding 10: if you&apos;re one of our first ten owners, your first inspection is free — we&apos;ll confirm on WhatsApp.</p>
+                    <p className="mt-3 text-[12px] leading-relaxed text-white/75">Launch offer: the first ten owners get their first inspection free — we&apos;ll confirm on WhatsApp.</p>
                     <p className="mt-2 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
                   </>
                 )}
