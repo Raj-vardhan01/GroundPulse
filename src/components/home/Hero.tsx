@@ -32,6 +32,9 @@ export function Hero() {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(24,28,34,0.55)_0%,rgba(24,28,34,0.42)_42%,rgba(24,28,34,0.12)_64%,rgba(35,32,29,0.72)_100%)]" aria-hidden />
 
         <div className="relative z-10 mx-auto flex w-full max-w-[684px] flex-col items-center px-5 pt-14 text-center sm:pt-[72px] md:pt-[88px]">
+          <motion.a {...up(0.02)} href="#founding" className="mb-5 inline-flex h-9 items-center gap-1.5 rounded-full bg-white/[0.16] px-4 text-[13.5px] font-medium text-white backdrop-blur-sm transition hover:bg-white/25 [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.28)]">
+            Founding 10 · First inspection free <ArrowRight size={14} />
+          </motion.a>
           <motion.h1 {...up(0.1)} id="hero-title" className="serif t-display max-w-[16ch] text-balance text-white [text-shadow:0_2px_30px_rgba(0,0,0,0.35)]">
             Know your home is fine. From anywhere.
           </motion.h1>

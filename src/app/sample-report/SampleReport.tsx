@@ -55,7 +55,7 @@ function HomeReport({ approved, setApproved }: { approved: boolean; setApproved:
           </div>
           <div className="mt-5 grid gap-2.5 border-t border-line pt-5 sm:grid-cols-2">
             <Meta I={BadgeCheck} k="Inspector" v="Ravi K. · police-verified" />
-            <Meta I={KeyRound} k="Entered with OTP" v="13:02 · shared by Priya S." />
+            <Meta I={KeyRound} k="Entry confirmed" v="13:02 · by Priya S." />
             <Meta I={Clock} k="On-site" v="13:02 → 14:11 (1h 09m)" />
             <Meta I={MapPin} k="GPS" v="26.8524° N, 75.8072° E" />
             <Meta I={Video} k="Videos" v="10 of 10 slots · all filled" />

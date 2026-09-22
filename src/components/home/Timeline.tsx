@@ -17,7 +17,7 @@ const ours: Item[] = [
   { t: "Still Yours takes over from here", kind: "note" },
   { t: "You approve the repair", when: "1 tap", kind: "tint" },
   { t: "We find a verified local professional", when: "same day", kind: "tint" },
-  { t: "Pro does the work during a visit — inspector present", when: "live status", kind: "tint" },
+  { t: "Pro does the work during a visit — inspector present", when: "updates on WhatsApp", kind: "tint" },
   { t: "Verified pro fixes it. After-photos land in the same report!", when: "done", kind: "white" },
 ];
 const theirs: Item[] = [

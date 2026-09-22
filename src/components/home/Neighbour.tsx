@@ -79,7 +79,7 @@ export function Neighbour() {
                 <div>
                   <div className="text-[14.5px] font-medium">Bring your neighbour anyway.</div>
                   <p className="mt-1 text-[13px] leading-snug text-white/80">
-                    Want them at the door? Good. They can share the OTP, walk the whole visit with the inspector, and they get the same
+                    Want them at the door? Good. They can let the inspector in, walk the whole visit with the inspector, and they get the same
                     report you do. We&rsquo;d rather have another pair of eyes there.
                   </p>
                 </div>

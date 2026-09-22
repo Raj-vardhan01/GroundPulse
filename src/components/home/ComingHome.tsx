@@ -45,7 +45,7 @@ export function ComingHome() {
               </p>
               <ul className="mt-5 grid gap-2">
                 {[
-                  "Entry on your OTP — no keys couriered, no spare set with a neighbour",
+                  "Your inspector handles entry — nobody from your family needs to be there",
                   "A police-verified inspector on site the whole time the crew is working",
                   "Before and after photographs of every room, in the same report",
                   "Anything broken is found, quoted and fixed before you arrive",
