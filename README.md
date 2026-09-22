@@ -1,6 +1,10 @@
-# Still Yours — marketing site
+# Still Yours
 
-Multi-page marketing website for **Still Yours**, the smart remote property monitoring and maintenance platform (Project WEB-01).
+The marketing site **and** the owner app for **Still Yours** — the remote
+property monitoring and maintenance service (Project WEB-01).
+
+Everything runs in one Next.js app. The public pages live under
+`src/app/(marketing)`, the signed-in owner app under `src/app/app`.
 
 ## Run
 
@@ -20,6 +24,71 @@ npm run build && npm start
 | `/network` | For inspectors & service providers — verification flow, their apps, expectations |
 | `/platform` | Four roles, admin dashboard, tech stack, roadmap |
 | `/access` | Early-access / application form (`?role=owner|inspector|provider`, `?address=`) |
+
+## The owner app
+
+| Route | What it is |
+| --- | --- |
+| `/signin` | Phone-OTP sign in. Your number is the account — no password |
+| `/welcome` | Three-step first run: who you are → your property → your first visit |
+| `/app` | Home — portfolio health, whatever is waiting on your decision, a live visit in progress, your properties |
+| `/app/properties` · `/app/properties/[id]` | Every property, its health, its visits, its checklist, its access notes |
+| `/app/book` | Book a visit: property, service, plan or cleaning tier, add-ons, day and window, live price |
+| `/app/visits` · `/app/visits/[id]` | Booked → assigned → on the way → on site → report, with reschedule and cancel |
+| `/app/reports` · `/app/reports/[id]` | The full report: health score, chain of custody, room by room, and the approve/decline on every flagged issue |
+| `/app/plan` | Visits left, renewal date, and exactly what the Care+ repair cover absorbs |
+| `/app/billing` | Bills raised after a visit or an approved repair. Nothing before |
+| `/app/account` · `/app/activity` · `/app/help` | Profile, the whole audit trail, and the questions owners actually ask |
+
+### The demo account
+
+Sign in as **+91 90000 00000** (the code is shown on screen — see below) and you
+land in an account that has been running a while: three properties, a delivered
+report with a decision waiting, a visit happening right now, and a repair
+already closed out. Any other number creates a fresh account and walks the
+welcome flow.
+
+### Where the data lives
+
+Locally, in one JSON file at `.data/store.json`, seeded on first run
+(`src/lib/seed.ts`). No Postgres, no Docker, no connection string — `npm run
+dev` is the whole setup. Every read goes through `src/lib/queries.ts` and every
+write through `src/lib/actions.ts`, both scoped by owner, so moving to Postgres
+is a rewrite of `src/lib/store.ts` and nothing above it.
+
+```bash
+npm run reset   # clears the store; restart the dev server and it re-seeds
+```
+
+### Sign-in codes
+
+There is no SMS gateway, so the six-digit code is shown on the sign-in screen
+and marked as such. Set `SMS_PROVIDER_KEY` and wire `sendSms` in
+`src/lib/auth.ts` to MSG91 or Twilio, and it stops appearing.
+
+## Installing it on a phone
+
+The app is a PWA: `src/app/manifest.ts`, a small service worker in
+`public/sw.js`, maskable icons in `public/icons`, and an `/offline` card for
+when the connection drops. Account → **Add to home screen** always shows the
+steps for the phone you are holding.
+
+```bash
+npm run dev        # http://localhost:3000
+npm run dev:lan    # also reachable at http://<your-mac-ip>:3000
+npm run dev:https  # same, over HTTPS with a self-signed certificate
+```
+
+- **iPhone** — open the LAN address in Safari, Share → *Add to Home Screen*. It
+  opens full screen. Safari does not run the service worker over plain HTTP, so
+  the offline card only works on `localhost` or over HTTPS.
+- **Android** — Chrome only offers a real install over HTTPS, so use
+  `npm run dev:https` (accept the self-signed certificate warning) or a tunnel.
+  Over plain HTTP you still get a home-screen shortcut.
+
+The service worker never caches build output in development — it is registered
+as `/sw.js?dev=1`, which turns asset caching off, otherwise every CSS edit would
+be served from yesterday's cache.
 
 ## Stack
 

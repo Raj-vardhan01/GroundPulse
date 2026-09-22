@@ -210,6 +210,17 @@ body {
   }
 }
 
+/* The owner app is grids inside flex inside grids, and many of its rows pair a
+   column that truncates with one that must not (a price, a status, a button).
+   Grid and flex items default to min-width:auto, so the widest row sets the
+   width of its whole track — and on a phone that drags the page sideways.
+   Zeroing that floor lets every track shrink to the screen; the parts that must
+   keep their size already say so with `shrink-0`.
+
+   Deliberately outside @layer components: Tailwind prunes layered rules it
+   cannot tie back to a scanned class, and this one has to survive. */
+.app-scope :where(div, section, aside, article, header, ul, ol, li, form, dl, a, button, label) { min-width: 0; }
+
 @keyframes marquee { from { transform: translate3d(0,0,0);} to { transform: translate3d(-50%,0,0);} }
 .marquee-track { display: flex; width: max-content; animation: marquee 50s linear infinite; }
 @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

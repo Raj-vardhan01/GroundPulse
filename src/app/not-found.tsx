@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { Nav } from "@/components/site/Nav";
+import { Footer } from "@/components/site/Footer";
 
 export default function NotFound() {
   return (
+    <>
+    <Nav />
     <section className="wrap pt-[120px] pb-24 text-center md:pt-[160px]">
       <p className="t-label">404</p>
       <h1 className="serif t-display mt-3">This room isn't on the plan.</h1>
@@ -12,5 +16,7 @@ export default function NotFound() {
         <Link href="/pricing" className="btn btn-white">See pricing</Link>
       </div>
     </section>
+    <Footer />
+    </>
   );
 }

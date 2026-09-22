@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, DM_Serif_Display, JetBrains_Mono, Caveat } from "next/font/google";
 import "./globals.css";
-import { Nav } from "@/components/site/Nav";
-import { Footer } from "@/components/site/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { ServiceWorker } from "@/components/app/ServiceWorker";
 import { SITE_URL, organizationLd, websiteLd } from "@/lib/seo";
 
 const sans = DM_Sans({ variable: "--font-sans", subsets: ["latin"], weight: "variable", axes: ["opsz"] });
@@ -47,6 +46,16 @@ export const metadata: Metadata = {
     locale: "en_IN",
   },
   twitter: { card: "summary_large_image", title: "StillYours — Home & Property Inspection in Bengaluru", description: "A verified inspector checks your home, plot or car in Bengaluru. Photo-and-video report within an hour. No repair without your approval." },
+  manifest: "/manifest.webmanifest",
+  /* Added to an iPhone home screen this opens full screen, with the cream
+     ground running under the status bar rather than a white Safari strip. */
+  appleWebApp: { capable: true, title: "StillYours", statusBarStyle: "default" },
+  icons: { icon: "/icons/icon-192.png", apple: "/apple-touch-icon.png" },
+  /* Next emits the modern `mobile-web-app-capable`, which iOS only started
+     honouring in 16.4. The deprecated Apple spelling is what an older iPhone
+     reads, and it is the difference between a full-screen app and a Safari
+     window with a URL bar. */
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = { themeColor: "#fcfaf0", width: "device-width", initialScale: 1, viewportFit: "cover" };
@@ -56,9 +65,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en-IN" className={`${sans.variable} ${serif.variable} ${mono.variable} ${hand.variable} h-full`}>
       <body className="min-h-full flex flex-col">
         <JsonLd data={[organizationLd, websiteLd]} />
-        <Nav />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <ServiceWorker />
+        {children}
       </body>
     </html>
   );
