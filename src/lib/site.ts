@@ -4,6 +4,9 @@ export const site = {
   tagline: "Far away. Still yours.",
   city: "Bengaluru",
   email: "hello@stillyours.in",
+  contactEmail: "stillyours.care@gmail.com",
+  instagram: "https://www.instagram.com/stillyours.in",
+  instagramHandle: "@stillyours.in",
   company: "Still Yours Technologies Pvt. Ltd. (registration in progress)",
   address: "HSR Layout, Bengaluru 560102",
   founders: [

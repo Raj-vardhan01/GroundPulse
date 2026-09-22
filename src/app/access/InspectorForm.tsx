@@ -255,7 +255,7 @@ export function InspectorForm() {
 
         {/* mobile submit — the sticky aside is desktop-only */}
         <div className="lg:hidden">
-          <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={!allDeclared || sending} className="btn btn-accent w-full disabled:opacity-40">{sending ? "Sending\u2026" : <>Submit application <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in instead.</p>}
+          <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={!allDeclared || sending} className="btn btn-accent w-full disabled:opacity-40">{sending ? "Sending\u2026" : <>Submit application <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com instead.</p>}
           {!allDeclared && <p className="mt-2 text-center text-[12.5px] text-text-2">Tick all eight declarations to submit.</p>}
         </div>
       </div>
@@ -284,7 +284,7 @@ export function InspectorForm() {
         </div>
 
         <div className="card hidden bg-white p-6 shadow-card lg:block">
-          <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={!allDeclared || sending} className="btn btn-accent w-full disabled:opacity-40">{sending ? "Sending\u2026" : <>Submit application <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in instead.</p>}
+          <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={!allDeclared || sending} className="btn btn-accent w-full disabled:opacity-40">{sending ? "Sending\u2026" : <>Submit application <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com instead.</p>}
           <p className="mt-3 text-center text-[12.5px] text-text-2">
             {allDeclared ? "We read every application ourselves." : `${Object.values(decl).filter(Boolean).length} of ${declarations.length} declarations ticked.`}
           </p>

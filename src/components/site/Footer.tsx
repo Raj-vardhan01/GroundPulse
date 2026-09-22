@@ -32,7 +32,17 @@ export function Footer() {
         <div>
           <div className="t-label mb-3">Contact</div>
           <ul className="space-y-2 text-[15px] text-text-2">
-            <li>{site.email}</li>
+            <li><a href={`mailto:${site.contactEmail}`} className="hover:text-ink">{site.contactEmail}</a></li>
+            <li>
+              <a href={site.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-ink">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                </svg>
+                {site.instagramHandle}
+              </a>
+            </li>
             <li>Bengaluru (live) · Pune, Hyderabad, Jaipur next</li>
             <li>{site.address}</li>
           </ul>
