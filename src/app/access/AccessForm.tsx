@@ -75,6 +75,9 @@ export function AccessForm() {
   const initialRole = (params.get("role") as Role) || "owner";
   const [role, setRole] = useState<Role>(["owner", "inspector"].includes(initialRole) ? initialRole : "owner");
   const [done, setDone] = useState(false);
+  // Switching tabs must clear a previous submission, or an owner who just booked
+  // sees "You're on the list." on the (empty) inspector tab.
+  const switchRole = (r: Role) => { setRole(r); setDone(false); setSendError(null); };
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const address = params.get("address") || "";
@@ -201,13 +204,13 @@ export function AccessForm() {
           <div><p className="t-label">Get started</p><h1 className="t-1 mt-1">{role === "inspector" ? "Apply to inspect" : isClean ? "Build your cleaning quote" : "Set up your first visit"}</h1></div>
           <div className="hidden items-center gap-1 rounded-[12px] bg-beige p-1 sm:flex">
             {(["owner", "inspector"] as Role[]).map((r) => (
-              <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "inspector" ? "Apply as an inspector" : "Owner"}</button>
+              <button key={r} type="button" onClick={() => switchRole(r)} className={cn("h-10 rounded-[9px] px-4 text-[14px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>{r === "inspector" ? "Apply as an inspector" : "Owner"}</button>
             ))}
           </div>
         </div>
         <div className="mb-6 grid grid-cols-2 gap-1 rounded-[12px] bg-beige p-1 sm:hidden">
           {(["owner", "inspector"] as Role[]).map((r) => (
-            <button key={r} type="button" onClick={() => setRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "inspector" ? "Inspector" : "Owner"}</button>
+            <button key={r} type="button" onClick={() => switchRole(r)} className={cn("h-10 rounded-[9px] text-[13px] font-medium transition", role === r ? "bg-white text-ink shadow-card" : "text-text-2")}>{r === "inspector" ? "Inspector" : "Owner"}</button>
           ))}
         </div>
 
@@ -448,7 +451,7 @@ export function AccessForm() {
                         <div className="text-[30px] font-medium leading-none tracking-[-0.04em] tabular-nums">{inr(clean.total)}</div>
                       </div>
                     </div>
-                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in and we will pick it up straight away.</p>}
+                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {clean.tier.name.toLowerCase()} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com and we will pick it up straight away.</p>}
                     <p className="mt-3 text-[12px] leading-relaxed text-white/55">
                       Nobody needs to be home — entry on your OTP. Inspection on its own for a {bhkLabel[clean.size]} is {inr(visitPrice[clean.size])}; booked with a visit you already have, this clean is +{inr(clean.tier.rider[clean.size])}.
                     </p>
@@ -497,7 +500,7 @@ export function AccessForm() {
                         <div className="text-[30px] font-medium leading-none tracking-[-0.04em]">{inr(total)}</div>
                       </div>
                     </div>
-                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email hello@stillyours.in and we will pick it up straight away.</p>}
+                    <input type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" /><button type="submit" disabled={sending} className="btn btn-accent mt-2 w-full disabled:opacity-50">{sending ? "Sending…" : <>Confirm {plan.name} <ArrowRight size={16} /></>}</button>{sendError && <p role="alert" className="mt-3 rounded-[10px] bg-[#fbe6e6] p-3 text-[13px] text-[#8a2a2a]">{sendError} Please email stillyours.care@gmail.com and we will pick it up straight away.</p>}
                     <p className="mt-3 text-[12px] text-white/55">Live in Bengaluru · report within the hour · cancel a yearly plan within 30 days for a 75% refund</p>
                   </>
                 )}

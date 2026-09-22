@@ -23,7 +23,7 @@ export function CoverTerms() {
           <Reveal delay={0.08}>
             <div className="card h-full bg-beige p-5 sm:p-6">
               <div className="text-[16px] font-medium">Not covered</div>
-              <p className="t-small mt-1">We'll still inspect it, quote it and fix it if you approve — it just isn't part of the ₹25,000.</p>
+              <p className="t-small mt-1">We'll still inspect it, quote it and fix it if you approve — it just isn't part of the ₹20,000.</p>
               <ul className="mt-4 space-y-2">
                 {c.excluded.map((e) => <li key={e} className="flex items-start gap-2.5 text-[14px]"><span className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-fail-soft text-fail"><X size={11} strokeWidth={3} /></span>{e}</li>)}
               </ul>

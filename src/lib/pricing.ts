@@ -63,11 +63,11 @@ export const plans: Plan[] = [
     price3: 19999,
     price4: 24999,
     period: "per year",
-    tagline: "Inspections, cleaning and the repairs handled — up to ₹25,000 covered.",
+    tagline: "Inspections, cleaning and the repairs handled — up to ₹20,000 covered.",
     includes: [
       "Everything in Care — 4 inspections + 2 refresh cleans",
       "2 maintenance services (plumbing, electrical, anything) — done during a visit, inspector supervising",
-      "Repairs covered up to ₹25,000 a year (₹12,500 max per repair). Labour is always covered; parts are covered up to ₹5,000 per repair.",
+      "Repairs covered up to ₹20,000 a year (₹10,000 max per repair). We pay up to ₹7,000 of parts per repair; the rest of the cover goes to labour and miscellaneous expenses.",
       "Priority assignment of verified pros",
       "Cleaning on any visit: refresh +₹999 · deep clean from +₹3,999 · car ₹700",
     ],
@@ -151,14 +151,14 @@ export const visitUseCases = ["Before you fly down", "After a storm or monsoon",
 
 /* ── Care+ cover terms (plain language) ──────────────────────── */
 export const carePlusCover = {
-  yearly: 25000,
-  perIncident: 12500,
-  partsPerIncident: 5000,
+  yearly: 20000,
+  perIncident: 10000,
+  partsPerIncident: 7000,
   terms: [
-    { t: "Up to ₹25,000 a year", b: "The total value of repairs we cover across your plan year." },
-    { t: "Up to ₹12,500 per incident", b: "One repair can use at most half the yearly cover. The rest stays for later." },
+    { t: "Up to ₹20,000 a year", b: "The total value of repairs we cover across your plan year." },
+    { t: "Up to ₹10,000 per incident", b: "One repair can use at most half the yearly cover. The rest stays for later." },
     { t: "Labour fully included", b: "The verified provider's work — plumbing, electrical, carpentry, masonry — is on us, every time." },
-    { t: "Parts: we pay up to ₹5,000 per incident", b: "Taps, traps, switches, wiring, small motors, fittings — we pay the first ₹5,000 of parts on every incident. If parts come to ₹7,000, we pay ₹5,000 and you pay ₹2,000 at cost — only after you approve the quote. Labour stays fully on us." },
+    { t: "Parts: we pay up to ₹7,000 per incident", b: "Taps, traps, switches, wiring, small motors, fittings — we pay up to ₹7,000 of parts on every incident. The rest of the per-incident cover goes to labour and miscellaneous expenses. Anything beyond the cover is quoted and only happens after you approve it." },
     { t: "Only through verified providers", b: "Cover applies to repairs assigned by us, done during a visit with your inspector present. Outside bills aren't covered." },
   ],
   excluded: [
@@ -171,7 +171,7 @@ export const carePlusCover = {
   examples: [
     { s: "Leak under the bathroom sink — new trap + sealing", cost: "₹1,800", r: "Fully covered", ok: true },
     { s: "Bedroom MCB tripping — 2 switches + rewiring a point", cost: "₹3,200", r: "Fully covered", ok: true },
-    { s: "Kitchen motor + pipe — parts ₹7,000 + labour ₹1,500", cost: "₹8,500", r: "We pay ₹6,500 (₹5,000 parts + all labour) · you pay ₹2,000", ok: true },
+    { s: "Kitchen motor + pipe — parts ₹9,000 + labour ₹1,500", cost: "₹10,500", r: "We pay ₹8,500 (₹7,000 parts + labour) · you pay ₹2,000", ok: true },
     { s: "Geyser burst — new geyser ₹11,000 + fitting ₹1,200", cost: "₹12,200", r: "Fitting covered · geyser excluded (appliance)", ok: false },
     { s: "Terrace waterproofing", cost: "₹40,000", r: "Excluded (structural) — we quote it, you decide", ok: false },
   ],
