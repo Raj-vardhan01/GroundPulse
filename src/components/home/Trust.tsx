@@ -32,7 +32,7 @@ export function Trust() {
                 { I: BadgeCheck, t: "You know who's coming", b: "Name, photo and verified badge sent to you before the visit — no surprises at the door." },
                 { I: Star, t: "Rated after every job", b: "Owners rate every visit. Drop below the bar and you quietly leave the network." },
                 { I: FileCheck2, t: "Append-only audit log", b: "Who did what, when — on every issue and repair. Nobody can edit it." },
-                { I: ShieldCheck, t: "Protected up to ₹1,00,000", b: "For the very, very rare case. One verified person, your go-ahead, every room on video — it almost never comes up. But if it ever does, we pay. Not you." },
+                { I: ShieldCheck, t: "We fix what we damage", b: "If an inspector breaks something during a visit, we repair or replace it at our cost. Cupboards, wardrobes and lockers are never opened." },
               ].map(({ I, t, b }) => (
                 <div key={t} className="flex gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={16} /></span><div><div className="text-[15px] font-medium">{t}</div><div className="t-small mt-0.5">{b}</div></div></div>
               ))}

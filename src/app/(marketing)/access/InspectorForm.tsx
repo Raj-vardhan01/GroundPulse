@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowRight, BadgeCheck, Check, FileCheck2, Lock, Smartphone, UserCheck, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, Check, FileCheck2, KeyRound, Lock, Smartphone, UserCheck, Video, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
 
@@ -47,7 +47,9 @@ const declarations = [
   { I: Lock, t: "I will never enter a property without the owner's OTP", b: "No OTP, no checklist. The app will not open the visit without it." },
   { I: Lock, t: "I will never open cupboards, lockers, drawers or personal belongings", b: "Not even to check for damp. I photograph the outside and flag it instead." },
   { I: FileCheck2, t: "I accept that every visit is video-recorded, GPS-tagged and time-stamped", b: "The footage belongs to the owner and to Still Yours, and is admissible against me if I act badly." },
-  { I: Wallet, t: "I agree to place a refundable security deposit before my first solo visit", b: "Held for the duration of the engagement and returned in full when I leave in good standing. The amount is confirmed at the in-person interview." },
+  { I: Wallet, t: "I agree to a refundable deposit, held back from my fees", b: "₹500 from each of my first three payouts — ₹1,500 in all. It stays my money, and it comes back in full when I leave in good standing and return the camera in working order. No cash upfront." },
+  { I: Video, t: "I will wear the body camera on every visit", b: "It is Still Yours property, handed over against a signed receipt with its serial number. Footage is uploaded after each visit and wiped from the device — I keep no copy. If I lose or damage it, its replacement cost of ₹9,000 comes out of my fees." },
+  { I: KeyRound, t: "I will never open locked storage or keep an owner's keys", b: "No cupboards, wardrobes, lockers, safes or drawers. No cash accepted at a property. Keys go back to the caretaker or society the same day." },
   { I: FileCheck2, t: "I will sign an NDA and the Still Yours code of conduct", b: "Owner addresses, photographs and personal details never leave the platform." },
   { I: BadgeCheck, t: "I understand ratings below the bar end the engagement", b: "Owners rate every visit. Sustained low ratings, or one serious breach, and I leave the network." },
 ];
@@ -58,8 +60,8 @@ const shortlistSteps = [
   { t: "In-person interview, originals in hand", b: "You come to us in Bengaluru. We check the original Aadhaar, PAN and address proof against the copies you sent. No remote onboarding, ever." },
   { t: "Police verification filed", b: "We submit it with you and wait for it to come back. Nobody visits a home on a pending verification." },
   { t: "Both references called", b: "We call them ourselves and ask specific questions. A reference who won't pick up is a failed reference." },
-  { t: "Refundable security deposit", b: "Placed before the first solo visit, returned in full on leaving in good standing." },
-  { t: "Supervised trial inspection", b: "You shadow a senior inspector, then run one yourself with them watching. Your checklist and video are reviewed line by line." },
+  { t: "Camera handover and deposit", b: "You sign for the body camera and its serial number. ₹500 is held from each of your first three payouts and returned when you leave and hand it back." },
+  { t: "Your first two visits are with a founder", b: "One of us is beside you in the property, both times. Your checklist and video are reviewed line by line afterwards." },
   { t: "Probation — first five visits reviewed", b: "Every report you file in your first five visits is read by a human before it reaches the owner." },
   { t: "Solo visits, rated every time", b: "Only now do you get assigned on your own. And every owner rates you afterwards." },
 ];

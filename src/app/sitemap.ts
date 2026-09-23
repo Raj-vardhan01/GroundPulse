@@ -14,6 +14,7 @@ const routes: [path: string, priority: number, changeFrequency: MetadataRoute.Si
   ["/access", 0.7, "monthly"],
   ["/network", 0.6, "monthly"],
   ["/platform", 0.5, "monthly"],
+  ["/terms", 0.4, "yearly"],
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

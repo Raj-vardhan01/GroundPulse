@@ -19,6 +19,7 @@ export function Footer() {
             {footerLinks.map((l) => <li key={l.href}><Link href={l.href} className="hover:text-ink">{l.label}</Link></li>)}
             <li><Link href="/access" className="hover:text-ink">Early access</Link></li>
             <li><Link href="/platform" className="hover:text-ink">For investors & engineers</Link></li>
+            <li><Link href="/terms" className="hover:text-ink">Terms</Link></li>
             {APPS_LIVE && <li><Link href="/signin" className="hover:text-ink">Sign in</Link></li>}
             {APPS_LIVE && <li><Link href="/signin?as=inspector" className="hover:text-ink">Inspector sign in</Link></li>}
           </ul>
