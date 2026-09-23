@@ -48,7 +48,7 @@ export function Hero() {
             </Link>
           </motion.div>
           <motion.div {...up(0.5)} className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[14px] font-medium text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]">
-            <span>Live in Bengaluru</span><span className="h-3.5 w-px bg-white/40" /><span>Homes · Plots · Cars</span><span className="h-3.5 w-px bg-white/40" /><span>Every visit protected up to ₹1,00,000</span>
+            <span>Live in Bengaluru</span><span className="h-3.5 w-px bg-white/40" /><span>Homes · Plots · Cars</span><span className="h-3.5 w-px bg-white/40" /><span>We fix what we damage</span>
           </motion.div>
         </div>
 
@@ -68,7 +68,7 @@ export function Hero() {
         {/* stats row */}
         <motion.dl {...up(0.9)} className="relative z-10 mt-auto grid grid-cols-3 gap-4 px-5 pb-8 pt-16 text-center">
           <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">1 hr</dt><dd className="mt-0.5 text-[13px] text-white/80">report after every visit</dd></div>
-          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">₹1 lakh</dt><dd className="mt-0.5 text-[13px] text-white/80">if we're ever wrong</dd></div>
+          <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">42 items</dt><dd className="mt-0.5 text-[13px] text-white/80">checked every visit</dd></div>
           <div><dt className="text-[24px] font-medium tracking-[-0.03em] text-white sm:text-[28px]">100%</dt><dd className="mt-0.5 text-[13px] text-white/80">repairs owner-approved</dd></div>
         </motion.dl>
       </div>

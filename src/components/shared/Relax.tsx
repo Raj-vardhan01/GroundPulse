@@ -8,10 +8,10 @@ export const relaxPoints = [
   { I: Video, t: "Every room is on video.", b: "Every room you list is filmed, and we walk through the whole home on video before we leave." },
   { I: PhoneCall, t: "Watch the visit live, if you want.", b: "The inspector video-calls you at the start and the end — you, your parents or your caretaker see it live, from anywhere." },
   { I: ThumbsUp, t: "Nothing happens without your yes.", b: "Repairs, cleaning, money — your approval first, with the exact amount." },
-  { I: ShieldCheck, t: "Protected up to ₹1,00,000.", b: "For the very, very rare case. With a system this tight it almost never comes up — but if it ever does, we pay. Not you.", hero: true },
+  { I: ShieldCheck, t: "We fix what we damage.", b: "If we break something during a visit, we repair or replace it at our cost. Cupboards, wardrobes and lockers are never opened.", hero: true },
 ];
 
-export const relaxTagline = "One verified person. Your go-ahead before anyone enters. Every room on video — live if you want. Your approval for everything. And ₹1,00,000 if we're ever wrong.";
+export const relaxTagline = "One verified person. Your go-ahead before anyone enters. Every room on video — live if you want. Your approval for everything. And if we damage something, we fix it at our cost.";
 
 /** The same five lines everywhere — repetition is what builds the trust. */
 export function Relax({ variant = "strip", className }: { variant?: "strip" | "dark" | "list"; className?: string }) {
@@ -27,7 +27,7 @@ export function Relax({ variant = "strip", className }: { variant?: "strip" | "d
             </li>
           ))}
         </ul>
-        <p className="text-[12px] text-white/55">Cupboards and lockers are never opened. Lock cash and jewellery away — the rest is on us.</p>
+        <p className="text-[12px] text-white/55">Cupboards and lockers are never opened. Keep cash and jewellery locked away — and anything we damage, we fix.</p>
       </div>
     );
   }

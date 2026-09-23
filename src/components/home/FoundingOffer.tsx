@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, MessageCircle, Smartphone } from "lucide-react";
+import { ArrowRight, Check, MessageCircle, Smartphone, Users } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 
 /**
@@ -12,9 +12,12 @@ import { Reveal } from "@/components/ui/Reveal";
 const terms = [
   "For the first 10 owners — one free inspection per owner, not per visit",
   "Homes up to 2 BHK, in Bengaluru",
+  "One of the two of us who started StillYours does your visit in person — we are not sending anyone else",
   "The full 42-item check, photos and video of every room, and your report within the hour",
-  "Your whole visit recorded on a body camera, start to finish — free for you (normally ₹500), and you get the full video",
+  "Your whole visit recorded on a body camera, start to finish — and you get the full video",
+  "We never open cupboards, wardrobes or lockers, and your keys go back the same day",
   "Cleaning and repairs aren't included. Any repair you approve is at the professional's actual cost, with no StillYours fee",
+  "If we damage something while we're inside, we repair or replace it at our cost",
   "No card needed. It never turns into a paid plan unless you choose one",
 ];
 
@@ -27,7 +30,8 @@ export function FoundingOffer() {
             <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-white/55">Launch offer · Bengaluru</p>
             <h3 className="t-2 mt-3 max-w-[14ch]">Your first inspection is free.</h3>
             <p className="mt-4 max-w-[42ch] text-[15.5px] leading-relaxed text-white/75">
-              We&apos;re taking our first ten owners at no cost — to learn from you and get the service right before we charge anyone.
+              We&apos;re taking our first ten owners at no cost — and the two of us do these visits ourselves, so we learn the job
+              properly before anyone else ever walks into your home.
             </p>
             <Link href="/access?plan=one-time" className="btn btn-white mt-7">Book your free inspection <ArrowRight size={16} /></Link>
             <p className="mt-3 text-[13px] text-white/50">The offer closes when ten owners have booked.</p>
@@ -42,20 +46,28 @@ export function FoundingOffer() {
             ))}
           </ul>
 
-          <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+          <div className="grid gap-3 md:col-span-2 md:grid-cols-3">
             <div className="rounded-[14px] bg-white/[0.07] p-5">
               <div className="flex items-center gap-2 text-[15px] font-medium"><MessageCircle size={16} /> What we ask in return</div>
               <p className="mt-2 text-[14px] leading-relaxed text-white/70">
-                Honest feedback after the visit — what worked and what didn&apos;t. And your permission to share your report as an
-                example, with your name, address and anything personal blurred out. Rather not share it? Just say so — the inspection
-                stays free.
+                Honest feedback after the visit — what worked and what didn&apos;t. Your permission to share your report as an
+                example, with your name, address and anything personal blurred out. And permission to use what we learn on these ten
+                visits — the checklist, the photos, the recording — to train the inspectors we take on later. Rather not?
+                Just say so — the inspection stays free either way.
               </p>
             </div>
             <div className="rounded-[14px] bg-white/[0.07] p-5">
               <div className="flex items-center gap-2 text-[15px] font-medium"><Smartphone size={16} /> Our app is in beta</div>
               <p className="mt-2 text-[14px] leading-relaxed text-white/70">
-                Until it&apos;s ready, your report comes on WhatsApp and as a PDF, you approve repairs by message, and your inspector
-                video-calls you at the start and end of the visit.
+                Until it&apos;s ready, your report comes on WhatsApp and as a PDF, you approve repairs by message, and we
+                video-call you at the start and end of the visit.
+              </p>
+            </div>
+            <div className="rounded-[14px] bg-white/[0.07] p-5">
+              <div className="flex items-center gap-2 text-[15px] font-medium"><Users size={16} /> When we take on inspectors</div>
+              <p className="mt-2 text-[14px] leading-relaxed text-white/70">
+                Everyone is referred, met in person, and checked — Aadhaar, address proof, police verification and two references we
+                actually call. Their first two visits are done with one of us standing next to them.
               </p>
             </div>
           </div>

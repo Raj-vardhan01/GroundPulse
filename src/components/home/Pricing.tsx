@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Car, Check, Home, LandPlot, ShieldCheck, Sparkles, Video } from "lucide-react";
+import { ArrowRight, Car, Check, Home, LandPlot, ShieldCheck, Sparkles } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { addOns, assets, inr, plans, plotPlans, visitCovers, visitUseCases } from "@/lib/pricing";
@@ -12,7 +12,7 @@ import { bhkKeys, bhkLabel, coverage, tiers as cleanTiers } from "@/lib/cleaning
 import { FoundingOffer } from "@/components/home/FoundingOffer";
 
 const assetIcon = { home: Home, plot: LandPlot, car: Car } as const;
-const addOnIcon = { camera: Video, cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 type Tab = "home" | "clean" | "plot";
 const tabNote: Record<Tab, string> = {

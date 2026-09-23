@@ -40,7 +40,7 @@ const sizeLabel: Record<Size, string> = { "2": "2 BHK", "3": "3 BHK", "4": "4 BH
 /* Add-on ceilings. Cars are capped by the parking you listed (never below 1),
    and a clean can be added once per inspection the plan actually buys. */
 const addOnCap = (id: string, parking: number, visits: number) =>
-  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" || id === "camera" ? visits : 5;
+  id === "car" ? Math.max(1, parking) : id === "cleaning" || id === "deep" ? visits : 5;
 
 /* Cleaning is priced on /cleaning as an all-in package — crew, inspector,
    report. Here the inspector is already in the order, so the clean is shown
@@ -68,7 +68,7 @@ const roomLabel = (k: RoomKey, i: number, n: number) => (n > 1 ? `${roomOne[k]} 
    also falls under its repair cover. Rounded to ₹25 so no price reads like ₹113. */
 const planRateMult = (planId: string) => (planId === "care-plus" ? 1.5 : 1);
 const rateAt = (base: number, planId: string) => Math.round((base * planRateMult(planId)) / 25) * 25;
-const addOnIcon = { camera: Video, cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
+const addOnIcon = { cleaning: Sparkles, deep: Sparkles, car: Car, plot: LandPlot } as const;
 
 export function AccessForm() {
   const params = useSearchParams();
@@ -91,7 +91,7 @@ export function AccessForm() {
     qService === "cleaning" || (!qService && ["deep", "cleaning"].includes(qp)) ? "cleaning" : "inspection"
   );
   const initialAdd: Record<string, number> = {};
-  if (["camera", "cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
+  if (["cleaning", "deep", "car", "plot"].includes(qp)) initialAdd[qp] = 1;
   const [planId, setPlanId] = useState(allPlans.some((p) => p.id === qp) ? qp : qp === "plot" ? "plot-once" : "care");
   const qsize = params.get("size");
   const [size, setSize] = useState<Size>(qsize === "3" ? "3" : qsize === "4" || qsize === "5" ? "4" : "2");
@@ -412,7 +412,7 @@ export function AccessForm() {
                   </label>
                   <label className="mt-3 flex items-start gap-3 rounded-[12px] bg-paper p-3.5 text-[13.5px]">
                     <input type="checkbox" name="valuablesAck" required className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
-                    <span><span className="font-medium">Valuables are locked away.</span> Cash, jewellery and documents are in a locked cupboard or not at the property. Inspectors never open cupboards or lockers, and every visit is protected up to ₹1 lakh under the Still Yours Guarantee.</span>
+                    <span><span className="font-medium">Valuables are locked away.</span> Cash, jewellery and documents are in a locked cupboard or not at the property. Inspectors never open cupboards, wardrobes or lockers. If we damage something during the visit, we fix it at our cost.</span>
                   </label>
                 </div>
               </div>
