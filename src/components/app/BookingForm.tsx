@@ -7,11 +7,11 @@ import { Car, Check, ClipboardCheck, Gift, Info, LandPlot, MapPin, MapPinOff, Mi
 import { bookVisit, type FormState } from "@/lib/actions";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { DayPicker, firstBookable } from "@/components/app/DayPicker";
-import { quote, inr, SLOTS } from "@/lib/quote";
+import { advanceOf, quote, inr, SLOTS } from "@/lib/quote";
 import { plans } from "@/lib/pricing";
 import { tiers, bhkLabel } from "@/lib/cleaning";
 import { blockedBecause, eligible, hasFreeVisit, qualifies, terms } from "@/lib/offer";
-import { isServiced, HOME_CITY } from "@/lib/city";
+import { inServiceArea, HOME_CITY } from "@/lib/city";
 import { extraRooms } from "@/lib/rooms";
 import { cn } from "@/lib/cn";
 import type { Property, User, VisitKind } from "@/lib/types";
@@ -71,7 +71,7 @@ export function BookingForm({
   const property = properties.find((p) => p.id === propertyId);
   const plan = property ? planInfo[property.id] : undefined;
   const isPlot = property?.kind === "plot";
-  const served = property ? isServiced(property.city) : true;
+  const served = property ? inServiceArea(property) : true;
 
   const init = defaultsFor(property, true);
   const [service, setService] = useState<VisitKind>("inspection");
@@ -209,7 +209,7 @@ export function BookingForm({
             <MapPinOff size={18} className="mt-0.5 shrink-0 text-warn" />
             <div>
               <div className="text-[15px] font-semibold">We are not in {property.city} yet.</div>
-              <p className="t-small mt-1 leading-snug">Our inspectors are in {HOME_CITY} for now, so a visit here could not be walked. If the city on this property is wrong, <Link href={`/app/properties/${property.id}/edit` as Route} className="font-medium text-accent underline underline-offset-4">correct it</Link>.</p>
+              <p className="t-small mt-1 leading-snug">We cover {HOME_CITY} and 20 km around it, so a visit here could not be walked{property.pin ? "" : " — or the property is not pinned yet, so we cannot tell how far it is"}. If the city on this property is wrong, <Link href={`/app/properties/${property.id}/edit` as Route} className="font-medium text-accent underline underline-offset-4">correct it</Link>.</p>
             </div>
           </section>
         )}
@@ -255,7 +255,7 @@ export function BookingForm({
                             {p.popular && !plan && <span className="chip chip-accent">Most chosen</span>}
                             {offerOpen && p.id === "one-time" && property && qualifies(property) && <span className="chip chip-pass">Free for you</span>}
                           </div>
-                          <p className="t-small mt-1 leading-snug">{plan ? "On top of your plan's inspections — billed after the visit." : p.tagline}</p>
+                          <p className="t-small mt-1 leading-snug">{plan ? "On top of your plan's inspections — 25% when you book." : p.tagline}</p>
                         </div>
                         <div className="shrink-0 text-right">
                           <div className="text-[17px] font-medium tabular-nums">{offerOpen && p.id === "one-time" && property && qualifies(property) ? <><span className="mr-1 text-[14px] font-normal text-text-3 line-through">{inr(price)}</span>free</> : inr(price)}</div>
@@ -385,23 +385,34 @@ export function BookingForm({
           <div className="flex items-baseline justify-between lg:mt-4 lg:border-t lg:border-line lg:pt-4">
             <span className="min-w-0">
               <span className="block text-[14px] font-medium">{q.lines[0]?.k ?? "Total"}</span>
-              <span className="t-small block lg:hidden">{q.period} · billed after the visit</span>
+              <span className="t-small block lg:hidden">{q.period}{q.total ? ` · ${inr(advanceOf(q.total))} now` : ""}</span>
             </span>
             <span className="text-[24px] font-medium tabular-nums tracking-[-0.03em]">{inr(q.total)}</span>
           </div>
           <p className="t-small mt-1 hidden text-right lg:block">
             {q.saved > 0 ? `${inr(q.saved)} off — launch offer` : q.recurring ? "for the year · four inspections" : q.period}
           </p>
+          {q.total > 0 && (
+            <div className="mt-3 grid gap-1 rounded-[12px] bg-paper px-3.5 py-3 text-[13px] tabular-nums">
+              <div className="flex justify-between font-medium"><span>Pay now to confirm · 25%</span><span>{inr(advanceOf(q.total))}</span></div>
+              <div className="flex justify-between text-text-2"><span>When the report is ready · 75%</span><span>{inr(q.total - advanceOf(q.total))}</span></div>
+            </div>
+          )}
 
           {state.error && <p className="mt-3 rounded-[10px] bg-fail-soft px-3 py-2.5 text-[13px] text-[#b03434]" role="alert">{state.error}</p>}
 
           <SubmitButton className={cn("mt-4 w-full", !served && "pointer-events-none opacity-50")} pendingLabel="Booking…">
-            {founding ? "Book my free inspection" : usePlan ? "Book this plan inspection" : welcome ? "Book my first visit" : "Confirm booking"}
+            {q.total > 0 ? `Book and pay ${inr(advanceOf(q.total))}` : founding ? "Book my free inspection" : usePlan ? "Book this plan inspection" : welcome ? "Book my first visit" : "Confirm booking"}
           </SubmitButton>
+          <p className="t-small mt-2 text-center leading-snug">
+            By booking you agree to our <Link href="/terms" className="underline underline-offset-2">Terms</Link> and <Link href={"/refunds" as Route} className="underline underline-offset-2">Refund &amp; Cancellation Policy</Link>.
+          </p>
           <p className="t-small mt-3 hidden leading-snug lg:block">
-            {q.recurring
-              ? "Nothing is charged now. The plan is billed with its first visit, once it has happened — and you can move or cancel any visit free until the day before."
-              : "Nothing is charged now. The bill comes once the visit has happened — and you can move or cancel it free until the day before."}
+            {q.total === 0
+              ? "Nothing to pay. You can move or cancel it free until the day before."
+              : q.recurring
+                ? "25% of the plan now, the rest when the first report is ready — the full report opens once it is paid. Move or cancel any visit free until the day before; a cancelled advance is refunded."
+                : "25% now, the rest when the report is ready — the full report opens once it is paid. Move or cancel free until the day before; a cancelled advance is refunded."}
           </p>
         </div>
         {welcome && <Link href="/app" className="t-small mt-3 block text-center underline underline-offset-4">Skip for now — I will book later</Link>}

@@ -8,6 +8,7 @@ import {
 import { requireOwner } from "@/lib/auth";
 import { isOverdue, visitView } from "@/lib/queries";
 import { Panel, PanelHead, StatusPill, money, visitLook } from "@/components/app/ui";
+import { PayButton } from "@/components/app/PayButton";
 import { VisitActions } from "@/components/app/VisitActions";
 import { EntryCode } from "@/components/app/EntryCode";
 import { RateVisit } from "@/components/app/RateVisit";
@@ -39,15 +40,16 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
   const view = await visitView(user.id, id);
   if (!view) notFound();
 
-  const { visit: v, property: p, inspector, report, heldForReview, invoice, subscription, tickets } = view;
+  const { visit: v, property: p, inspector, report, heldForReview, invoice, advance, balance, subscription, tickets } = view;
+  const unpaid = v.status === "unpaid";
   const cancelled = v.status === "cancelled";
   const reached = ORDER.indexOf(v.status);
   const look = visitLook(v.status);
   const blocks = blocksFor(p, v);
-  const movable = ["scheduled", "assigned"].includes(v.status);
+  const movable = ["unpaid", "scheduled", "assigned"].includes(v.status);
   const overdue = isOverdue(v);
   const today = v.scheduledFor === todayKey();
-  const beforeEntry = ["scheduled", "assigned", "en_route"].includes(v.status);
+  const beforeEntry = ["unpaid", "scheduled", "assigned", "en_route"].includes(v.status);
 
   /* What the owner was shown when they booked is what they see now. Older
      bookings made before the lines were kept are priced again, with the
@@ -57,26 +59,53 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
     : quote({ kind: v.kind, planId: v.planId, size: p.size, tierId: v.tierId, addOns: v.addOns, founding: v.founding, rooms: p.rooms }).lines;
   const costMeta = v.founding ? "Free · launch offer"
     : invoice ? (invoice.status === "paid" ? "Paid" : invoice.status === "due" ? "Billed · due" : invoice.status === "refund_due" ? "Being refunded" : "Refunded")
-    : cancelled ? "Nothing charged"
+    : cancelled ? (advance ? "Advance being refunded" : "Nothing charged")
     : v.amountInr === 0 ? "On your plan"
+    : unpaid ? "25% due to confirm"
+    : advance ? "25% paid · 75% when the report is ready"
     : "Billed after the visit";
 
   const cancelNote = [
-    v.founding ? "Your free inspection comes back to you." : v.amountInr ? "Nothing is charged — it was only going to be billed after the visit." : "Nothing is charged.",
+    v.founding ? "Your free inspection comes back to you." : advance?.status === "paid" ? `The ${money(advance.amountInr)} advance goes back to the card or UPI it came from.` : "Nothing is charged.",
     subscription && subscription.status === "pending" && subscription.startedByVisitId === v.id ? `This is the visit that starts ${planName(subscription.planId)} — cancelling it cancels the plan and the rest of its booked visits, and nothing is billed.` : "",
     v.usesPlan && !(subscription?.startedByVisitId === v.id && subscription.status === "pending") ? "The plan inspection goes back on your plan to book another day." : "",
   ].filter(Boolean).join(" ");
 
   const blocked = !movable ? null
     : overdue ? null
-    : today ? "The visit is today, so it can no longer be moved from here — write to us from Help and a person will sort it out."
+    : today ? "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it."
     : null;
 
   return (
     <>
       <Link href="/app/visits" className="mb-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-text-2 transition hover:text-ink"><ArrowLeft size={14} /> Visits</Link>
 
-      {sp.new === "1" && !cancelled && (
+      {/* booked, not yet confirmed: the 25% */}
+      {unpaid && (
+        <Reveal className="mb-4">
+          <div className="card grid gap-3 border border-warn/30 bg-warn-soft p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div>
+              <div className="text-[15.5px] font-semibold">Pay {money(v.advanceInr)} to confirm this visit</div>
+              <p className="t-small mt-1 leading-snug">25% now. The other {money(Math.max(0, v.amountInr - v.advanceInr))} is due when the report is ready — the full report opens once it is paid. Nobody is sent until the advance is in.</p>
+            </div>
+            <PayButton purpose="advance" refId={v.id} amount={v.advanceInr} autoStart={sp.pay === "1"} className="sm:min-w-[220px]" />
+          </div>
+        </Reveal>
+      )}
+      {/* the report is in, the balance is not */}
+      {balance && report && (
+        <Reveal className="mb-4">
+          <div className="card grid gap-3 border border-accent/25 bg-accent-tint p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div>
+              <div className="text-[15.5px] font-semibold">Your report is ready — health {report.score}</div>
+              <p className="t-small mt-1 leading-snug">Pay the remaining {money(balance.amountInr)} to open all of it: photos, video, notes and repair prices.</p>
+            </div>
+            <PayButton purpose="invoice" refId={balance.id} amount={balance.amountInr} label={`Pay ${money(balance.amountInr)}`} className="sm:min-w-[220px]" />
+          </div>
+        </Reveal>
+      )}
+
+      {sp.new === "1" && !cancelled && !unpaid && (
         <Reveal className="mb-4">
           <div className="card flex items-center gap-3 border border-pass/30 bg-pass-soft p-4">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pass text-white"><Check size={16} strokeWidth={3} /></span>
@@ -88,7 +117,7 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
         <Reveal className="mb-4">
           <div className="card flex items-center gap-3 border border-line bg-white p-4">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-beige text-text-2"><XCircle size={17} /></span>
-            <p className="text-[14.5px] font-medium">Cancelled{v.cancelledAt ? ` ${relative(v.cancelledAt)}` : ""}. {invoice?.status === "refund_due" ? "What you paid is being refunded — you will see it on Billing." : "Nothing is charged for it."}</p>
+            <p className="text-[14.5px] font-medium">Cancelled{v.cancelledAt ? ` ${relative(v.cancelledAt)}` : ""}. {invoice?.status === "refund_due" || advance?.status === "refund_due" ? "What you paid is being refunded — you will see it on Billing." : advance?.status === "refunded" ? `Your ${money(advance.amountInr)} advance has been refunded to where it came from.` : "Nothing is charged for it."}</p>
           </div>
         </Reveal>
       )}

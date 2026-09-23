@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { APPS_LIVE } from "@/lib/flags";
 import { db } from "@/lib/store";
+import { balanceDue } from "@/lib/payments";
 import { diskPath, keyScope, validKey, viewUrl } from "@/lib/media";
 
 export const runtime = "nodejs";
@@ -29,11 +30,14 @@ export async function GET(req: NextRequest) {
   const report = d.reports.find((r) => r.visitId === visit.id) ?? null;
   const inspector = d.inspectors.find((i) => i.id === visit.inspectorId);
 
+  /* A report whose balance is unpaid shows its headline only — the
+     clips open with the rest of it. */
+  const open = !!report && !report.heldForReview && !balanceDue(d, visit.id);
   const allowed =
     user?.role === "admin" ||
     (!!user && inspector?.userId === user.id) ||
-    (!!user && user.id === visit.ownerId && !!report && !report.heldForReview) ||
-    (!!report && !report.heldForReview && token.length >= 20 && report.shareToken === token);
+    (!!user && user.id === visit.ownerId && open) ||
+    (open && token.length >= 20 && report!.shareToken === token);
   if (!allowed) return none();
 
   const signed = await viewUrl(key);

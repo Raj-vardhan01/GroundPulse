@@ -97,7 +97,7 @@ export default async function Today() {
 
           <Reveal delay={0.08}>
             <Panel>
-              <PanelHead title="Closest to you" meta={`${ins.baseLocality} · ${ins.city}`} action={<Link href="/field/jobs" className="btn btn-pill btn-sm">All {board.length}</Link>} />
+              <PanelHead title="Closest to you" meta={[ins.baseLocality, ins.city].filter(Boolean).join(" · ")} action={<Link href="/field/jobs" className="btn btn-pill btn-sm">All {board.length}</Link>} />
               <div className="grid gap-3 p-4">
                 {board.length === 0
                   ? <p className="t-small py-6 text-center">No open jobs in {ins.city} right now. We will message you when one lands.</p>

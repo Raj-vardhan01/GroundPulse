@@ -11,18 +11,21 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { changePhone, currentUser, homeFor, phoneTaken, requireOwner, signOut, startOtp, verifyOtp } from "@/lib/auth";
+import { changePhone, currentUser, homeFor, inspectorDoorOpen, phoneTaken, requireOwner, signOut, startOtp, switchSide, verifyOtp, type Side } from "@/lib/auth";
+import { NOT_ON_ROSTER } from "@/lib/roster";
+import { advanceOf, balanceDue } from "@/lib/payments";
+import { refundOwed } from "@/lib/refunds";
 import { db, invoiceRef, mutate, now, ticketRef, uid, visitRef } from "@/lib/store";
 import { ADD_ON_LIMITS, SLOTS, inr, planPriceAt, quote } from "@/lib/quote";
 import { eligible } from "@/lib/offer";
 import { fmtDayDate, isBookable, todayKey } from "@/lib/format";
 import { newOtp, payoutFor } from "@/lib/payout";
-import { isServiced, normaliseCity, HOME_CITY } from "@/lib/city";
+import { inServiceArea, normaliseCity, HOME_CITY } from "@/lib/city";
 import { clampRooms, extraRooms, ROOM_KEYS } from "@/lib/rooms";
 import { allowanceLeft, effectiveStatus, isPlanId, liveSub, planAllowance, planName, rhythm, upgradePrice } from "@/lib/plans";
 import { repairBill } from "@/lib/repair";
 import { pushEvent } from "@/lib/events";
-import { cancelVisitIn, closeIfSettled } from "@/lib/lifecycle";
+import { approveIssueIn, cancelVisitIn, closeIfSettled } from "@/lib/lifecycle";
 import { parsePhone, prettyPhone } from "@/lib/phone";
 import { TICKET_TOPICS } from "@/lib/tickets";
 import { bhkKeys, type BhkKey } from "@/lib/cleaning";
@@ -36,14 +39,23 @@ export type FormState = { ok: boolean; error?: string; devCode?: string | null; 
 
 /* ── sign in ─────────────────────────────────────────────────── */
 
+const sideOf = (fd: FormData): Side => (s(fd, "as", 12) === "inspector" ? "inspector" : "owner");
+
 export async function requestCode(_prev: FormState, fd: FormData): Promise<FormState> {
-  const res = await startOtp(s(fd, "cc", 4) || "91", s(fd, "phone", 40));
+  const cc = s(fd, "cc", 4) || "91";
+  const raw = s(fd, "phone", 40);
+  /* Nobody off the roster is even sent a code at the inspector door. */
+  if (sideOf(fd) === "inspector") {
+    const parsed = parsePhone(cc, raw);
+    if (parsed.ok && !(await inspectorDoorOpen(parsed.phone))) return { ok: false, error: NOT_ON_ROSTER };
+  }
+  const res = await startOtp(cc, raw);
   if (!res.ok) return { ok: false, error: res.error, phone: res.phone };
   return { ok: true, phone: res.phone, devCode: res.devCode };
 }
 
 export async function confirmCode(_prev: FormState, fd: FormData): Promise<FormState> {
-  const res = await verifyOtp(s(fd, "phone", 20), s(fd, "code", 8));
+  const res = await verifyOtp(s(fd, "phone", 20), s(fd, "code", 8), sideOf(fd));
   if (!res.ok) return { ok: false, error: res.error, phone: s(fd, "phone", 20) };
   redirect(res.role === "owner" && !res.onboarded ? "/welcome" : homeFor(res.role));
 }
@@ -61,6 +73,15 @@ export async function switchAccount(fd: FormData) {
   const as = String(fd.get("as") ?? "");
   await signOut();
   redirect(as === "inspector" ? "/signin?as=inspector" : "/signin");
+}
+
+/** Same number, the other app — no new code needed. */
+export async function switchApp(fd: FormData) {
+  const side: Side = String(fd.get("as") ?? "") === "inspector" ? "inspector" : "owner";
+  const ok = await switchSide(side);
+  if (!ok) redirect(side === "inspector" ? "/signin?as=inspector" : "/signin");
+  const user = await currentUser();
+  redirect(side === "owner" && user && !user.onboardedAt ? "/welcome" : homeFor(side === "inspector" ? "inspector" : "owner"));
 }
 
 /* ── profile & account ───────────────────────────────────────── */
@@ -133,12 +154,16 @@ export async function deleteAccount(_prev: FormState, fd: FormData): Promise<For
   const d0 = await db();
   const live = d0.visits.some((v) => v.ownerId === user.id && ["en_route", "on_site"].includes(v.status));
   if (live) return { ok: false, error: "An inspector is on the way or inside one of your properties right now. Close the account once they are done." };
+  /* A visit cannot be cancelled on its day — closing the account is no way round that. */
+  const today = d0.visits.some((v) => v.ownerId === user.id && v.scheduledFor === todayKey() && ["scheduled", "assigned"].includes(v.status));
+  if (today) return { ok: false, error: "You have a visit today, and a visit cannot be cancelled on its day. Close the account once it is done." };
+  const cancelling = d0.visits.filter((v) => v.ownerId === user.id && ["unpaid", "scheduled", "assigned"].includes(v.status)).map((v) => v.id);
 
   await mutate((d) => {
     /* One at a time, re-checked: cancelling a plan's first visit also
        cancels the rest of its year, which must not be cancelled twice. */
     for (const v of d.visits.filter((x) => x.ownerId === user.id)) {
-      if (["scheduled", "assigned"].includes(v.status)) cancelVisitIn(d, v, "account closed");
+      if (["unpaid", "scheduled", "assigned"].includes(v.status)) cancelVisitIn(d, v, "account closed");
     }
     for (const sub of d.subscriptions.filter((x) => x.ownerId === user.id)) {
       if (sub.status === "pending") sub.status = "cancelled";
@@ -153,6 +178,7 @@ export async function deleteAccount(_prev: FormState, fd: FormData): Promise<For
     u.phone = `deleted:${u.id}`;
     u.deletedAt = now();
   });
+  for (const id of cancelling) await refundOwed(user.id, id);
   await signOut();
   redirect("/?closed=1");
 }
@@ -217,7 +243,7 @@ export async function addProperty(_prev: FormState, fd: FormData): Promise<FormS
     });
     pushEvent(d, {
       ownerId: user.id, propertyId: id, type: "property.added",
-      title: `${p.label} added`, body: `${p.address}${isServiced(p.city) ? "" : ` · ${p.city} — not covered yet`}`, href: `/app/properties/${id}`,
+      title: `${p.label} added`, body: `${p.address}${inServiceArea(p) ? "" : ` · ${p.city} — outside the area we cover`}`, href: `/app/properties/${id}`,
     });
     /* Finishing the welcome flow is what marks an owner onboarded — the
        account is only useful once there is something in it. */
@@ -314,7 +340,7 @@ export async function archiveProperty(_prev: FormState, fd: FormData): Promise<F
   const d0 = await db();
   const p = d0.properties.find((x) => x.id === id && x.ownerId === user.id && !x.archivedAt);
   if (!p) return { ok: false, error: "We could not find that property." };
-  const booked = d0.visits.filter((v) => v.propertyId === id && ["scheduled", "assigned", "en_route", "on_site", "submitted"].includes(v.status));
+  const booked = d0.visits.filter((v) => v.propertyId === id && ["unpaid", "scheduled", "assigned", "en_route", "on_site", "submitted"].includes(v.status));
   if (booked.length) return { ok: false, error: `${booked.length} ${booked.length === 1 ? "visit is" : "visits are"} still booked or in progress here. Cancel ${booked.length === 1 ? "it" : "them"} first.` };
   const sub = liveSub(d0.subscriptions, id);
   if (sub && effectiveStatus(sub) === "active" && sub.autoRenew) return { ok: false, error: `${planName(sub.planId)} is still renewing on this property. Turn renewal off on the Plan page first.` };
@@ -344,6 +370,7 @@ function makeVisit(d: DB, property: Property, v: NewVisit): Visit {
     payoutInr: payoutFor(property, v.kind, addOns), otp: newOtp(), otpTries: 0,
     claimedAt: null, checkIn: null, draft: null, recording: true, rating: null,
     createdAt: now(), cancelledAt: null, startedAt: null, endedAt: null, reportId: null,
+    advanceInr: 0, overtimeInr: 0,
     ...v,
   };
 }
@@ -356,7 +383,7 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
   const d0 = await db();
   const property = d0.properties.find((p) => p.id === propertyId && p.ownerId === user.id && !p.archivedAt);
   if (!property) return { ok: false, error: "Pick which property this visit is for." };
-  if (!isServiced(property.city)) return { ok: false, error: `We do not have inspectors in ${property.city} yet — only ${HOME_CITY}. We will tell you the day that changes.` };
+  if (!inServiceArea(property)) return { ok: false, error: `We cover ${HOME_CITY} and 20 km around it. ${property.pin ? "This property is further out" : "Pin this property on the map so we can check the distance"} — we will tell you the day that changes.` };
   if (!isBookable(scheduledFor)) return { ok: false, error: "Pick a day from the calendar — at least two clear days from today." };
   if (!SLOTS.includes(slot)) return { ok: false, error: "Pick a time window." };
 
@@ -389,6 +416,9 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
   const service = s(fd, "planService", 300);
   const planService = service && sub?.planId === "care-plus" && left && left.services > 0 && kind === "inspection" ? service : "";
   if (service && !planService) return { ok: false, error: "There are no maintenance services left on this plan year." };
+  /* A plan whose own advance is unpaid gives nothing away yet. */
+  const planUnpaid = !!sub && d0.visits.some((x) => x.id === sub.startedByVisitId && x.status === "unpaid");
+  if (planUnpaid && (usePlan || planClean || planService)) return { ok: false, error: `Pay the 25% on ${planName(sub!.planId)} first — then its visits and cleans are yours to book.` };
 
   /* Whether the launch offer applies is decided here, never from the form. */
   const founding = !usePlan && eligible(user, property, kind, planId);
@@ -399,6 +429,10 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
     planClean, planService: !!planService,
   });
   const buyingPlan = q.recurring;
+  /* 25% now; the visit goes on the board once it is paid. A free
+     launch-offer inspection with nothing added owes nothing. */
+  const advance = advanceOf(q.total);
+  const firstStatus = advance > 0 ? "unpaid" : "scheduled";
 
   let visitId = "";
   await mutate((d) => {
@@ -408,6 +442,7 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
       ownerId: user.id, propertyId: property.id, kind, planId, tierId, addOns, scheduledFor, slot,
       amountInr: q.total, liveCall: fd.get("liveCall") === "on", notes: s(fd, "notes", 600),
       founding, subscriptionId: subId, usesPlan: usePlan || buyingPlan, planClean, planService, lines: q.lines,
+      status: firstStatus, advanceInr: advance,
     });
     d.visits.push(v);
     visitId = v.id;
@@ -425,6 +460,15 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
          gives it back. */
       const u = d.users.find((x) => x.id === user.id)!;
       u.freeVisitUsedAt = now();
+    }
+    if (advance > 0) {
+      pushEvent(d, {
+        ownerId: user.id, propertyId: property.id, visitId: v.id, type: "visit.booked",
+        title: "Booked — pay 25% to confirm",
+        body: `${property.label} · ${fmtDayDate(scheduledFor)} · ${slot} · ${inr(advance)} now, ${inr(q.total - advance)} when the report is ready`,
+        href: `/app/visits/${v.id}`, action: true,
+      });
+    } else if (founding) {
       pushEvent(d, {
         ownerId: user.id, propertyId: property.id, visitId: v.id, type: "visit.booked",
         title: "Your free inspection is booked",
@@ -435,7 +479,7 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
       pushEvent(d, {
         ownerId: user.id, propertyId: property.id, visitId: v.id, type: "visit.booked",
         title: usePlan ? "Plan inspection booked" : "Visit booked",
-        body: `${property.label} · ${fmtDayDate(scheduledFor)} · ${slot}${q.total ? ` · ${inr(q.total)}, billed after the visit` : ""}`,
+        body: `${property.label} · ${fmtDayDate(scheduledFor)} · ${slot}`,
         href: `/app/visits/${v.id}`,
       });
     }
@@ -459,21 +503,21 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
       for (const day of next) {
         d.visits.push(makeVisit(d, property, {
           ownerId: user.id, propertyId: property.id, kind: "inspection", planId, scheduledFor: day, slot,
-          subscriptionId: plan.id, usesPlan: true,
+          subscriptionId: plan.id, usesPlan: true, status: firstStatus,
           lines: [{ k: `${planName(planId)} inspection`, note: "included in your plan · booked for you", v: 0 }],
         }));
       }
       pushEvent(d, {
         ownerId: user.id, propertyId: property.id, visitId: v.id, type: "plan.started",
         title: `${planName(planId)} booked — the year is planned`,
-        body: `${property.label} · first visit ${fmtDayDate(scheduledFor)}, then ${next.map((x) => fmtDayDate(x)).join(", ")} · billed when the first one happens`,
+        body: `${property.label} · first visit ${fmtDayDate(scheduledFor)}, then ${next.map((x) => fmtDayDate(x)).join(", ")} · 25% now, the rest when the first report is ready`,
         href: "/app/plan",
       });
     }
   });
 
   revalidatePath("/app", "layout");
-  redirect(`/app/visits/${visitId}?new=1`);
+  redirect(`/app/visits/${visitId}?new=1${advance ? "&pay=1" : ""}`);
 }
 
 /* ── changing a booking ──────────────────────────────────────── */
@@ -482,8 +526,8 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
     A visit whose day has already gone by with nobody coming can always be
     moved or cancelled: that was not the owner's doing. */
 function changeBlocked(v: Visit): string | null {
-  if (!["scheduled", "assigned"].includes(v.status)) return "This visit can no longer be changed — it has already started.";
-  if (v.scheduledFor === todayKey()) return "The visit is today, so the inspector is already on their way to it. Write to us from Help and a person will sort it out.";
+  if (!["unpaid", "scheduled", "assigned"].includes(v.status)) return "This visit can no longer be changed — it has already started.";
+  if (v.scheduledFor === todayKey()) return "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it.";
   return null;
 }
 
@@ -501,6 +545,7 @@ export async function cancelVisit(_prev: FormState, fd: FormData): Promise<FormS
     cancelVisitIn(d, v, "cancelled by you");
   });
   revalidatePath("/app", "layout");
+  await refundOwed(user.id, id);
   redirect(`/app/visits/${id}?cancelled=1`);
 }
 
@@ -525,8 +570,9 @@ export async function rescheduleVisit(_prev: FormState, fd: FormData): Promise<F
     v.scheduledFor = date;
     v.slot = slot;
     /* Whoever claimed it claimed that day. The new day goes back on the
-       board for whoever can make it. */
-    v.status = "scheduled";
+       board for whoever can make it — unless the advance is still unpaid,
+       in which case it stays off the board until it is. */
+    if (v.status !== "unpaid") v.status = "scheduled";
     v.inspectorId = "";
     v.claimedAt = null;
     v.otpTries = 0;
@@ -553,9 +599,13 @@ export async function decideIssue(_prev: FormState, fd: FormData): Promise<FormS
   if (iss0.decision !== "pending") return { ok: false, error: "You have already decided this one." };
   const rep0 = d0.reports.find((r) => r.id === iss0.reportId);
   if (!rep0 || rep0.heldForReview) return { ok: false, error: "We could not find that issue." };
+  if (balanceDue(d0, iss0.visitId)) return { ok: false, error: "Pay for the report first — then you can decide on what it found." };
   if (approve && !iss0.quote) return { ok: false, error: "There is no quote on this yet — nothing can be approved until you can see the price." };
+  /* "Approve, or decline with a reason" — the reason is kept with the decision. */
+  const reason = s(fd, "reason", 400);
+  if (!approve && reason.length < 4) return { ok: false, error: "Say why in a few words — it stays on record with your decision." };
 
-  await mutate((d) => {
+  const ok = await mutate((d) => {
     const iss = d.issues.find((i) => i.id === id)!;
     const visit = d.visits.find((v) => v.id === iss.visitId);
     const sub = visit?.subscriptionId ? d.subscriptions.find((x) => x.id === visit.subscriptionId) ?? null : liveSub(d.subscriptions, iss.propertyId);
@@ -563,41 +613,26 @@ export async function decideIssue(_prev: FormState, fd: FormData): Promise<FormS
        exactly the number on the button. */
     const bill = repairBill(iss, { founding: visit?.founding === true, sub });
 
-    iss.decision = approve ? "approved" : "declined";
-    iss.decidedAt = now();
-
-    if (approve && iss.quote && bill) {
-      iss.coveredInr = bill.covered;
-      if (sub && bill.covered) sub.coverUsedInr += bill.covered;
-      iss.repair = {
-        status: "requested", providerName: iss.quote.provider, trade: iss.quote.trade,
-        scheduledFor: "", slot: "", completedAt: null, note: "", afterPhoto: null, afterVideo: null,
-      };
-      if (bill.payable > 0) {
-        d.invoices.push({
-          id: uid(), ref: invoiceRef(d), ownerId: user.id, propertyId: iss.propertyId, visitId: iss.visitId,
-          issueId: iss.id, subscriptionId: bill.covered && sub ? sub.id : null,
-          title: `${iss.title} · ${iss.ref}`,
-          amountInr: bill.payable,
-          status: "due",
-          method: [
-            bill.feeWaived ? `Launch offer · ${inr(bill.feeWaived)} StillYours fee waived` : "",
-            bill.covered ? `Care+ covers ${inr(bill.covered)}` : "",
-          ].filter(Boolean).join(" · "),
-          createdAt: now(),
-        });
-      }
+    if (approve) {
+      /* Approving something that costs money is paying for it — that
+         goes through the checkout, not through here. */
+      if (!bill || bill.payable > 0) return false;
+      approveIssueIn(d, iss, { covered: bill.covered, payable: 0, feeWaived: bill.feeWaived, feeCovered: bill.feeCovered });
+      return true;
     }
 
+    iss.decision = "declined";
+    iss.decidedAt = now();
+    iss.declineReason = reason;
     pushEvent(d, {
       ownerId: user.id, propertyId: iss.propertyId, visitId: iss.visitId,
-      type: approve ? "issue.approved" : "issue.declined",
-      title: approve ? "You approved a repair" : "You declined a repair",
-      body: `${iss.title} · ${iss.ref}${approve && bill ? ` · you pay ${inr(bill.payable)}${bill.covered ? `, Care+ covers ${inr(bill.covered)}` : ""} — pick a day for it` : ""}`,
+      type: "issue.declined", title: "You declined a repair", body: `${iss.title} · ${iss.ref} · “${reason}” — nothing scheduled, nobody sent`,
       href: `/app/reports/${iss.reportId}#${iss.id}`,
     });
     closeIfSettled(d, iss.visitId);
+    return true;
   });
+  if (!ok) return { ok: false, error: "This repair is paid when you approve it — use the pay button." };
 
   revalidatePath("/app", "layout");
   return { ok: true };
@@ -631,6 +666,29 @@ export async function scheduleRepair(_prev: FormState, fd: FormData): Promise<Fo
   if (!ok) return { ok: false, error: "This repair can no longer be moved — the work has started." };
   revalidatePath("/app", "layout");
   return { ok: true, message: "Day saved." };
+}
+
+/** The owner rates a finished repair — the site promises "rate the
+    provider when it's done". Once per repair. */
+export async function rateRepair(_prev: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireOwner();
+  const id = s(fd, "id", 60);
+  const stars = Math.round(n(fd, "stars"));
+  if (stars < 1 || stars > 5) return { ok: false, error: "Pick one to five stars." };
+  const ok = await mutate((d) => {
+    const iss = d.issues.find((i) => i.id === id && i.ownerId === user.id);
+    if (!iss?.repair || iss.repair.status !== "completed" || iss.repair.rating) return false;
+    iss.repair.rating = { stars, note: s(fd, "note", 400), at: now() };
+    pushEvent(d, {
+      ownerId: user.id, propertyId: iss.propertyId, visitId: iss.visitId, type: "repair.completed",
+      title: `You rated the repair ${stars}/5`, body: `${iss.title} · ${iss.repair.providerName}`,
+      href: `/app/reports/${iss.reportId}#${iss.id}`,
+    });
+    return true;
+  });
+  if (!ok) return { ok: false, error: "This repair has already been rated." };
+  revalidatePath("/app", "layout");
+  return { ok: true, message: "Thank you — it goes on the provider's record." };
 }
 
 export async function markReportRead(fd: FormData) {
@@ -741,7 +799,7 @@ export async function upgradePlan(_prev: FormState, fd: FormData): Promise<FormS
     x.planId = "care-plus";
     x.servicesTotal = planAllowance("care-plus").services;
     x.amountInr += to - from;
-    for (const v of d.visits.filter((q) => q.subscriptionId === x.id && ["scheduled", "assigned"].includes(q.status))) {
+    for (const v of d.visits.filter((q) => q.subscriptionId === x.id && ["unpaid", "scheduled", "assigned"].includes(q.status))) {
       v.planId = "care-plus";
       /* the plan's own bill, raised with its first visit, is now Care+ */
       if (v.id === x.startedByVisitId && st === "pending") {
@@ -795,19 +853,21 @@ export async function cancelPlan(_prev: FormState, fd: FormData): Promise<FormSt
   const sub = d0.subscriptions.find((x) => x.id === id && x.ownerId === user.id);
   if (!sub || sub.status !== "pending") return { ok: false, error: "Only a plan that has not started can be cancelled. A running one can be set not to renew." };
   const first = d0.visits.find((v) => v.id === sub.startedByVisitId);
-  if (first && first.scheduledFor === todayKey() && ["scheduled", "assigned"].includes(first.status)) {
-    return { ok: false, error: "Its first visit is today. Write to us from Help and a person will sort it out." };
+  if (first && first.scheduledFor === todayKey() && ["unpaid", "scheduled", "assigned"].includes(first.status)) {
+    return { ok: false, error: "Its first visit is today, and a visit can no longer be cancelled on the day." };
   }
   await mutate((d) => {
     const v = d.visits.find((x) => x.id === sub.startedByVisitId);
-    if (v && ["scheduled", "assigned"].includes(v.status)) cancelVisitIn(d, v, "plan cancelled before it started");
+    if (v && ["unpaid", "scheduled", "assigned"].includes(v.status)) cancelVisitIn(d, v, "plan cancelled before it started");
     const x = d.subscriptions.find((y) => y.id === id)!;
     if (x.status === "pending") {
       x.status = "cancelled";
-      for (const o of d.visits.filter((q) => q.subscriptionId === x.id && ["scheduled", "assigned"].includes(q.status))) cancelVisitIn(d, o, "plan cancelled");
+      for (const o of d.visits.filter((q) => q.subscriptionId === x.id && ["unpaid", "scheduled", "assigned"].includes(q.status))) cancelVisitIn(d, o, "plan cancelled");
     }
-    pushEvent(d, { ownerId: user.id, propertyId: x.propertyId, type: "plan.cancelled", title: `${planName(x.planId)} cancelled`, body: "It had not started — nothing was billed", href: "/app/plan" });
+    pushEvent(d, { ownerId: user.id, propertyId: x.propertyId, type: "plan.cancelled", title: `${planName(x.planId)} cancelled`, body: "It had not started — any advance paid is refunded", href: "/app/plan" });
   });
+  if (sub.startedByVisitId) await refundOwed(user.id, sub.startedByVisitId);
   revalidatePath("/app", "layout");
-  return { ok: true, message: "Cancelled. Nothing was billed." };
+  const paid = d0.invoices.some((i) => i.visitId === sub.startedByVisitId && i.stage === "advance" && i.status === "paid");
+  return { ok: true, message: paid ? "Cancelled. Your advance is on its way back to you." : "Cancelled. Nothing was charged." };
 }

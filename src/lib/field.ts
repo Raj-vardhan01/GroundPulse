@@ -3,7 +3,7 @@
 
    Three rules shape all of it:
 
-   1. An inspector sees the jobs in their own city, nothing else — and
+   1. An inspector sees the jobs in their own city and 20 km past it — and
       only the next two weeks of them. A plan books a year of visits in
       one go; a board full of dates three months out is noise.
    2. One job in hand at a time. Claiming a second while the first is
@@ -16,8 +16,8 @@
 import { db } from "@/lib/store";
 import { coordsOf, distanceKm, pointOf, rideMinutes } from "@/lib/geo";
 import { blocksFor, itemCount } from "@/lib/checklist";
-import { sameCity } from "@/lib/city";
-import { addDays, daysBetween, todayKey } from "@/lib/format";
+import { inReach } from "@/lib/city";
+import { daysBetween, todayKey } from "@/lib/format";
 import type { Inspector, InspectorStatus, Issue, Property, Visit } from "@/lib/types";
 
 /** A job physically in hand — claimed, travelling, or being walked. */
@@ -89,7 +89,7 @@ export type Sort = "near" | "soon" | "pay";
 export async function openJobs(ins: Inspector, sort: Sort = "near"): Promise<JobView[]> {
   const d = await db();
   const from = coordsOf(ins.baseLocality, ins.city);
-  const mine = d.properties.filter((p) => sameCity(p.city, ins.city));
+  const mine = d.properties.filter((p) => inReach(p, ins.city));
   const ids = new Set(mine.map((p) => p.id));
 
   const open = d.visits.filter((v) => v.status === "scheduled" && !v.inspectorId && ids.has(v.propertyId) && onBoardWindow(v));
@@ -125,7 +125,7 @@ export async function jobView(ins: Inspector, id: string): Promise<JobView | nul
   const property = d.properties.find((p) => p.id === v.propertyId);
   if (!property) return null;
   const isMine = v.inspectorId === ins.id;
-  const onBoard = sameCity(property.city, ins.city) && v.status === "scheduled" && !v.inspectorId && onBoardWindow(v);
+  const onBoard = inReach(property, ins.city) && v.status === "scheduled" && !v.inspectorId && onBoardWindow(v);
   if (!isMine && !onBoard) return null;
   return view(v, coordsOf(ins.baseLocality, ins.city));
 }
@@ -178,28 +178,23 @@ export async function repairJob(ins: Inspector, issueId: string): Promise<Repair
   return repairView(d, iss);
 }
 
-/** Monday of this week, as a Bengaluru day. */
-const weekStart = () => {
-  const today = todayKey();
-  const [y, m, dd] = today.split("-").map(Number);
-  const dow = new Date(Date.UTC(y, m - 1, dd)).getUTCDay();
-  return addDays(today, -((dow + 6) % 7));
-};
-
+/* Paid the same day: whatever was walked today reaches their UPI by the
+   end of today. The visit happens on the day it was booked for, so that
+   day is the one it is paid on. */
 export async function earnings(ins: Inspector) {
   const d = await db();
-  const done = d.visits.filter((v) => v.inspectorId === ins.id && ["ready", "closed"].includes(v.status));
-  const pending = d.visits.filter((v) => v.inspectorId === ins.id && v.status === "submitted");
-  const monday = weekStart();
-
-  const sum = (rows: Visit[]) => rows.reduce((n, v) => n + v.payoutInr, 0);
+  const mine = d.visits.filter((v) => v.inspectorId === ins.id && ["submitted", "ready", "closed"].includes(v.status));
+  const today = todayKey();
+  const pay = (v: Visit) => v.payoutInr + (v.overtimeInr ?? 0);
+  const sum = (rows: Visit[]) => rows.reduce((n, v) => n + pay(v), 0);
   return {
-    settled: sum(done.filter((v) => v.scheduledFor < monday)),
-    thisWeek: sum(done.filter((v) => v.scheduledFor >= monday)),
-    awaiting: sum(pending),
-    lifetime: sum(done) + sum(pending),
-    visits: done.length,
-    rows: [...done, ...pending].sort((a, b) => (a.scheduledFor < b.scheduledFor ? 1 : -1)),
+    today: sum(mine.filter((v) => v.scheduledFor === today)),
+    paidOut: sum(mine.filter((v) => v.scheduledFor < today)),
+    overtime: mine.reduce((n, v) => n + (v.overtimeInr ?? 0), 0),
+    lifetime: sum(mine),
+    visits: mine.length,
+    rows: [...mine].sort((a, b) => (a.scheduledFor < b.scheduledFor ? 1 : -1)),
+    pay,
   };
 }
 

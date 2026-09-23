@@ -28,6 +28,18 @@ export function payoutFor(p: Property, kind: VisitKind, addOns: Record<string, n
   return Math.round(n / 10) * 10;
 }
 
+/* Time on site past two hours is paid by the hour — by us, never added
+   to the owner's bill. Every hour begun counts: two hours and ten
+   minutes on site is one extra hour. Measured from check-in to submit. */
+export const OVERTIME = { freeMinutes: 120, perHour: 200 } as const;
+
+export function overtimeFor(startedAt: string | null, endedAt: string | null) {
+  if (!startedAt || !endedAt) return 0;
+  const minutes = (Date.parse(endedAt) - Date.parse(startedAt)) / 60_000;
+  const extra = minutes - OVERTIME.freeMinutes;
+  return extra > 0 ? Math.ceil(extra / 60) * OVERTIME.perHour : 0;
+}
+
 /** A four-digit code the owner reads out at the door. Deliberately not
     six: it is spoken over a bad line, not typed from an SMS. */
 export const newOtp = () => String(Math.floor(1000 + Math.random() * 9000));

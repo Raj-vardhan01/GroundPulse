@@ -3,15 +3,17 @@
 import { useActionState, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import {
-  AlertTriangle, Check, ChevronDown, Flag, Play, Send, Video, X,
+  AlertTriangle, Check, ChevronDown, Flag, Play, Send, Video, X, Wrench,
 } from "lucide-react";
-import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, setItem, setNote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
+import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, setItem, setNote, setQuote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
+import { FEE_RATE } from "@/lib/repair";
+import { carePlusCover } from "@/lib/pricing";
 import { PhotoInput } from "@/components/field/PhotoInput";
 import { VideoInput, type Uploaded } from "@/components/field/VideoInput";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { outstanding } from "@/lib/checklist";
 import { cn } from "@/lib/cn";
-import type { DraftItem, DraftRoom, ItemState, Video as Clip } from "@/lib/types";
+import type { DraftItem, DraftQuote, DraftRoom, ItemState, Video as Clip } from "@/lib/types";
 
 /* The checklist, on a phone, in a house with one bar of signal.
 
@@ -56,6 +58,10 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
   const note = (room: string, item: string, value: string) => {
     edit(room, item, (i) => ({ ...i, note: value }));
     send(setNote, { room, item, note: value });
+  };
+  const priceIt = (room: string, item: string, q: Required<DraftQuote>) => {
+    edit(room, item, (i) => ({ ...i, quote: q.service && q.price > 0 ? q : null }));
+    send(setQuote, { room, item, service: q.service, price: String(q.price), parts: String(q.parts), excluded: q.excluded ? "1" : "" });
   };
   const photo = (room: string, item: string, thumb: string, c: { lat: number | null; lng: number | null }) => {
     /* the same id on both sides, so removing it a second later removes it on the server too */
@@ -125,6 +131,7 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
                     key={item.t} item={item} visitId={id}
                     onVerdict={(s) => verdict(room.name, item.t, s)}
                     onNote={(v) => note(room.name, item.t, v)}
+                    onQuote={(q) => priceIt(room.name, item.t, q)}
                     onPhoto={(t, c) => photo(room.name, item.t, t, c)}
                     onDrop={(pid) => removePhoto(room.name, item.t, pid)}
                     onVideo={(u) => itemVideo(room.name, item.t, u)}
@@ -167,12 +174,13 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
 }
 
 function Item({
-  item, visitId, onVerdict, onNote, onPhoto, onDrop, onVideo, onDropVideo,
+  item, visitId, onVerdict, onNote, onQuote, onPhoto, onDrop, onVideo, onDropVideo,
 }: {
   item: DraftItem;
   visitId: string;
   onVerdict: (s: ItemState) => void;
   onNote: (v: string) => void;
+  onQuote: (q: Required<DraftQuote>) => void;
   onPhoto: (thumb: string, c: { lat: number | null; lng: number | null }) => void;
   onDrop: (photoId: string) => void;
   onVideo: (u: Uploaded) => void;
@@ -229,6 +237,7 @@ function Item({
             <PhotoInput onPhoto={onPhoto} label={item.photos.length ? "Another photo" : "Add photo"} />
             {item.videos.length < 3 && <VideoInput scope="visit" id={visitId} label="Add video" maxSeconds={ITEM_SECONDS} onVideo={onVideo} />}
           </div>
+          <QuoteFields quote={item.quote ?? null} onQuote={onQuote} />
         </div>
       )}
 
@@ -321,6 +330,57 @@ function Review({
           Once submitted, nothing here can be edited — that is the point of it. Anything you flagged becomes a question the owner answers.
         </p>
       </form>
+    </div>
+  );
+}
+
+/* What fixing it costs on Urban Company today — looked up by the person
+   standing in front of it: the price of the work, any parts, and whether
+   Care+ can cover it at all. The owner sees the price, our 15% on top
+   (none when Care+ is covering it), and pays the rest when they approve.
+   Optional: leave it blank and the owner sees "no price yet". */
+function QuoteFields({ quote, onQuote }: { quote: DraftQuote | null; onQuote: (q: Required<DraftQuote>) => void }) {
+  const [service, setService] = useState(quote?.service ?? "");
+  const [price, setPrice] = useState(quote?.price ? String(quote.price) : "");
+  const [parts, setParts] = useState(quote?.parts ? String(quote.parts) : "");
+  const [excluded, setExcluded] = useState(!!quote?.excluded);
+  const n = Number(price) || 0;
+  const pt = Number(parts) || 0;
+  const fee = Math.round((n + pt) * FEE_RATE);
+  const save = (over: Partial<Required<DraftQuote>> = {}) =>
+    onQuote({ service: service.trim(), price: n, parts: pt, excluded, ...over });
+  const digits = (v: string) => v.replace(/\D/g, "").slice(0, 6);
+  const rupee = "flex h-10 items-center rounded-[10px] border border-line-2 bg-white px-3 focus-within:border-accent";
+  const box = "w-full min-w-0 bg-transparent pl-1 text-[14px] tabular-nums outline-none";
+  const inr = (x: number) => `₹${x.toLocaleString("en-IN")}`;
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-text-2">
+        <Wrench size={12} className="shrink-0" /> Repair price — the same service on Urban Company, today
+      </p>
+      <input value={service} onChange={(e) => setService(e.target.value.slice(0, 80))} onBlur={() => save()}
+        placeholder="Service, e.g. Tap repair"
+        className="mt-2 h-10 w-full min-w-0 rounded-[10px] border border-line-2 bg-white px-3 text-[14px] outline-none focus:border-accent" />
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <label className={rupee}>
+          <span className="text-[14px] text-text-3">₹</span>
+          <input value={price} inputMode="numeric" onChange={(e) => setPrice(digits(e.target.value))} onBlur={() => save()} placeholder="Service price" className={box} />
+        </label>
+        <label className={rupee}>
+          <span className="text-[14px] text-text-3">₹</span>
+          <input value={parts} inputMode="numeric" onChange={(e) => setParts(digits(e.target.value))} onBlur={() => save()} placeholder="Parts, if any" className={box} />
+        </label>
+      </div>
+      <label className="mt-2 flex items-start gap-2 text-[12.5px] leading-snug text-text-2">
+        <input type="checkbox" checked={excluded} onChange={(e) => { setExcluded(e.target.checked); save({ excluded: e.target.checked }); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+        Not under Care+ — an appliance, structural or civil work, cosmetic, or damage from misuse, pests or weather
+      </label>
+      {n > 0 && (
+        <p className="t-small mt-1.5 tabular-nums">
+          Owner sees {inr(n)} on Urban Company{pt ? ` + ${inr(pt)} parts` : ""} + {inr(fee)} ours ({Math.round(FEE_RATE * 100)}%) = <b className="text-ink">{inr(n + pt + fee)}</b>.
+          {!excluded && ` On Care+ the cover takes the work and up to ${inr(carePlusCover.partsPerIncident)} of parts, with no fee.`}
+        </p>
+      )}
     </div>
   );
 }

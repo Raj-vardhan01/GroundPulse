@@ -17,11 +17,14 @@ import { db, mutate, now, uid, reportRef, issueRef } from "@/lib/store";
 import { inspectorFor, LIVE, claimBlock, onBoardWindow } from "@/lib/field";
 import { blocksFor, countItems, scoreOf, outstanding } from "@/lib/checklist";
 import { checkInWords, distanceKm, fmtLatLng, PIN_FROM_VISIT_MAX_ACCURACY_M, tooFar } from "@/lib/geo";
-import { sameCity } from "@/lib/city";
+import { inReach } from "@/lib/city";
 import { fmtDayDate, fmtTime, todayKey } from "@/lib/format";
 import { pushEvent } from "@/lib/events";
 import { deliverReport } from "@/lib/lifecycle";
 import { discard, readVideo } from "@/lib/media";
+import { overtimeFor } from "@/lib/payout";
+import { coverFor, urbanCompanyQuote } from "@/lib/repair";
+import { initialsOf } from "@/lib/roster";
 import type { DraftRoom, ItemState, Photo, ReportRoom } from "@/lib/types";
 
 export type FieldState = { ok: boolean; error?: string };
@@ -62,7 +65,7 @@ export async function claimJob(fd: FormData) {
     const v = d.visits.find((x) => x.id === id);
     if (!v || v.status !== "scheduled" || v.inspectorId || !onBoardWindow(v)) return;
     const p = d.properties.find((x) => x.id === v.propertyId);
-    if (!p || !sameCity(p.city, ins.city)) return;
+    if (!p || !inReach(p, ins.city)) return;
 
     v.inspectorId = ins.id;
     v.claimedAt = now();
@@ -271,6 +274,24 @@ export async function setNote(fd: FormData) {
   });
 }
 
+/** The Urban Company price for fixing a flagged item — the service as it
+    is listed there, what the work costs today, any parts, and whether the
+    job is outside Care+ by its terms. Blank clears it. */
+export async function setQuote(fd: FormData) {
+  const id = str(fd, "id", 60);
+  const room = str(fd, "room", 80);
+  const item = str(fd, "item", 120);
+  const service = str(fd, "service", 80);
+  const price = Math.round(num(fd, "price") ?? 0);
+  const parts = Math.round(num(fd, "parts") ?? 0);
+  const excluded = str(fd, "excluded", 4) === "1";
+  if (price < 0 || price > 500_000 || parts < 0 || parts > 500_000) return false;
+  return editDraft(id, (draft) => {
+    const it = draft.find((r) => r.name === room)?.items.find((x) => x.t === item);
+    if (it) it.quote = service && price > 0 ? { service, price, parts, excluded } : null;
+  });
+}
+
 export async function addPhoto(fd: FormData) {
   const id = str(fd, "id", 60);
   const room = str(fd, "room", 80);
@@ -413,18 +434,22 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
       publishedAt: now(), readAt: null, heldForReview: held, reviewedAt: null, shareToken: null,
     });
 
-    /* Anything not a pass becomes a question for the owner. No quote
-       yet — ops puts one on it once a verified pro has priced it.
+    /* Anything not a pass becomes a question for the owner, carrying the
+       Urban Company price the inspector found for it, when they found one.
        Care+ cover "starts with your first inspection" — whatever that
        first report finds is quoted separately, so it is not eligible. */
-    const firstOfPlan = !!v.subscriptionId && d.subscriptions.find((s) => s.id === v.subscriptionId)?.startedByVisitId === v.id;
+    const sub = v.subscriptionId ? d.subscriptions.find((s) => s.id === v.subscriptionId) ?? null : null;
+    const firstOfPlan = !!sub && sub.startedByVisitId === v.id;
     for (const r of draft) {
       for (const i of r.items) {
         if (i.s === "pass" || !i.s) continue;
+        const q = i.quote ? urbanCompanyQuote(i.quote.price, i.quote.service, i.quote.parts ?? 0) : null;
+        /* outside the cover: the plan's first report, or work its terms exclude */
+        const eligible = !firstOfPlan && !i.quote?.excluded;
         d.issues.push({
           id: uid(), ref: issueRef(d), reportId, visitId: v.id, propertyId: v.propertyId, ownerId: v.ownerId,
           room: r.name, title: i.t, severity: i.s, body: i.note, variant: r.variant, photos: i.photos, videos: i.videos,
-          quote: null, quotedAt: null, coverEligible: !firstOfPlan, coveredInr: 0,
+          quote: q, quotedAt: q ? now() : null, coverEligible: eligible, coveredInr: q ? coverFor(q, sub, eligible) : 0,
           decision: "pending", decidedAt: null, repair: null,
         });
       }
@@ -432,6 +457,7 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
 
     v.status = "submitted";
     v.endedAt = now();
+    v.overtimeInr = overtimeFor(v.startedAt, v.endedAt);
     v.reportId = reportId;
     v.draft = null;
 
@@ -492,3 +518,31 @@ export async function witnessRepair(_prev: FieldState, fd: FormData): Promise<Fi
 
 /* ── shared ──────────────────────────────────────────────────── */
 
+
+/* ── the inspector's own details ─────────────────────────────── */
+
+/** name@bank — what every UPI app shows as "UPI ID". */
+const UPI = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.]{1,63}$/;
+
+/** Name and UPI ID. Asked for before the first job, because the day's
+    pay goes to that UPI the same evening. */
+export async function saveInspectorProfile(_prev: FieldState, fd: FormData): Promise<FieldState> {
+  const user = await requireInspector();
+  const name = str(fd, "name", 60);
+  const upiId = str(fd, "upiId", 120).replace(/\s+/g, "").toLowerCase();
+  if (name.length < 2) return { ok: false, error: "Your name, as owners will see it." };
+  if (!UPI.test(upiId)) return { ok: false, error: "That does not look like a UPI ID — it is written like name@okbank." };
+  const ok = await mutate((d) => {
+    const ins = d.inspectors.find((i) => i.userId === user.id);
+    if (!ins) return false;
+    ins.name = name;
+    ins.initials = initialsOf(name);
+    ins.upiId = upiId;
+    const u = d.users.find((x) => x.id === user.id);
+    if (u && !u.name) u.name = name;
+    return true;
+  });
+  if (!ok) return { ok: false, error: "Your inspector profile is not set up yet." };
+  revalidatePath("/field", "layout");
+  return { ok: true };
+}

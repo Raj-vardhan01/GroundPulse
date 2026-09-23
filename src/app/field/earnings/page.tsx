@@ -4,7 +4,8 @@ import { inspectorFor, earnings } from "@/lib/field";
 import { Empty, Panel, PanelHead, Stat, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
 import { fmtDayDate, relative } from "@/lib/format";
-import { RATES } from "@/lib/payout";
+import { OVERTIME, RATES } from "@/lib/payout";
+import Link from "next/link";
 
 export const metadata = { title: "Earnings" };
 
@@ -16,19 +17,22 @@ export default async function Earnings() {
   return (
     <div className="grid gap-4">
       <div>
-        <p className="t-label">Paid weekly, every Monday</p>
+        <p className="t-label">Paid the same day, by the end of it</p>
         <h1 className="serif mt-1 text-[clamp(1.7rem,6vw,2.2rem)] leading-[1.06] tracking-[-0.035em]">Earnings</h1>
       </div>
 
       <Reveal>
         <Panel className="p-5">
-          <div className="t-label">This week, so far</div>
-          <div className="mt-1 text-[38px] font-medium leading-none tabular-nums tracking-[-0.04em]">{money(e.thisWeek)}</div>
-          <p className="t-small mt-2">Settles on Monday to the account on your file. TDS is deducted and shown on the statement.</p>
+          <div className="t-label">Today</div>
+          <div className="mt-1 text-[38px] font-medium leading-none tabular-nums tracking-[-0.04em]">{money(e.today)}</div>
+          <p className="t-small mt-2">
+            Reaches <b className="font-mono text-ink">{ins.upiId || "your UPI"}</b> by the end of today.{" "}
+            <Link href="/field/record" className="font-medium text-accent underline underline-offset-4">Change UPI</Link>
+          </p>
           <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-4">
-            <Stat n={money(e.awaiting)} l="Awaiting review" tone={e.awaiting ? "warn" : undefined} />
-            <Stat n={money(e.settled)} l="Already settled" />
-            <Stat n={e.visits} l="Visits paid" />
+            <Stat n={money(e.paidOut)} l="Paid out before today" />
+            <Stat n={money(e.overtime)} l="Of it, overtime" tone={e.overtime ? "accent" : undefined} />
+            <Stat n={e.visits} l="Visits" />
           </div>
         </Panel>
       </Reveal>
@@ -53,8 +57,8 @@ export default async function Earnings() {
                     <div className="t-small flex items-center gap-1.5"><CalendarDays size={11} /> {fmtDayDate(v.scheduledFor)} · {relative(v.scheduledFor)}</div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="text-[15px] font-medium tabular-nums">{money(v.payoutInr)}</div>
-                    {v.status === "submitted" && <span className="chip chip-warn mt-0.5"><Clock3 size={10} className="mr-0.5" />In review</span>}
+                    <div className="text-[15px] font-medium tabular-nums">{money(e.pay(v))}</div>
+                    {v.overtimeInr > 0 && <div className="t-small flex items-center justify-end gap-1 tabular-nums"><Clock3 size={10} /> incl. {money(v.overtimeInr)} overtime</div>}
                   </div>
                 </li>
               ))}
@@ -73,6 +77,7 @@ export default async function Earnings() {
             <Row k="Staying with a cleaning crew" v={RATES.cleaningSupervision} />
             <Row k="Each car checked" v={RATES.perCar} />
             <Row k="Wearing the body camera" v={RATES.camera} />
+            <Row k={`Every hour on site past the first ${OVERTIME.freeMinutes / 60}`} v={OVERTIME.perHour} />
           </ul>
           <p className="t-small border-t border-line px-5 py-3.5 leading-snug">
             Paid for the work, not as a cut of the price — a visit on a yearly plan costs the owner nothing on the day, and pays you the same.
@@ -80,7 +85,7 @@ export default async function Earnings() {
         </Panel>
       </Reveal>
 
-      <Reveal delay={0.08}>
+      {ins.depositInr > 0 && <Reveal delay={0.08}>
         <Panel className="flex flex-wrap items-center gap-3 p-5">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-tint text-accent"><ShieldCheck size={17} /></span>
           <div className="grow basis-[13rem]">
@@ -89,7 +94,7 @@ export default async function Earnings() {
           </div>
           <span className="chip chip-pass shrink-0"><Landmark size={10} className="mr-0.5" />Held</span>
         </Panel>
-      </Reveal>
+      </Reveal>}
     </div>
   );
 }

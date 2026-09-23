@@ -204,6 +204,17 @@ function migrate(d: DB): DB {
     }
   }
 
+  if (version < 8) {
+    /* Money up front and the inspectors' own UPI. Nothing old was paid
+       in advance, so nothing old owes an advance. */
+    (d as unknown as Loose).payments ??= [];
+    for (const v of d.visits) {
+      (v as unknown as Loose).advanceInr ??= 0;
+      (v as unknown as Loose).overtimeInr ??= 0;
+    }
+    for (const i of d.inspectors) (i as unknown as Loose).upiId ??= "";
+  }
+
   d.version = STORE_VERSION;
   return d;
 }
