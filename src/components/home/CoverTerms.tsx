@@ -45,7 +45,7 @@ export function CoverTerms() {
                 </div>
               ))}
             </div>
-            <p className="t-small mt-4">Cover starts with your first inspection and resets every plan year. Every repair is quoted by a verified provider — quote + a flat 10% Still Yours fee, shown to you in full — and approved by you before any work starts. Repairs inside the cover carry no fee. Full terms are on our terms page.</p>
+            <p className="t-small mt-4">Cover starts with your first inspection and resets every plan year. Every repair is quoted by a verified provider — quote + a 15% Still Yours fee, shown to you in full — and approved by you before any work starts. Repairs inside the cover carry no fee. Full terms are on our terms page.</p>
           </div>
         </Reveal>
 

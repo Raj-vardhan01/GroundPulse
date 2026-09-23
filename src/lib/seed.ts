@@ -19,6 +19,7 @@
 import type { DB, Pin, Property, ReportRoom, Event, EventType, Visit, VisitKind, DraftRoom, ItemState, User, Line } from "@/lib/types";
 import { blocksFor, countItems, scoreOf } from "@/lib/checklist";
 import { payoutFor } from "@/lib/payout";
+import { makeQuote } from "@/lib/repair";
 import { STORE_VERSION } from "@/lib/storeVersion";
 import { addDays, fmtDayDate, todayKey } from "@/lib/format";
 
@@ -186,6 +187,8 @@ const visit = ({ property, ...v }: VisitSeed): Visit => {
     startedAt: null,
     endedAt: null,
     reportId: null,
+    advanceInr: 0,
+    overtimeInr: 0,
     ...v,
   } as Visit;
 };
@@ -222,7 +225,7 @@ export function emptyStore(): DB {
   return {
     version: STORE_VERSION,
     users: [], properties: [], subscriptions: [], visits: [], reports: [], issues: [],
-    invoices: [], events: [], inspectors: [], tickets: [], sessions: [], otps: [],
+    invoices: [], events: [], inspectors: [], tickets: [], sessions: [], otps: [], payments: [],
   };
 }
 
@@ -365,14 +368,14 @@ export function seed(): DB {
         id: "iss_leak", ref: "ISS-0917", reportId: "rep_indira_2", visitId: "vis_indira_2", propertyId: "prp_indira", ownerId: OWNER,
         room: "Bathroom 1", title: "Water leakage under the sink", severity: "fail", variant: "bathroom", photos: [], videos: [],
         body: "Slow drip from the trap under the sink. Cabinet base is damp with early swelling. Recommend replacing the trap and sealing the joint before the board goes.",
-        quote: { labour: 1800, parts: 1200, fee: 300, total: 3300, provider: "Suresh M.", trade: "Plumbing" }, quotedAt: at(-5, 11),
+        quote: makeQuote(1800, 1200, "Suresh M.", "Plumbing"), quotedAt: at(-5, 11),
         coverEligible: true, coveredInr: 0, decision: "pending", decidedAt: null, repair: null,
       },
       {
         id: "iss_latch", ref: "ISS-0918", reportId: "rep_indira_2", visitId: "vis_indira_2", propertyId: "prp_indira", ownerId: OWNER,
         room: "Bedroom 1", title: "Window latch does not seat", severity: "attn", variant: "bedroom", photos: [], videos: [],
         body: "Right-hand latch does not seat fully. The window closes but does not lock — worth fixing before the house is left shut again.",
-        quote: { labour: 600, parts: 250, fee: 85, total: 935, provider: "Suresh M.", trade: "Carpentry" }, quotedAt: at(-5, 11),
+        quote: makeQuote(600, 250, "Suresh M.", "Carpentry"), quotedAt: at(-5, 11),
         coverEligible: true, coveredInr: 0, decision: "pending", decidedAt: null, repair: null,
       },
       /* still with ops — nobody has priced it yet, so the owner can only
@@ -387,7 +390,7 @@ export function seed(): DB {
         id: "iss_terrace", ref: "ISS-0902", reportId: "rep_villa_1", visitId: "vis_villa_1", propertyId: "prp_villa", ownerId: OWNER,
         room: "Terrace / garden", title: "Water standing at the north parapet", severity: "fail", variant: "balcony", photos: [], videos: [],
         body: "Water standing 4–5 cm two days after rain. The slope is wrong at the north end and the parapet joint is already darkening.",
-        quote: { labour: 2400, parts: 900, fee: 330, total: 3630, provider: "Karan V.", trade: "Waterproofing" }, quotedAt: at(-38, 16),
+        quote: makeQuote(2400, 900, "Karan V.", "Waterproofing"), quotedAt: at(-38, 16),
         coverEligible: true, coveredInr: 3300, decision: "approved", decidedAt: at(-37, 9, 2),
         repair: { status: "completed", providerName: "Karan V.", trade: "Waterproofing", scheduledFor: dateOf(-30), slot: "10:00 – 13:00", completedAt: at(-30, 15, 40), note: "Re-laid slope at the north 1.8 m, new drain mouth, joint sealed. Flooded and watched 30 min — clears in under 4.", afterPhoto: null, afterVideo: null },
       },
@@ -395,7 +398,7 @@ export function seed(): DB {
         id: "iss_wiring", ref: "ISS-0903", reportId: "rep_villa_1", visitId: "vis_villa_1", propertyId: "prp_villa", ownerId: OWNER,
         room: "Electrical & mains", title: "Chewed cable sleeve, garage run", severity: "attn", variant: "electrical", photos: [], videos: [],
         body: "Sleeve chewed through on the garage run. Taped on site so it is safe, but the run should be replaced rather than patched.",
-        quote: { labour: 900, parts: 600, fee: 150, total: 1650, provider: "Karan V.", trade: "Electrical" }, quotedAt: at(-38, 16),
+        quote: makeQuote(900, 600, "Karan V.", "Electrical"), quotedAt: at(-38, 16),
         coverEligible: true, coveredInr: 1500, decision: "declined", decidedAt: at(-37, 9, 5), repair: null,
       },
       /* Meena's findings — invisible to Vikram until the report is released */
@@ -439,7 +442,7 @@ export function seed(): DB {
         area: "Whitefield · Marathahalli · Indiranagar", city: "Bengaluru", baseLocality: "Marathahalli",
         areas: ["Marathahalli", "Whitefield", "Indiranagar", "Bellandur", "Koramangala", "HSR Layout"],
         rating: 4.9, visits: 212, since: "2024", bg: "Ex-facility supervisor, 11 yrs",
-        verified: true, status: "active", depositInr: 1500, reviewedReports: 5,
+        verified: true, status: "active", depositInr: 1500, reviewedReports: 5, upiId: "ravi.k@okaxis",
         availability: ["Weekday mornings", "Weekday afternoons", "Saturdays"],
         docs: [
           { name: "Aadhaar card", ok: true, expiresAt: null },
@@ -456,7 +459,7 @@ export function seed(): DB {
         area: "Koramangala · HSR", city: "Bengaluru", baseLocality: "HSR Layout",
         areas: ["HSR Layout", "Koramangala", "Sarjapur Road", "Bellandur", "Jayanagar"],
         rating: 5.0, visits: 148, since: "2025", bg: "Ex-bank operations, 8 yrs",
-        verified: true, status: "probation", depositInr: 1500, reviewedReports: 3,
+        verified: true, status: "probation", depositInr: 1500, reviewedReports: 3, upiId: "meena.s@oksbi",
         availability: ["Weekday mornings", "Weekday evenings", "Sundays"],
         docs: [
           { name: "Aadhaar card", ok: true, expiresAt: null },
@@ -473,7 +476,7 @@ export function seed(): DB {
         area: "Yelahanka · Devanahalli", city: "Bengaluru", baseLocality: "Yelahanka",
         areas: ["Yelahanka", "Devanahalli", "Hebbal", "RT Nagar", "Malleshwaram"],
         rating: 4.8, visits: 96, since: "2025", bg: "Ex-Army JCO, plots & land",
-        verified: true, status: "active", depositInr: 1500, reviewedReports: 5,
+        verified: true, status: "active", depositInr: 1500, reviewedReports: 5, upiId: "arun.p@okicici",
         availability: ["Weekday mornings", "Saturdays", "Sundays"],
         docs: [
           { name: "Aadhaar card", ok: true, expiresAt: null },
@@ -490,6 +493,7 @@ export function seed(): DB {
     tickets: [],
     sessions: [],
     otps: [],
+    payments: [],
   };
 }
 

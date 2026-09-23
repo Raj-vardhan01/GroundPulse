@@ -14,7 +14,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { blocksFor } from "@/lib/checklist";
 import { fmtDayDate, relative } from "@/lib/format";
 import { fmtKm } from "@/lib/geo";
-import { RATES } from "@/lib/payout";
+import { OVERTIME, RATES } from "@/lib/payout";
 
 export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">) {
   const user = await requireInspector();
@@ -52,7 +52,7 @@ export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">
           <div className="mt-4 grid gap-2 border-t border-line pt-4 text-[13.5px] sm:grid-cols-2">
             <span className="flex items-center gap-2"><CalendarDays size={13} className="text-text-3" /> {fmtDayDate(j.visit.scheduledFor)} · {relative(j.visit.scheduledFor)}</span>
             <span className="flex items-center gap-2"><ClipboardList size={13} className="text-text-3" /> {j.visit.slot}</span>
-            <span className="flex items-center gap-2"><Bike size={13} className="text-text-3" /> {fmtKm(j.km)} from {ins.baseLocality} · about {j.minutes} min</span>
+            <span className="flex items-center gap-2"><Bike size={13} className="text-text-3" /> {fmtKm(j.km)} from {ins.baseLocality || `central ${ins.city}`} · about {j.minutes} min</span>
             <span className="flex items-center gap-2"><MapPin size={13} className="text-text-3" /> {j.property.type || "Plot"} · {j.rooms} areas</span>
           </div>
         </Panel>
@@ -61,7 +61,7 @@ export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">
       {/* what the money is made of — nobody should accept work blind */}
       <Reveal delay={0.04}>
         <Panel>
-          <PanelHead title="What this pays" meta="Per visit, settled weekly" />
+          <PanelHead title="What this pays" meta="Per visit, paid the same day" />
           <ul className="grid gap-2 p-5 text-[13.5px]">
             {j.visit.kind === "plot"
               ? <Row k="Boundary walk" v={RATES.plot} />
@@ -71,11 +71,14 @@ export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">
                 </>}
             {(j.visit.kind === "cleaning" || a.cleaning || a.deep) && <Row k="Staying with the cleaning crew" v={RATES.cleaningSupervision} />}
             {!!a.car && <Row k={`Car check × ${a.car}`} v={RATES.perCar * a.car} />}
-            {!!a.camera && <Row k="Body camera, worn and handed over" v={RATES.camera} />}
+            <Row k="Body camera, worn and handed over" v={RATES.camera} />
             <li className="flex justify-between border-t border-line pt-2 text-[15px] font-semibold">
               <span>Total</span><span className="tabular-nums">{money(j.visit.payoutInr)}</span>
             </li>
           </ul>
+          <p className="t-small border-t border-line px-5 py-3 leading-snug">
+            Plus {money(OVERTIME.perHour)} for every hour on site past the first {OVERTIME.freeMinutes / 60} — counted from check-in to submit, paid by us, never added to the owner&apos;s bill.
+          </p>
         </Panel>
       </Reveal>
 

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowLeft, ArrowRight, BadgeCheck, CalendarCheck, IndianRupee, KeyRound, LogOut, MapPinned, Timer } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, CalendarCheck, Fingerprint, IndianRupee, KeyRound, LogOut, MapPinned, Repeat, ShieldCheck, Timer } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
-import { currentUser, homeFor, prettyPhone } from "@/lib/auth";
-import { switchAccount } from "@/lib/actions";
+import { currentUser, homeFor, otherSide, prettyPhone } from "@/lib/auth";
+import { switchAccount, switchApp } from "@/lib/actions";
 import { SignInForm } from "./SignInForm";
 import { cn } from "@/lib/cn";
 import { notFound } from "next/navigation";
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-/* One sign-in, two audiences. An inspector arriving from /network should
-   not be read a list of owner promises — same form, their own words. */
+/* Two doors on one page. The owner door is open to any number; the
+   inspector door only to the roster — and it should look like it. */
 const PANELS = {
   owner: {
     title: <>Far away.<br />Still yours.</>,
@@ -29,13 +29,13 @@ const PANELS = {
     foot: "Bengaluru · verified inspectors · your media stays private",
   },
   inspector: {
-    title: <>Your jobs,<br />in one place.</>,
+    title: <>Verified<br />inspectors only.</>,
     points: [
-      { I: MapPinned, t: "The board, nearest first", b: "Every open job in your city, sorted from where you start your day." },
-      { I: CalendarCheck, t: "One job at a time", b: "Claim it, walk it, submit it. Then the board comes back." },
-      { I: IndianRupee, t: "What it pays, before you take it", b: "The rate is on the job, not a surprise at the end of the week." },
+      { I: Fingerprint, t: "Met in person, then added", b: "ID, police verification and an interview come first. Only then does a number open this door." },
+      { I: MapPinned, t: "Your city, and 20 km past it", b: "Every open job nearby — plots outside the city included — nearest first." },
+      { I: IndianRupee, t: "Paid the same day", b: "What a job pays is on it before you claim it, and it reaches your UPI by the end of that day." },
     ],
-    foot: "Same number you applied with · settled weekly",
+    foot: "Roster-only access · paid the same day to your UPI",
   },
 } as const;
 
@@ -47,21 +47,29 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
   const user = await currentUser();
   const sp = await searchParams;
   const wants = sp.as === "inspector" ? "inspector" : "owner";
+  const inspector = wants === "inspector";
   const panel = PANELS[wants];
   /* Somebody already signed in is not necessarily in the wrong place —
      they may have come here to switch. Bouncing them silently is what
      made an inspector link look like it opened the owner app. */
   const home = user ? homeFor(user.role) : "/app";
   const mismatch = !!user && user.role !== "admin" && ((wants === "inspector") !== (user.role === "inspector"));
+  /* The same number may be both. Then switching is one tap, no code. */
+  const canSwitch = mismatch && (await otherSide()) === wants;
 
   return (
     <main className="min-h-dvh lg:grid lg:grid-cols-[1.05fr_1fr]">
       {/* the promise, kept in view while they sign in */}
-      <section className="on-dark relative hidden flex-col justify-between overflow-hidden bg-accent p-12 lg:flex">
+      <section className={cn("on-dark relative hidden flex-col justify-between overflow-hidden p-12 lg:flex", inspector ? "bg-[#0d1512]" : "bg-accent")}>
         <div className="absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-white/[0.04]" />
         <div className="absolute -bottom-32 -left-20 h-[380px] w-[380px] rounded-full bg-white/[0.03]" />
         <Link href="/" className="relative"><Logo inverted size={40} /></Link>
         <div className="relative max-w-[42ch]">
+          {inspector && (
+            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-white/80">
+              <ShieldCheck size={13} /> StillYours inspector roster
+            </span>
+          )}
           <h2 className="serif text-[clamp(2.2rem,3vw,3rem)] leading-[1.06] tracking-[-0.035em]">{panel.title}</h2>
           <ul className="mt-10 grid gap-6">
             {panel.points.map(({ I, t, b }) => (
@@ -76,59 +84,100 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
       </section>
 
       {/* the form */}
-      <section className="flex min-h-dvh flex-col bg-paper px-6 py-8 sm:px-10">
+      <section className={cn("flex min-h-dvh flex-col px-6 py-8 sm:px-10", inspector ? "bg-[#0d1512]" : "bg-paper")}>
         <div className="flex items-center justify-between lg:justify-end">
-          <Link href="/" className="lg:hidden"><Logo size={34} /></Link>
-          <Link href="/" className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-text-2 transition hover:text-ink">
+          <Link href="/" className="lg:hidden"><Logo size={34} inverted={inspector} /></Link>
+          <Link href="/" className={cn("inline-flex items-center gap-1.5 text-[13.5px] font-medium transition", inspector ? "text-white/60 hover:text-white" : "text-text-2 hover:text-ink")}>
             <ArrowLeft size={14} /> Back to site
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-center py-10">
-          {user ? (
-            <div className="w-full max-w-[400px]">
-              <h1 className="serif text-[clamp(2rem,4vw,2.6rem)] leading-[1.05] tracking-[-0.035em]">
-                {mismatch ? "That is a different account." : "You are already signed in."}
-              </h1>
-              <p className="t-small mt-2.5">
-                This browser is signed in as <b className="text-ink">{user.name || "your account"}</b> ·{" "}
-                {user.role === "inspector" ? "inspector" : user.role === "admin" ? "ops" : "owner"} · {prettyPhone(user.phone)}.
-                {mismatch && wants === "inspector" && " The inspector app needs the number you applied with."}
-                {mismatch && wants === "owner" && " Your properties are on a different number."}
-              </p>
 
-              {/* On a mismatch the obvious button has to be the one that
-                  gets them out of the wrong account. Leading with "go to
-                  my properties" is how somebody following an inspector
-                  link ends up in the owner app. */}
-              <div className={cn("mt-7 grid gap-3", mismatch && "[&>form]:order-first")}>
-                <Link href={home as Route} className={cn("w-full", mismatch ? "btn btn-white" : "btn btn-accent")}>
-                  {user.role === "inspector" ? "Go to my jobs" : user.role === "admin" ? "Go to the ops console" : "Go to my properties"}
-                  {!mismatch && <ArrowRight size={16} />}
-                </Link>
+        <div className="flex flex-1 flex-col items-center justify-center py-8">
+          {/* the two doors */}
+          <nav aria-label="Who is signing in" className={cn("mb-6 grid w-full max-w-[440px] grid-cols-2 gap-1 rounded-full p-1", inspector ? "bg-white/[0.07]" : "bg-beige")}>
+            <Link href="/signin" aria-current={!inspector ? "page" : undefined}
+              className={cn("rounded-full px-4 py-2.5 text-center text-[13.5px] font-semibold transition",
+                !inspector ? "bg-white text-ink shadow-card" : "text-white/60 hover:text-white")}>
+              Property owner
+            </Link>
+            <Link href={"/signin?as=inspector" as Route} aria-current={inspector ? "page" : undefined}
+              className={cn("inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-center text-[13.5px] font-semibold transition",
+                inspector ? "bg-white text-ink shadow-card" : "text-text-2 hover:text-ink")}>
+              <ShieldCheck size={14} /> Verified inspector
+            </Link>
+          </nav>
 
-                <form action={switchAccount}>
-                  <input type="hidden" name="as" value={wants} />
-                  <button className={cn("w-full", mismatch ? "btn btn-accent" : "btn btn-white")}>
-                    <LogOut size={15} />
-                    {mismatch
-                      ? wants === "inspector" ? "Sign in as an inspector" : "Sign in as the owner"
-                      : "Sign in as somebody else"}
-                  </button>
-                </form>
+          <div className={cn("w-full max-w-[440px]", inspector && "rounded-[22px] border border-white/10 bg-paper p-6 shadow-float sm:p-8")}>
+            {user ? (
+              <div className="w-full">
+                <h1 className="serif text-[clamp(2rem,4vw,2.6rem)] leading-[1.05] tracking-[-0.035em]">
+                  {canSwitch ? (inspector ? "Open the inspector app?" : "Open your owner app?") : mismatch ? "That is a different account." : "You are already signed in."}
+                </h1>
+                <p className="t-small mt-2.5">
+                  This browser is signed in as <b className="text-ink">{user.name || "your account"}</b> ·{" "}
+                  {user.role === "inspector" ? "inspector" : user.role === "admin" ? "ops" : "owner"} · {prettyPhone(user.phone)}.
+                  {canSwitch && " Your number is on both — no new code needed."}
+                  {mismatch && !canSwitch && wants === "inspector" && " This number is not on the inspector roster."}
+                  {mismatch && !canSwitch && wants === "owner" && " Your properties are on a different number."}
+                </p>
+
+                {/* On a mismatch the obvious button has to be the one that
+                    gets them out of the wrong account. Leading with "go to
+                    my properties" is how somebody following an inspector
+                    link ends up in the owner app. */}
+                <div className={cn("mt-7 grid gap-3", mismatch && "[&>form]:order-first")}>
+                  <Link href={home as Route} className={cn("w-full", mismatch ? "btn btn-white" : "btn btn-accent")}>
+                    {user.role === "inspector" ? "Go to my jobs" : user.role === "admin" ? "Go to the ops console" : "Go to my properties"}
+                    {!mismatch && <ArrowRight size={16} />}
+                  </Link>
+
+                  {canSwitch ? (
+                    <div className="grid gap-2">
+                      <form action={switchApp}>
+                        <input type="hidden" name="as" value={wants} />
+                        <button className="btn btn-accent w-full"><Repeat size={15} /> {inspector ? "Open the inspector app" : "Open the owner app"}</button>
+                      </form>
+                      <form action={switchAccount} className="text-center">
+                        <input type="hidden" name="as" value={wants} />
+                        <button className="text-[13px] font-medium text-text-2 underline underline-offset-4 hover:text-ink">Sign in with a different number</button>
+                      </form>
+                    </div>
+                  ) : (
+                    <form action={switchAccount}>
+                      <input type="hidden" name="as" value={wants} />
+                      <button className={cn("w-full", mismatch ? "btn btn-accent" : "btn btn-white")}>
+                        <LogOut size={15} />
+                        {mismatch
+                          ? wants === "inspector" ? "Sign in with an inspector number" : "Sign in as the owner"
+                          : "Sign in as somebody else"}
+                      </button>
+                    </form>
+                  )}
+                </div>
+
+                <p className="t-small mt-4 text-center leading-snug">
+                  Signing in as somebody else ends this session on this device — nothing on either account changes.
+                </p>
               </div>
+            ) : (
+              <SignInForm key={wants} side={wants} />
+            )}
+          </div>
 
-              <p className="t-small mt-4 text-center leading-snug">
-                One number, one account. Signing in as somebody else ends this session on this device — nothing on either account changes.
-              </p>
-            </div>
-          ) : (
-            <SignInForm />
+          {inspector && !user && (
+            <p className="mt-5 flex max-w-[440px] items-start gap-2 text-[12.5px] leading-snug text-white/55">
+              <CalendarCheck size={14} className="mt-0.5 shrink-0" />
+              Access is limited to inspectors StillYours has verified in person. Attempts from other numbers are refused before any code is sent.
+            </p>
           )}
         </div>
-        <p className="t-small text-center">
-          New here? Signing in with your number creates your account. By continuing you agree to how we handle your property media — private, never resold.
-          <br />
-          <span className="text-text-3">Inspectors use this same page — your number takes you straight to your jobs.</span>
+
+        <p className={cn("t-small text-center", inspector && "text-white/50")}>
+          {inspector ? (
+            <>Not an inspector? <Link href="/signin" className="font-medium text-white underline underline-offset-4">Owner sign in</Link> · Want to join? <Link href={"/access?role=inspector" as Route} className="font-medium text-white underline underline-offset-4">Apply</Link></>
+          ) : (
+            <>New here? Signing in with your number creates your account. By continuing you agree to our <Link href="/terms" className="underline underline-offset-4">Terms</Link> and <Link href={"/privacy" as Route} className="underline underline-offset-4">Privacy Policy</Link> — your property media stays private and is never sold.</>
+          )}
         </p>
       </section>
     </main>

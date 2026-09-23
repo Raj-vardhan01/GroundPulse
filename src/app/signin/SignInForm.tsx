@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Lock, Phone } from "lucide-react";
+import { ArrowRight, Lock, Phone, ShieldCheck } from "lucide-react";
 import { confirmCode, requestCode, type FormState } from "@/lib/actions";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { COUNTRIES, prettyPhone } from "@/lib/phone";
@@ -12,12 +12,13 @@ const blank: FormState = { ok: false };
 
 /* Remounting the inner form is what "use a different number" does — it
    is the only honest way to throw away a code that was sent. */
-export function SignInForm() {
+export function SignInForm({ side = "owner" }: { side?: "owner" | "inspector" }) {
   const [round, setRound] = useState(0);
-  return <Inner key={round} restart={() => setRound((r) => r + 1)} />;
+  return <Inner key={round} side={side} restart={() => setRound((r) => r + 1)} />;
 }
 
-function Inner({ restart }: { restart: () => void }) {
+function Inner({ side, restart }: { side: "owner" | "inspector"; restart: () => void }) {
+  const inspector = side === "inspector";
   const [sent, sendCode] = useActionState(requestCode, blank);
   const [checked, verify] = useActionState(confirmCode, blank);
   const [cc, setCc] = useState("91");
@@ -48,32 +49,48 @@ function Inner({ restart }: { restart: () => void }) {
       <AnimatePresence mode="wait">
         {stage === "phone" ? (
           <motion.div key="phone" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.35, ease: EASE }}>
-            <h1 className="serif text-[clamp(2rem,4vw,2.6rem)] leading-[1.05] tracking-[-0.035em]">Sign in.</h1>
-            <p className="t-small mt-2.5">Your number is the account — any country&apos;s mobile works. We send a six-digit code, so there is no password to forget at 2 AM in another timezone.</p>
+            {inspector ? (
+              <>
+                <h1 className="serif flex items-center gap-2.5 text-[clamp(1.8rem,4vw,2.3rem)] leading-[1.05] tracking-[-0.035em]">
+                  <ShieldCheck size={26} className="shrink-0 text-accent" /> Inspector sign in
+                </h1>
+                <p className="t-small mt-2.5">Only numbers on the StillYours inspector roster open this door. There is no sign-up here — we add you after we have met you.</p>
+              </>
+            ) : (
+              <>
+                <h1 className="serif text-[clamp(2rem,4vw,2.6rem)] leading-[1.05] tracking-[-0.035em]">Sign in.</h1>
+                <p className="t-small mt-2.5">Your number is the account — any country&apos;s mobile works. We send a six-digit code, so there is no password to forget at 2 AM in another timezone.</p>
+              </>
+            )}
 
             <form action={sendCode} className="mt-7">
-              <input type="hidden" name="cc" value={cc} />
+              <input type="hidden" name="as" value={side} />
+              <input type="hidden" name="cc" value={inspector ? "91" : cc} />
               <label className="block">
-                <span className="mb-1.5 block text-[13px] font-medium text-text-2">Mobile number</span>
+                <span className="mb-1.5 block text-[13px] font-medium text-text-2">{inspector ? "Your registered mobile number" : "Mobile number"}</span>
                 <div className="flex items-center gap-2 rounded-[12px] border border-line-2 bg-white pl-3 pr-4 transition focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10">
                   <Phone size={15} className="shrink-0 text-text-3" />
-                  <select
-                    aria-label="Country code" value={cc} onChange={(e) => setCc(e.target.value)}
-                    className="h-12 shrink-0 bg-transparent pr-1 text-[15px] text-text-2 outline-none"
-                  >
-                    {COUNTRIES.map((c) => <option key={c.cc} value={c.cc}>+{c.cc} {c.name}</option>)}
-                  </select>
+                  {inspector ? (
+                    <span className="h-12 shrink-0 pr-1 text-[15px] leading-[48px] text-text-2">+91</span>
+                  ) : (
+                    <select
+                      aria-label="Country code" value={cc} onChange={(e) => setCc(e.target.value)}
+                      className="h-12 shrink-0 bg-transparent pr-1 text-[15px] text-text-2 outline-none"
+                    >
+                      {COUNTRIES.map((c) => <option key={c.cc} value={c.cc}>+{c.cc} {c.name}</option>)}
+                    </select>
+                  )}
                   <input
                     name="phone" inputMode="tel" autoComplete="tel-national" autoFocus required
                     value={phone} onChange={(e) => onPhone(e.target.value)}
                     onPaste={(e) => { e.preventDefault(); onPhone(e.clipboardData.getData("text")); }}
-                    placeholder={cc === "91" ? "98765 43210" : "Number without the country code"}
+                    placeholder={inspector || cc === "91" ? "98765 43210" : "Number without the country code"}
                     className="h-12 w-full min-w-0 bg-transparent text-[15px] tracking-[0.02em] outline-none placeholder:text-text-3"
                   />
                 </div>
               </label>
               {sent.error && <p className="mt-2 text-[13px] text-fail" role="alert">{sent.error}</p>}
-              <Submit label="Send code" />
+              <Submit label={inspector ? "Verify and send code" : "Send code"} />
             </form>
           </motion.div>
         ) : (
@@ -95,6 +112,7 @@ function Inner({ restart }: { restart: () => void }) {
             )}
 
             <form action={verify} className="mt-6">
+              <input type="hidden" name="as" value={side} />
               <input type="hidden" name="phone" value={sent.phone ?? ""} />
               <label className="block">
                 <span className="mb-1.5 block text-[13px] font-medium text-text-2">Six-digit code</span>
@@ -108,7 +126,7 @@ function Inner({ restart }: { restart: () => void }) {
               <Submit label="Sign in" />
             </form>
 
-            <ResendCode phone={sent.phone ?? ""} />
+            <ResendCode phone={sent.phone ?? ""} side={side} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -118,10 +136,11 @@ function Inner({ restart }: { restart: () => void }) {
 
 /* Its own form and its own state, so a "wait 30 seconds" never knocks
    the person back off the code screen they are on. */
-function ResendCode({ phone }: { phone: string }) {
+function ResendCode({ phone, side }: { phone: string; side: "owner" | "inspector" }) {
   const [state, resend] = useActionState(requestCode, blank);
   return (
     <form action={resend} className="mt-3 text-center">
+      <input type="hidden" name="as" value={side} />
       <input type="hidden" name="phone" value={phone} />
       <input type="hidden" name="cc" value={phone.startsWith("+") ? "" : "91"} />
       <button className="text-[13px] font-medium text-text-2 underline underline-offset-4 transition hover:text-ink">Send a new code</button>

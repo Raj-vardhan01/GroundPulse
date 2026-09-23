@@ -2,13 +2,14 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft, BadgeCheck, Check, Clock, Flag, KeyRound, MapPin, Video,
+  ArrowLeft, BadgeCheck, Check, Clock, Flag, KeyRound, Lock, MapPin, Video,
 } from "lucide-react";
+import { PayButton } from "@/components/app/PayButton";
 import { requireOwner } from "@/lib/auth";
 import { reportView } from "@/lib/queries";
 import { HealthRing } from "@/components/ui/HealthRing";
 import { Reveal } from "@/components/ui/Reveal";
-import { Panel, PanelHead, Stat } from "@/components/app/ui";
+import { Panel, PanelHead, Stat, money } from "@/components/app/ui";
 import { IssueCard } from "@/components/app/IssueCard";
 import { PhotoStrip } from "@/components/app/PhotoStrip";
 import { VideoClip } from "@/components/app/VideoClip";
@@ -29,7 +30,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
   const view = await reportView(user.id, id);
   if (!view) notFound();
 
-  const { report: r, property: p, visit: v, inspector, issues, subscription, invoicesByIssue } = view;
+  const { report: r, property: p, visit: v, inspector, issues, subscription, invoicesByIssue, balance } = view;
   const card = (i: (typeof issues)[number]) => (
     <IssueCard key={i.id} issue={i} founding={v.founding === true} sub={subscription} invoice={invoicesByIssue[i.id]} tz={user.tz} />
   );
@@ -43,7 +44,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
 
   return (
     <>
-      <MarkRead id={r.id} already={!!r.readAt} />
+      {!balance && <MarkRead id={r.id} already={!!r.readAt} />}
       <Link href={`/app/properties/${p.id}` as Route} className="mb-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-text-2 transition hover:text-ink"><ArrowLeft size={14} /> {p.label}</Link>
 
       {/* ── the headline ───────────────────────────────────── */}
@@ -78,7 +79,20 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
             </div>
           </Panel>
 
-          {/* what the inspector actually said */}
+          {/* what the inspector actually said — or, while the balance is
+              owed, what paying it opens */}
+          {balance ? (
+            <div className="on-dark card flex flex-col bg-ink p-6 shadow-card">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white"><Lock size={18} /></span>
+              <h2 className="serif mt-4 text-[24px] leading-[1.1] tracking-[-0.03em] text-white">Your full report is ready.</h2>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-white/75">
+                Pay the remaining {money(balance.amountInr)} to open it: every room&apos;s photos and video, the inspector&apos;s own words,
+                {issues.length ? ` and the ${issues.length} ${issues.length === 1 ? "thing" : "things"} flagged — each with its repair price.` : " and the full checklist."}
+              </p>
+              <PayButton purpose="invoice" refId={balance.id} amount={balance.amountInr} label={`Pay ${money(balance.amountInr)} and open the report`} className="mt-5" />
+              <p className="mt-3 text-[12px] leading-snug text-white/50">{balance.ref} · the 25% you paid when booking is already counted.</p>
+            </div>
+          ) : (
           <div className="grid gap-4">
             <div className="on-dark card bg-ink p-6 shadow-card">
               <div className="flex items-center justify-between">
@@ -100,8 +114,11 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
               </Link>
             </Panel>
           </div>
+          )}
         </div>
       </Reveal>
+
+      {balance ? null : <>
 
       {/* ── decisions ──────────────────────────────────────── */}
       {open.length > 0 && (
@@ -181,6 +198,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
           </p>
         </Panel>
       </Reveal>
+      </>}
     </>
   );
 }

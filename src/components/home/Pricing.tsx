@@ -29,7 +29,7 @@ export function Pricing({ full }: { full?: boolean }) {
       <div className="wrap">
         <SectionHead
           title={<span id="pricing-title">Simple pricing. No surprises.</span>}
-          lede="Start with a one-time visit or pick a yearly plan. Every visit is by a verified inspector who stays for the whole job — however long it takes. No brokerage. No hidden commission — just a flat 10% on repairs, shown before you approve."
+          lede="Start with a one-time visit or pick a yearly plan. Every visit is by a verified inspector who stays for the whole job — however long it takes. No brokerage. No hidden commission — just 15% on repairs, shown before you approve."
           action={!full ? <Link href="/pricing" className="btn btn-white btn-sm">Full pricing <ArrowRight size={15} /></Link> : undefined}
         />
 
@@ -194,7 +194,7 @@ export function Pricing({ full }: { full?: boolean }) {
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/15"><ShieldCheck size={19} /></span>
               <div>
                 <div className="text-[17px] font-medium">Cleaning and repairs happen during the visit — with your inspector in the room.</div>
-                <p className="mt-1 max-w-[62ch] text-[14px] leading-relaxed text-white/80">Nothing happens behind your back. The cleaning crew or the repair pro works during a scheduled visit while your verified inspector stays on-site the whole time — and the before/after photos land in the same report. Repairs are always the pro's quote + a flat 10% fee, approved by you. No brokerage, no hidden commission.</p>
+                <p className="mt-1 max-w-[62ch] text-[14px] leading-relaxed text-white/80">Nothing happens behind your back. The cleaning crew or the repair pro works during a scheduled visit while your verified inspector stays on-site the whole time — and the before/after photos land in the same report. Repairs are always the pro's quote + a 15% fee, approved by you. No brokerage, no hidden commission.</p>
               </div>
             </div>
           </div>
@@ -205,7 +205,7 @@ export function Pricing({ full }: { full?: boolean }) {
           <div className="card bg-beige p-5 sm:p-7">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div className="text-[18px] font-medium tracking-[-0.02em]">Why you can relax</div>
-              <div className="t-small max-w-[60ch]">Repairs are always the verified pro's quote + a flat 10% fee, approved by you. No brokerage, no hidden commission.</div>
+              <div className="t-small max-w-[60ch]">Repairs are always the verified pro's quote + a 15% fee, approved by you. No brokerage, no hidden commission.</div>
             </div>
             <Relax variant="list" className="mt-5 sm:grid-cols-2" />
           </div>

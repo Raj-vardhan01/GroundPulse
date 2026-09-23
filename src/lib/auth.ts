@@ -17,6 +17,7 @@ import { redirect } from "next/navigation";
 import { db, mutate, now, uid } from "@/lib/store";
 import { LIMIT } from "@/lib/offer";
 import { isAccountPhone, parsePhone } from "@/lib/phone";
+import { canInspect, ensureInspector, mayInspect, NOT_ON_ROSTER } from "@/lib/roster";
 import type { Otp, User } from "@/lib/types";
 
 export { prettyPhone } from "@/lib/phone";
@@ -78,9 +79,15 @@ const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const unb64 = (s: string) => Buffer.from(s, "base64url").toString();
 const sign = (body: string) => createHmac("sha256", secret()).update(body).digest("base64url");
 
+/** Which app a session is in. One number can be an owner and an
+    inspector; the door they came through decides, and switching is a
+    button, not a second account. */
+export type Side = "owner" | "inspector";
+type SessionPayload = { u: string; e: number; s?: Side };
+
 /** `<payload>.<signature>` — unreadable to nobody, unforgeable to everybody. */
-function seal(userId: string, expiresAt: number) {
-  const body = b64(JSON.stringify({ u: userId, e: expiresAt }));
+function seal(userId: string, expiresAt: number, side: Side) {
+  const body = b64(JSON.stringify({ u: userId, e: expiresAt, s: side } satisfies SessionPayload));
   return `${body}.${sign(body)}`;
 }
 
@@ -100,8 +107,8 @@ function openSigned<T>(token: string | undefined): T | null {
   }
 }
 
-function unseal(token: string): { u: string; e: number } | null {
-  const payload = openSigned<{ u: string; e: number }>(token);
+function unseal(token: string): SessionPayload | null {
+  const payload = openSigned<SessionPayload>(token);
   if (!payload?.u || payload.e < Date.now()) return null;
   return payload;
 }
@@ -215,7 +222,10 @@ async function checkOtp(rawPhone: string, rawCode: string, purpose: Purpose): Pr
   return { ok: true, phone };
 }
 
-export async function verifyOtp(rawPhone: string, rawCode: string) {
+export async function verifyOtp(rawPhone: string, rawCode: string, side: Side = "owner") {
+  /* The inspector door is shut to anyone off the roster — checked before
+     the code is spent, and before any account is made. */
+  if (side === "inspector" && !mayInspect(await db(), rawPhone.trim())) return { ok: false as const, error: NOT_ON_ROSTER };
   const res = await checkOtp(rawPhone, rawCode, "signin");
   if (!res.ok) return res;
   const { phone } = res;
@@ -232,21 +242,45 @@ export async function verifyOtp(rawPhone: string, rawCode: string) {
       /* The launch offer is the first ten owners, in the order they
          arrive. Handing the number out here means it is decided once,
          at sign-up, rather than re-counted on every screen. */
+      /* An inspector signing up is not one of the ten owners. */
       const taken = s.users.filter((x) => x.foundingNo !== null).length;
+      const founding = side === "owner" && taken < LIMIT;
       u = {
         id: uid(), role: "owner", name: "", phone, email: "", livesIn: "",
         tz: "Asia/Kolkata", prefs: { sms: true, email: true },
         createdAt: now(), onboardedAt: null,
-        foundingNo: taken < LIMIT ? taken + 1 : null,
+        foundingNo: founding ? taken + 1 : null,
         freeVisitUsedAt: null, deletedAt: null,
       };
       s.users.push(u);
     }
+    if (side === "inspector") ensureInspector(s, u);
     return u;
   });
 
-  await openSession(user.id);
-  return { ok: true as const, isNew, onboarded: !!user.onboardedAt, role: user.role };
+  await openSession(user.id, side);
+  return { ok: true as const, isNew, onboarded: !!user.onboardedAt, role: effectiveRole(user, side) };
+}
+
+/** Is this number allowed to ask for a code at the inspector door? */
+export async function inspectorDoorOpen(phone: string) {
+  return mayInspect(await db(), phone);
+}
+
+/** Move a signed-in person to the other app, if they may go there. */
+export async function switchSide(side: Side): Promise<boolean> {
+  const jar = await cookies();
+  const session = unseal(jar.get(COOKIE)?.value ?? "");
+  if (!session) return false;
+  const d = await db();
+  const u = d.users.find((x) => x.id === session.u && !x.deletedAt);
+  if (!u) return false;
+  if (side === "inspector") {
+    if (!canInspect(u)) return false;
+    await mutate((s) => { ensureInspector(s, s.users.find((x) => x.id === u.id)!); });
+  }
+  await openSession(u.id, side);
+  return true;
 }
 
 /** Move a signed-in account onto a new number, once the new number has
@@ -269,10 +303,10 @@ export async function phoneTaken(phone: string, exceptUserId: string) {
   return (await db()).users.some((u) => u.phone === phone && u.id !== exceptUserId);
 }
 
-async function openSession(userId: string) {
+async function openSession(userId: string, side: Side) {
   const expiresAt = Date.now() + SESSION_DAYS * 86_400_000;
   const jar = await cookies();
-  jar.set(COOKIE, seal(userId, expiresAt), {
+  jar.set(COOKIE, seal(userId, expiresAt, side), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -296,7 +330,28 @@ export async function currentUser(): Promise<User | null> {
   if (!session) return null;
   const d = await db();
   const u = d.users.find((x) => x.id === session.u) ?? null;
-  return u && !u.deletedAt ? u : null;
+  if (!u || u.deletedAt) return null;
+  /* A copy, with the role this session is acting in. The stored role is
+     only the default for sessions from before there were two doors. */
+  return { ...u, role: effectiveRole(u, session.s) };
+}
+
+function effectiveRole(u: User, side: Side | undefined): User["role"] {
+  if (u.role === "admin") return "admin";
+  /* Only the roster is ever an inspector — a stored role or an older
+     session without a side does not make anybody one. */
+  if (side === "inspector" || (side === undefined && u.role === "inspector")) return canInspect(u) ? "inspector" : "owner";
+  return "owner";
+}
+
+/** Can the signed-in person open the other app too? */
+export async function otherSide(): Promise<Side | null> {
+  const user = await currentUser();
+  if (!user || user.role === "admin") return null;
+  if (user.role === "inspector") return "owner";
+  const d = await db();
+  const stored = d.users.find((x) => x.id === user.id);
+  return stored && canInspect(stored) ? "inspector" : null;
 }
 
 /** Where each kind of account lives. */

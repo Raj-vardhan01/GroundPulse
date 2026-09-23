@@ -12,6 +12,7 @@ import { db } from "@/lib/store";
 import { liveSub } from "@/lib/plans";
 import { todayKey } from "@/lib/format";
 import type { DB, Invoice, Issue, Property, Report, Subscription, Ticket, Visit } from "@/lib/types";
+import { balanceDue } from "@/lib/payments";
 
 const byDateDesc = (a: string, b: string) => (a < b ? 1 : -1);
 
@@ -19,7 +20,7 @@ const byDateDesc = (a: string, b: string) => (a < b ? 1 : -1);
 const visibleReports = (d: DB) => new Set(d.reports.filter((r) => !r.heldForReview).map((r) => r.id));
 
 /** A visit the owner is still waiting on: booked, not done, not cancelled. */
-export const UPCOMING = ["scheduled", "assigned"] as const;
+export const UPCOMING = ["unpaid", "scheduled", "assigned"] as const;
 export const LIVE_STATUSES = ["en_route", "on_site", "submitted"] as const;
 
 /** Booked for a day that has already gone, and nobody came. */
@@ -86,7 +87,9 @@ export async function visitView(ownerId: string, id: string) {
     /** null while it is being reviewed — the owner cannot open it yet */
     report: report && !report.heldForReview ? report : null,
     heldForReview: !!report?.heldForReview,
-    invoice: d.invoices.find((i) => i.visitId === visit.id && !i.issueId) ?? null,
+    invoice: d.invoices.find((i) => i.visitId === visit.id && !i.issueId && i.stage !== "advance") ?? null,
+    advance: d.invoices.find((i) => i.visitId === visit.id && i.stage === "advance") ?? null,
+    balance: balanceDue(d, visit.id),
     subscription: visit.subscriptionId ? d.subscriptions.find((s) => s.id === visit.subscriptionId) ?? null : null,
     tickets: d.tickets.filter((t) => t.visitId === visit.id && t.ownerId === ownerId).sort((a, b) => byDateDesc(a.createdAt, b.createdAt)),
   };
@@ -113,6 +116,8 @@ function reportContext(d: DB, report: Report) {
   const issues = d.issues.filter((i) => i.reportId === report.id);
   return {
     report,
+    /** the 75% still owed — while it is, only the headline shows */
+    balance: balanceDue(d, visit.id),
     property: d.properties.find((p) => p.id === report.propertyId)!,
     visit,
     inspector: d.inspectors.find((i) => i.id === report.inspectorId) ?? null,
@@ -166,6 +171,14 @@ export async function openableReports(ownerId: string) {
 export async function invoices(ownerId: string) {
   const d = await db();
   return d.invoices.filter((i) => i.ownerId === ownerId).sort((a, b) => byDateDesc(a.createdAt, b.createdAt));
+}
+
+/** Bookings waiting on their 25% — not on anybody's board until it is paid. */
+export async function awaitingAdvance(ownerId: string) {
+  const d = await db();
+  return d.visits
+    .filter((v) => v.ownerId === ownerId && v.status === "unpaid" && v.advanceInr > 0)
+    .sort((a, b) => (a.scheduledFor < b.scheduledFor ? -1 : 1));
 }
 
 /** Every plan the owner has had, newest first — live ones and ended ones. */

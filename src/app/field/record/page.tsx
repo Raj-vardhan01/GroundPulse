@@ -1,5 +1,7 @@
-import { AlertTriangle, BadgeCheck, CalendarClock, Check, MapPinned, Star } from "lucide-react";
-import { requireInspector } from "@/lib/auth";
+import { AlertTriangle, BadgeCheck, CalendarClock, Check, MapPinned, Star, Repeat } from "lucide-react";
+import { otherSide, requireInspector } from "@/lib/auth";
+import { switchApp } from "@/lib/actions";
+import { InspectorProfileForm } from "@/components/field/InspectorProfileForm";
 import { inspectorFor, doneJobs, STATUS_COPY } from "@/lib/field";
 import { SignOutRow } from "@/components/field/FieldShell";
 import { Panel, PanelHead, Stat, money } from "@/components/app/ui";
@@ -20,6 +22,7 @@ export default async function Record() {
   const ins = (await inspectorFor(user.id))!;
   const done = await doneJobs(ins);
   const copy = STATUS_COPY[ins.status];
+  const owner = (await otherSide()) === "owner";
 
   return (
     <div className="grid gap-4">
@@ -32,7 +35,7 @@ export default async function Record() {
                 {ins.name} {ins.verified && <BadgeCheck size={17} className="text-accent" />}
               </div>
               <div className="t-small mt-0.5">{ins.bg}</div>
-              <div className="t-small mt-0.5 flex items-center gap-1.5"><MapPinned size={11} /> {ins.baseLocality} · {ins.city}</div>
+              <div className="t-small mt-0.5 flex items-center gap-1.5"><MapPinned size={11} /> {[ins.baseLocality, ins.city].filter(Boolean).join(" · ")}</div>
             </div>
           </div>
 
@@ -51,6 +54,22 @@ export default async function Record() {
           <p className="mt-1 text-[13.5px] leading-snug text-text-2">{copy.note}</p>
         </div>
       </Reveal>
+
+      <Reveal delay={0.05}>
+        <Panel>
+          <PanelHead title="Where your pay goes" meta="Same day, by the end of it" />
+          <div className="p-5"><InspectorProfileForm name={ins.name} upiId={ins.upiId} /></div>
+        </Panel>
+      </Reveal>
+
+      {owner && (
+        <Reveal delay={0.055}>
+          <form action={switchApp}>
+            <input type="hidden" name="as" value="owner" />
+            <button className="btn btn-white w-full"><Repeat size={15} /> Open the owner app — same number</button>
+          </form>
+        </Reveal>
+      )}
 
       <Reveal delay={0.06}>
         <Panel>

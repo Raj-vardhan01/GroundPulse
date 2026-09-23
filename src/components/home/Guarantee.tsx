@@ -4,9 +4,9 @@ import { site } from "@/lib/site";
 
 const guarantees = [
   { I: ThumbsUp, t: "You approve every rupee", b: "No repair, no cleaning, no part is bought without your yes on the exact amount. A flagged issue is a question, not an invoice." },
-  { I: RotateCcw, t: "Cancel in 30 days, 75% back", b: "Change your mind on a yearly plan in the first 30 days and we refund 75% — a flat 25% is retained. No questions and no retention call." },
+  { I: RotateCcw, t: "Cancel free until the day before", b: "Move or cancel any visit up to the day before and your 25% advance comes back automatically. No questions and no retention call." },
   { I: ShieldCheck, t: "We fix what we damage", b: "If we break something during a visit, we repair or replace it at our cost. We never open cupboards, wardrobes or lockers — keep cash and jewellery locked away." },
-  { I: BadgeIndianRupee, t: "Never a rupee of commission", b: "We don't broker tenants and we don't mark up bills. The provider's quote + a flat 10%, shown to you before you approve." },
+  { I: BadgeIndianRupee, t: "Never a rupee of commission", b: "We don't broker tenants and we don't mark up bills. The provider's quote + 15%, shown to you before you approve." },
 ];
 
 /** The trust anchor: a joint note from both founders + the four guarantees they sign up to. */

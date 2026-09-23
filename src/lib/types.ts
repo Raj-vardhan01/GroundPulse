@@ -125,6 +125,7 @@ export type Subscription = {
 
 /* A visit walks this line, and every screen in the app reads from it. */
 export type VisitStatus =
+  | "unpaid"      // booked, waiting on the 25% advance — not on the board yet
   | "scheduled"   // confirmed, nobody assigned yet
   | "assigned"    // an inspector has it
   | "en_route"    // they are on the way
@@ -199,6 +200,10 @@ export type Visit = {
   startedAt: string | null;
   endedAt: string | null;
   reportId: string | null;
+  /** the 25% taken at booking; 0 when nothing was due up front */
+  advanceInr: number;
+  /** ₹200 for every hour past two on site — paid by us, not the owner */
+  overtimeInr: number;
 };
 
 export type ItemState = "pass" | "attn" | "fail";
@@ -230,7 +235,18 @@ export type Video = {
   lat: number | null;
   lng: number | null;
 };
-export type DraftItem = { t: string; s: ItemState | null; note: string; photos: Photo[]; videos: Video[] };
+/** What the same job costs on Urban Company today, looked up by the
+    inspector standing in front of it. Our 15% goes on top. */
+export type DraftQuote = {
+  service: string;
+  /** the Urban Company price for the work itself */
+  price: number;
+  /** parts at their rate card, if the job needs any */
+  parts?: number;
+  /** outside Care+ by its terms — appliance, structural, cosmetic, damage */
+  excluded?: boolean;
+};
+export type DraftItem = { t: string; s: ItemState | null; note: string; photos: Photo[]; videos: Video[]; quote?: DraftQuote | null };
 export type DraftRoom = {
   name: string;
   variant: "bathroom" | "kitchen" | "bedroom" | "balcony" | "electrical" | "entrance" | "living";
@@ -285,7 +301,12 @@ export type Decision = "pending" | "approved" | "declined";
    in_progress / completed → the work, inspector present */
 export type RepairStatus = "requested" | "assigned" | "in_progress" | "completed";
 
-export type Quote = { labour: number; parts: number; fee: number; total: number; provider: string; trade: string };
+export type Quote = {
+  labour: number; parts: number; fee: number; total: number; provider: string; trade: string;
+  /** "urban-company": labour is the Urban Company price for `trade`, as
+      the inspector found it — shown to the owner as exactly that */
+  source?: "urban-company";
+};
 
 export type Issue = {
   id: string;
@@ -313,6 +334,8 @@ export type Issue = {
   coveredInr: number;
   decision: Decision;
   decidedAt: string | null;
+  /** why the owner said no — the site promises "decline with a reason" */
+  declineReason?: string;
   repair: {
     status: RepairStatus;
     providerName: string;
@@ -325,6 +348,8 @@ export type Issue = {
     /** from the same spot as the before — a photo, a clip, or both */
     afterPhoto: Photo | null;
     afterVideo: Video | null;
+    /** the owner's rating of the finished work */
+    rating?: { stars: number; note: string; at: string } | null;
   } | null;
 };
 
@@ -345,6 +370,31 @@ export type Invoice = {
   status: InvoiceStatus;
   method: string;
   createdAt: string;
+  /** which part of the money this is. Only a "balance" bill that is still
+      due keeps a report closed. */
+  stage?: "advance" | "balance" | "repair" | "";
+  /** the Razorpay payment behind it, for a refund */
+  paymentId?: string;
+};
+
+/* One attempt to pay for something. The Razorpay order carries our id;
+   whichever arrives first — the browser's confirmation or the webhook —
+   settles it, and settling twice does nothing. */
+export type PaymentPurpose = "advance" | "repair" | "invoice";
+export type Payment = {
+  id: string;
+  ownerId: string;
+  purpose: PaymentPurpose;
+  /** the visit (advance), issue (repair) or invoice it pays for */
+  refId: string;
+  amountInr: number;
+  /** what Care+ was absorbing when the owner saw the price (repairs) */
+  coveredInr: number;
+  orderId: string;
+  paymentId: string;
+  status: "created" | "paid";
+  createdAt: string;
+  paidAt: string | null;
 };
 
 /* One append-only stream. The property timeline, the notification bell and
@@ -405,6 +455,8 @@ export type Inspector = {
   availability: string[];
   /** how many of the five probation reports a person has already read */
   reviewedReports: number;
+  /** where the day's earnings go, by the end of that day */
+  upiId: string;
 };
 
 /* "Something went wrong with this visit" — written by the owner, answered
@@ -447,4 +499,5 @@ export type DB = {
   tickets: Ticket[];
   sessions: Session[];
   otps: Otp[];
+  payments: Payment[];
 };

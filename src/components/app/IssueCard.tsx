@@ -1,11 +1,16 @@
 import { BadgeCheck, CalendarClock, Check, CircleSlash, Flag, Hourglass, ShieldCheck, Wrench } from "lucide-react";
 import { DecisionButtons } from "@/components/app/DecisionButtons";
 import { RepairScheduler } from "@/components/app/RepairScheduler";
+import { RateRepair } from "@/components/app/RateRepair";
 import { PhotoStrip } from "@/components/app/PhotoStrip";
 import { VideoClip } from "@/components/app/VideoClip";
 import { money } from "@/components/app/ui";
 import { fmtDate, fmtDateTime, fmtDayDate } from "@/lib/format";
-import { repairBill } from "@/lib/repair";
+import { FEE_RATE, repairBill } from "@/lib/repair";
+import { carePlusCover } from "@/lib/pricing";
+import { effectiveStatus } from "@/lib/plans";
+
+const FEE_PCT = Math.round(FEE_RATE * 100);
 import { cn } from "@/lib/cn";
 import type { Invoice, Issue, Subscription } from "@/lib/types";
 
@@ -27,6 +32,10 @@ export function IssueCard({
 }) {
   const open = i.decision === "pending";
   const bill = repairBill(i, { founding, sub });
+  /* The rate the quote was written at — a quote made before a rate change
+     keeps its own number, and says so. */
+  const gross = (i.quote?.labour ?? 0) + (i.quote?.parts ?? 0);
+  const pct = i.quote && gross ? `${Math.round((i.quote.fee / gross) * 100)}%` : `${FEE_PCT}%`;
   const r = i.repair;
 
   return (
@@ -64,40 +73,49 @@ export function IssueCard({
           <div className="rounded-[14px] bg-paper p-5">
             {i.quote && bill ? (
               <>
-                <div className="t-label">Quote from a verified pro · rate card</div>
+                <div className="t-label">{i.quote.source === "urban-company" ? "Priced at Urban Company's rate · plus our 15%" : "Quote from a verified pro · rate card"}</div>
                 <div className="mt-2.5 flex items-center gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-accent text-[13px] font-semibold text-white">{i.quote.provider.split(" ").map((x) => x[0]).join("")}</span>
                   <div>
-                    <div className="flex items-center gap-1 text-[14.5px] font-medium">{i.quote.provider} <BadgeCheck size={14} className="text-accent" /></div>
-                    <div className="t-small">{i.quote.trade} · verified</div>
+                    <div className="flex items-center gap-1 text-[14.5px] font-medium">{i.quote.provider} {i.quote.source !== "urban-company" && <BadgeCheck size={14} className="text-accent" />}</div>
+                    <div className="t-small">{i.quote.trade} · {i.quote.source === "urban-company" ? "price checked by your inspector" : "verified"}</div>
                   </div>
                 </div>
                 <div className="mt-4 space-y-1.5 text-[14px]">
-                  <Row k="Labour" v={bill.labour} />
-                  <Row k="Parts" v={bill.parts} />
-                  {bill.feeWaived
-                    ? <Row k="StillYours fee · waived, launch offer" v={0} was={bill.feeWaived} />
-                    : <Row k="StillYours fee · flat 10%" v={bill.fee} />}
+                  {i.quote.source === "urban-company"
+                    ? <><Row k={`Urban Company · ${i.quote.trade}`} v={bill.labour} />{bill.parts > 0 && <Row k="Parts, at their rate card" v={bill.parts} />}</>
+                    : <><Row k="Labour" v={bill.labour} /><Row k="Parts" v={bill.parts} /></>}
+                  {bill.feeCovered
+                    ? <Row k={`StillYours ${pct} · none under Care+`} v={0} was={bill.feeCovered} />
+                    : bill.feeWaived
+                      ? <Row k={`StillYours ${pct} · waived, launch offer`} v={0} was={bill.feeWaived} />
+                      : <Row k={`StillYours ${pct} · we arrange it and stay for it`} v={bill.fee} />}
                   {bill.covered > 0 && <Row k="Covered by Care+" v={-bill.covered} tone="pass" />}
                   <div className="flex justify-between border-t border-line pt-2 font-medium">
-                    <span>{open ? "You would pay" : "Your share"}</span>
+                    <span>{open ? "Total you pay" : "Your share"}</span>
                     <span className="tabular-nums">{money(bill.payable)}</span>
                   </div>
                 </div>
                 {bill.covered > 0 && (
                   <p className="mt-2 flex items-start gap-1.5 text-[12.5px] leading-snug text-accent-2">
-                    <ShieldCheck size={13} className="mt-0.5 shrink-0" /> {money(bill.covered)} of this is absorbed by your plan&apos;s repair cover{open ? ", from what is left of it this year" : ""}.
+                    <ShieldCheck size={13} className="mt-0.5 shrink-0" /> {money(bill.covered)} of this is absorbed by your plan&apos;s repair cover{open ? ", from what is left of it this year" : ""} — the work in full, parts up to {money(carePlusCover.partsPerIncident)}, at most {money(carePlusCover.perIncident)} a repair. No fee on it.
                   </p>
                 )}
                 {sub?.planId === "care-plus" && !i.coverEligible && (
                   <p className="t-small mt-2 leading-snug">Not under the Care+ cover — it is excluded work (appliances, structural) or was flagged on the plan&apos;s first visit.</p>
                 )}
-                <p className="t-small mt-2 leading-snug">Work happens on a day you choose, with your inspector present. After-photos land back in this report.</p>
+                {sub?.planId === "care-plus" && i.coverEligible && open && bill.covered === 0 && effectiveStatus(sub) === "active" && (
+                  <p className="t-small mt-2 leading-snug">This year&apos;s Care+ cover of {money(carePlusCover.yearly)} is used up, so this one is priced as usual.</p>
+                )}
+                <p className="t-small mt-2 leading-snug">
+                  {i.quote.source === "urban-company" ? "The same service costs this on Urban Company today — your inspector checked. " : ""}
+                  Paid when you approve. Work happens on a day you choose, with your inspector present, and the after-photos land back in this report.
+                </p>
               </>
             ) : (
               <div className="flex items-start gap-2.5">
                 <Hourglass size={16} className="mt-0.5 shrink-0 text-warn" />
-                <p className="t-small leading-snug">No quote yet — a verified pro is pricing it. You can approve it once the price is here; you can decline it now if you would rather leave it.</p>
+                <p className="t-small leading-snug">No price on this one yet. You can approve it once there is; you can decline it now if you would rather leave it.</p>
               </div>
             )}
 
@@ -108,9 +126,12 @@ export function IssueCard({
                 {i.decision === "approved" ? <Check size={15} className="mt-0.5 shrink-0" /> : <CircleSlash size={15} className="mt-0.5 shrink-0" />}
                 <span>
                   You {i.decision} this{i.decidedAt ? ` on ${fmtDate(i.decidedAt, { year: true })}` : ""}.
+                  {i.decision === "declined" && i.declineReason && (
+                    <span className="block text-[12.5px] font-normal italic">“{i.declineReason}” — nothing scheduled, nobody sent.</span>
+                  )}
                   {i.decision === "approved" && (
                     <span className="block text-[12.5px] font-normal">
-                      {invoice ? `${money(invoice.amountInr)} · ${invoice.status === "paid" ? "paid" : invoice.status === "due" ? "on your bills, due" : "refunded"} (${invoice.ref})` : "Fully covered — nothing to pay."}
+                      {invoice ? `${money(invoice.amountInr)} · ${invoice.status === "paid" ? "paid" : invoice.status === "due" ? "on your bills, due" : invoice.status === "refund_due" ? "being refunded" : "refunded"} (${invoice.ref})` : "Fully covered — nothing to pay."}
                     </span>
                   )}
                   <span className="block text-[12px] font-normal opacity-80">Written to the audit log · {i.decidedAt ? fmtDateTime(i.decidedAt) : ""}</span>
@@ -159,6 +180,7 @@ export function IssueCard({
                 <div className="t-label">Completion note</div>
                 <p className="mt-1 text-[13.5px] leading-relaxed text-text-2">{r.note}</p>
               </div>
+              {!shared && <RateRepair id={i.id} provider={r.providerName || "the provider"} done={r.rating ?? null} />}
             </div>
           )}
         </div>

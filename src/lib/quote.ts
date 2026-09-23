@@ -134,6 +134,10 @@ export function quote(q: QuoteInput): Quote {
   return { lines, total, saved, recurring: buyingPlan, period: buyingPlan ? "for the year" : q.plan ? "on your plan" : "one visit" };
 }
 
+/** 25% of a booking is paid up front; the rest when the report is ready. */
+export const ADVANCE_RATE = 0.25;
+export const advanceOf = (total: number) => (total > 0 ? Math.round(total * ADVANCE_RATE) : 0);
+
 /* Slots an inspector can actually be given. Deliberately wide — the
    site promises a person for as long as it takes, not a 30-minute
    window nobody can keep. Always IST: the visit happens in India. */

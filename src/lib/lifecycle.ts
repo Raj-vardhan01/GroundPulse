@@ -16,14 +16,14 @@ import { invoiceRef, now, uid } from "@/lib/store";
 import { pushEvent } from "@/lib/events";
 import { addDays, todayKey } from "@/lib/format";
 import { inr } from "@/lib/pricing";
-import { planName } from "@/lib/plans";
-import type { DB, Visit } from "@/lib/types";
+import { liveSub, planName } from "@/lib/plans";
+import type { DB, Issue, Visit } from "@/lib/types";
 
 const kindLabel = (v: Visit) => (v.kind === "cleaning" ? "Cleaning" : v.kind === "plot" ? "Plot visit" : "Inspection");
 
-/** A report reaches the owner. The visit has happened, so this is when it
-    is billed — "nothing is charged before a visit happens" — and when a
-    plan bought with it actually starts its year. */
+/** A report reaches the owner. The visit has happened, so this is when the
+    rest of it is billed — the 75% after the 25% taken at booking — and when
+    a plan bought with it actually starts its year. */
 export function deliverReport(d: DB, visitId: string, opts: { released?: boolean } = {}) {
   const v = d.visits.find((x) => x.id === visitId);
   if (!v?.reportId) return;
@@ -52,21 +52,26 @@ export function deliverReport(d: DB, visitId: string, opts: { released?: boolean
     });
   }
 
-  if (v.amountInr > 0 && !d.invoices.some((i) => i.visitId === v.id && !i.issueId)) {
+  /* The rest of the money is due now — 75% when 25% was paid up front.
+     Until it is paid the owner sees the score and how much was flagged,
+     and the full report opens the moment it is. */
+  const advancePaid = d.invoices.filter((i) => i.visitId === v.id && i.stage === "advance" && i.status === "paid").reduce((n, i) => n + i.amountInr, 0);
+  const balance = Math.max(0, v.amountInr - advancePaid);
+  if (balance > 0 && !d.invoices.some((i) => i.visitId === v.id && !i.issueId && i.stage !== "advance")) {
     d.invoices.push({
       id: uid(), ref: invoiceRef(d), ownerId: v.ownerId, propertyId: v.propertyId, visitId: v.id,
       issueId: null, subscriptionId: startsPlan ? sub!.id : null,
-      title: `${v.lines[0]?.k ?? kindLabel(v)} · ${p.label}`,
-      amountInr: v.amountInr, status: "due", method: "", createdAt: now(),
+      title: `${advancePaid ? "Balance 75% · " : ""}${v.lines[0]?.k ?? kindLabel(v)} · ${p.label}`,
+      amountInr: balance, status: "due", method: "", createdAt: now(), stage: "balance",
     });
   }
 
   const flagged = d.issues.filter((i) => i.reportId === r.id).length;
   pushEvent(d, {
     ownerId: v.ownerId, propertyId: v.propertyId, visitId: v.id, type: "report.ready",
-    title: "Your report is ready",
-    body: `${p.label} · health ${r.score} · ${flagged ? `${flagged} ${flagged === 1 ? "thing" : "things"} flagged — quotes on the way` : "nothing needs fixing"}`,
-    href: `/app/reports/${r.id}`, action: flagged > 0,
+    title: balance ? `Your report is ready — pay ${inr(balance)} to open it` : "Your report is ready",
+    body: `${p.label} · health ${r.score} · ${flagged ? `${flagged} ${flagged === 1 ? "thing" : "things"} flagged` : "nothing needs fixing"}`,
+    href: `/app/reports/${r.id}`, action: flagged > 0 || balance > 0,
   });
 }
 
@@ -121,7 +126,7 @@ export function cancelVisitIn(d: DB, v: Visit, why: string): { refund: number; p
   if (sub && sub.status === "pending" && sub.startedByVisitId === v.id) {
     sub.status = "cancelled";
     planCancelled = true;
-    for (const other of d.visits.filter((x) => x.subscriptionId === sub.id && x.id !== v.id && ["scheduled", "assigned"].includes(x.status))) {
+    for (const other of d.visits.filter((x) => x.subscriptionId === sub.id && x.id !== v.id && ["unpaid", "scheduled", "assigned"].includes(x.status))) {
       other.status = "cancelled";
       other.cancelledAt = now();
       releasePlanPlaces(d, other);
@@ -141,4 +146,46 @@ export function cancelVisitIn(d: DB, v: Visit, why: string): { refund: number; p
   });
 
   return { refund, planCancelled };
+}
+
+/** The owner says yes to a repair — with the money already in when there
+    was any to pay. The one place an approval is written, whether it came
+    from a fully-covered tap or from a payment settling. */
+export function approveIssueIn(
+  d: DB, iss: Issue,
+  money: { covered: number; payable: number; feeWaived: number; feeCovered?: number; paymentId?: string; method?: string },
+) {
+  const visit = d.visits.find((v) => v.id === iss.visitId);
+  const sub = visit?.subscriptionId ? d.subscriptions.find((x) => x.id === visit.subscriptionId) ?? null : liveSub(d.subscriptions, iss.propertyId);
+  iss.decision = "approved";
+  iss.decidedAt = now();
+  iss.coveredInr = money.covered;
+  if (sub && money.covered) sub.coverUsedInr += money.covered;
+  iss.repair = {
+    status: "requested", providerName: iss.quote?.provider ?? "", trade: iss.quote?.trade ?? "",
+    scheduledFor: "", slot: "", completedAt: null, note: "", afterPhoto: null, afterVideo: null,
+  };
+  if (money.payable > 0) {
+    d.invoices.push({
+      id: uid(), ref: invoiceRef(d), ownerId: iss.ownerId, propertyId: iss.propertyId, visitId: iss.visitId,
+      issueId: iss.id, subscriptionId: money.covered && sub ? sub.id : null,
+      title: `${iss.title} · ${iss.ref}`,
+      amountInr: money.payable,
+      status: "paid",
+      method: [
+        money.method ?? "",
+        money.feeWaived ? `Launch offer · ${inr(money.feeWaived)} StillYours fee waived` : "",
+        money.covered ? `Care+ covers ${inr(money.covered)}${money.feeCovered ? ", no StillYours fee" : ""}` : "",
+      ].filter(Boolean).join(" · "),
+      createdAt: now(), stage: "repair", paymentId: money.paymentId ?? "",
+    });
+  }
+  pushEvent(d, {
+    ownerId: iss.ownerId, propertyId: iss.propertyId, visitId: iss.visitId,
+    type: "issue.approved",
+    title: "You approved a repair",
+    body: `${iss.title} · ${iss.ref}${money.payable ? ` · ${inr(money.payable)} paid` : " · fully covered"}${money.covered ? `, Care+ covers ${inr(money.covered)}` : ""} — pick a day for it`,
+    href: `/app/reports/${iss.reportId}#${iss.id}`,
+  });
+  closeIfSettled(d, iss.visitId);
 }

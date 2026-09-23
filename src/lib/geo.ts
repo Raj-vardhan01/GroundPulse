@@ -85,7 +85,7 @@ export function navigateHref(p: Pick<Property, "pin" | "address" | "city">) {
 
 /** Standing at the property. Indoors GPS drifts, so this is generous —
     it catches "I am checking in from home", not "wrong stairwell". */
-export const CHECKIN_RADIUS_M = 150;
+export const CHECKIN_RADIUS_M = 500;
 /** A phone that says "±40 m" may really be 40 m closer, and gets that
     benefit. One that says "±2 km" is not evidence of anything, so the
     benefit stops here. */

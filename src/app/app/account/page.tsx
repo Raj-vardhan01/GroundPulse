@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Bell, LogOut, Mail, Phone, ShieldCheck, Smartphone } from "lucide-react";
-import { requireOwner } from "@/lib/auth";
-import { doSignOut } from "@/lib/actions";
+import { otherSide, requireOwner } from "@/lib/auth";
+import { doSignOut, switchApp } from "@/lib/actions";
 import { ProfileForm } from "@/app/welcome/ProfileForm";
 import { InstallCard } from "@/components/app/InstallCard";
 import { PageHead, Panel, PanelHead } from "@/components/app/ui";
@@ -13,6 +13,7 @@ export const metadata = { title: "Account" };
 
 export default async function Page() {
   const user = await requireOwner();
+  const inspector = (await otherSide()) === "inspector";
 
   return (
     <>
@@ -94,6 +95,12 @@ export default async function Page() {
           <Reveal delay={0.08}>
             <Panel>
               <div className="p-5">
+                {inspector && (
+                  <form action={switchApp} className="mb-2.5">
+                    <input type="hidden" name="as" value="inspector" />
+                    <button className="btn btn-accent btn-sm w-full"><ShieldCheck size={14} /> Open the inspector app — same number</button>
+                  </form>
+                )}
                 <form action={doSignOut}>
                   <button className="btn btn-white btn-sm w-full"><LogOut size={14} /> Sign out</button>
                 </form>
