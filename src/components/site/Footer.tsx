@@ -19,7 +19,6 @@ export function Footer() {
             {footerLinks.map((l) => <li key={l.href}><Link href={l.href} className="hover:text-ink">{l.label}</Link></li>)}
             <li><Link href="/access" className="hover:text-ink">Early access</Link></li>
             <li><Link href="/platform" className="hover:text-ink">For investors & engineers</Link></li>
-            <li><Link href="/terms" className="hover:text-ink">Terms</Link></li>
             {APPS_LIVE && <li><Link href="/signin" className="hover:text-ink">Sign in</Link></li>}
             {APPS_LIVE && <li><Link href="/signin?as=inspector" className="hover:text-ink">Inspector sign in</Link></li>}
           </ul>
@@ -59,8 +58,13 @@ export function Footer() {
         </div>
       </div>
       <div className="wrap flex flex-col gap-2 border-t border-line py-5 text-[12.5px] text-text-3 sm:flex-row sm:justify-between">
-        <span>© 2026 Still Yours. Your property media is stored securely and only visible to verified, assigned users.</span>
-        <span>Made in India, for owners everywhere.</span>
+        <span>© 2026 {site.company}. Your property media is stored securely and only visible to verified, assigned users.</span>
+        <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href="/terms" className="hover:text-ink">Terms</Link>
+          <Link href="/privacy" className="hover:text-ink">Privacy</Link>
+          <Link href="/refunds" className="hover:text-ink">Refunds</Link>
+          <Link href="/contact" className="hover:text-ink">Contact</Link>
+        </nav>
       </div>
     </footer>
   );

@@ -23,7 +23,7 @@ const steps = [
   { I: MapPinned, t: "Tell us where it is", b: "Survey number or pin, size, and where the corners are if you know. A photo of the sale deed sketch helps." },
   { I: ShieldCheck, t: "A verified inspector walks it", b: "Full boundary walk with GPS track, a photo and short video at every corner, fence, gate and signboard." },
   { I: Video, t: "Report within the hour", b: "Photo map, corner-by-corner status, 'no change' vs. last visit — or exactly what changed, with proof." },
-  { I: Clock, t: "Repeat every quarter", b: "Set it to repeat. We remind you, walk it, and compare with the last visit. Cancel any time." },
+  { I: Clock, t: "Repeat every quarter", b: "Set it to repeat. We remind you, walk it, and compare with the last visit. Move or cancel free until the day before." },
 ];
 const worries = [
   ["Someone has built a shed or parked on it", "Unauthorised occupation — the #1 way plots are lost. We photograph it and tell you the same day."],
@@ -43,7 +43,7 @@ export default function Page() {
           <Link href="/access?plan=plot-once" className="btn btn-accent">Book a plot visit · ₹1,999 <ArrowRight size={16} /></Link>
           <Link href="/sample-report" className="btn btn-white">See a plot report</Link>
         </Reveal>
-        <p className="mt-4 text-[13.5px] text-text-2">Report within the hour · repeat every quarter · cancel anytime · live in Bengaluru</p>
+        <p className="mt-4 text-[13.5px] text-text-2">Report within the hour · repeat every quarter · cancel free until the day before · live in Bengaluru</p>
       </PageHero>
 
       <section className="wrap mt-6 grid gap-4 md:mt-8 lg:grid-cols-[1fr_1.2fr]">
@@ -77,7 +77,7 @@ export default function Page() {
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row"><Link href="/access?plan=plot-once" className="btn btn-white">Book a plot visit <ArrowRight size={16} /></Link><Link href="/sample-report" className="btn btn-line text-white">See a plot report</Link></div>
               </div>
               <div className="grid gap-3">
-                {[[Fence, "Found something?", "Signboard install, fencing, boundary marking or a lawyer's notice — verified pros, quote + 10%, you approve."], [ShieldCheck, "Same trust chain as homes", "Police-verified inspector, GPS + time on every photo, and we fix what we damage."], [Clock, "Report within the hour", "Boundary walk, photo map and every corner — in your inbox the same morning."]].map(([I, t, b]) => { const Icon = I as typeof Fence; return <div key={t as string} className="flex gap-3 rounded-[14px] bg-white/[0.07] p-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10"><Icon size={16} /></span><div><div className="text-[15px] font-medium">{t as string}</div><div className="mt-1 text-[13px] text-white/65">{b as string}</div></div></div>; })}
+                {[[Fence, "Found something?", "Signboard install, fencing, boundary marking or a lawyer's notice — verified pros, quote + 15%, you approve."], [ShieldCheck, "Same trust chain as homes", "Police-verified inspector, GPS + time on every photo, and we fix what we damage."], [Clock, "Report within the hour", "Boundary walk, photo map and every corner — in your inbox the same morning."]].map(([I, t, b]) => { const Icon = I as typeof Fence; return <div key={t as string} className="flex gap-3 rounded-[14px] bg-white/[0.07] p-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10"><Icon size={16} /></span><div><div className="text-[15px] font-medium">{t as string}</div><div className="mt-1 text-[13px] text-white/65">{b as string}</div></div></div>; })}
               </div>
             </div>
           </Reveal>
