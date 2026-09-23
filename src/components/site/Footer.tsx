@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Mail } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { footerLinks } from "@/lib/nav";
 import { site } from "@/lib/site";
+import { APPS_LIVE } from "@/lib/flags";
 
 export function Footer() {
   return (
@@ -18,6 +20,8 @@ export function Footer() {
             <li><Link href="/access" className="hover:text-ink">Early access</Link></li>
             <li><Link href="/platform" className="hover:text-ink">For investors & engineers</Link></li>
             <li><Link href="/terms" className="hover:text-ink">Terms</Link></li>
+            {APPS_LIVE && <li><Link href="/signin" className="hover:text-ink">Sign in</Link></li>}
+            {APPS_LIVE && <li><Link href="/signin?as=inspector" className="hover:text-ink">Inspector sign in</Link></li>}
           </ul>
         </div>
         <div>
@@ -33,7 +37,12 @@ export function Footer() {
         <div>
           <div className="t-label mb-3">Contact</div>
           <ul className="space-y-2 text-[15px] text-text-2">
-            <li><a href={`mailto:${site.contactEmail}`} className="hover:text-ink">{site.contactEmail}</a></li>
+            <li>
+              <a href={`mailto:${site.contactEmail}`} className="inline-flex items-center gap-2 hover:text-ink">
+                <Mail size={17} className="shrink-0" />
+                {site.contactEmail}
+              </a>
+            </li>
             <li>
               <a href={site.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-ink">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

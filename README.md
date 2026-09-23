@@ -1,6 +1,10 @@
-# Still Yours — marketing site
+# Still Yours
 
-Multi-page marketing website for **Still Yours**, the smart remote property monitoring and maintenance platform (Project WEB-01).
+The marketing site **and** the owner app for **Still Yours** — the remote
+property monitoring and maintenance service (Project WEB-01).
+
+Everything runs in one Next.js app. The public pages live under
+`src/app/(marketing)`, the signed-in owner app under `src/app/app`.
 
 ## Run
 
@@ -20,6 +24,152 @@ npm run build && npm start
 | `/network` | For inspectors & service providers — verification flow, their apps, expectations |
 | `/platform` | Four roles, admin dashboard, tech stack, roadmap |
 | `/access` | Early-access / application form (`?role=owner|inspector|provider`, `?address=`) |
+
+## Turning the apps on
+
+The owner and inspector apps are **off in production** and always on
+locally. In production every link to them is unrendered and the routes
+themselves 404, so nobody reaches a sign-in form before we are ready.
+
+```bash
+# when it is time to go live
+vercel env add NEXT_PUBLIC_APPS_LIVE production   # value: 1
+vercel --prod
+```
+
+That is the only switch — `src/lib/flags.ts`. Do it after the data
+layer is on Postgres, not before: see "What persists" below.
+
+## The owner app
+
+| Route | What it is |
+| --- | --- |
+| `/signin` | Phone-OTP sign in. Your number is the account — no password |
+| `/welcome` | Three-step first run: who you are → your property → your first visit |
+| `/app` | Home — portfolio health, whatever is waiting on your decision, a live visit in progress, your properties |
+| `/app/properties` · `/app/properties/[id]` | Every property, its health, its visits, its checklist, its access notes |
+| `/app/book` | Book a visit: property, service, plan or cleaning tier, add-ons, day and window, live price |
+| `/app/visits` · `/app/visits/[id]` | Booked → assigned → on the way → on site → report, with reschedule and cancel |
+| `/app/reports` · `/app/reports/[id]` | The full report: health score, chain of custody, room by room, and the approve/decline on every flagged issue |
+| `/app/plan` | Visits left, renewal date, and exactly what the Care+ repair cover absorbs |
+| `/app/billing` | Bills raised after a visit or an approved repair. Nothing before |
+| `/app/account` · `/app/activity` · `/app/help` | Profile, the whole audit trail, and the questions owners actually ask |
+
+### The demo account
+
+Sign in as **+91 90000 00000** (the code is shown on screen — see below) and you
+land in an account that has been running a while: three properties, a delivered
+report with a decision waiting, a visit happening right now, and a repair
+already closed out. Any other number creates a fresh account and walks the
+welcome flow.
+
+## The inspector app
+
+Same sign-in, different door: a number on a `role: "inspector"` row lands
+on `/field` instead of `/app`. That row is what an admin creates when
+somebody finishes verification — the application form itself only
+confirms which documents exist, because originals are checked in person.
+
+| Route | What it is |
+| --- | --- |
+| `/field` | Today — the one job they are holding, or the three nearest on the board |
+| `/field/jobs` | Every unclaimed job **in their city**, sorted by nearest, soonest or pays-most |
+| `/field/jobs/[id]` | The brief: access notes, key holder, owner's instructions, what the job pays and why — then Claim |
+| `/field/visit/[id]` | Check-in gate → checklist → review → submit |
+| `/field/earnings` | Per visit, this week, awaiting review, the rate card, the deposit |
+| `/field/record` | Rating, documents with expiry dates, localities, availability |
+
+### The rules the app enforces
+
+Not in a disabled button — in `src/lib/fieldActions.ts`, on the server:
+
+- **One live job at a time.** Claiming is refused while anything of theirs
+  is still `assigned`/`en_route`/`on_site`/`submitted`.
+- **City only.** A claim for a property outside their city is refused.
+- **No OTP, no checklist.** Check-in needs the owner's four-digit code,
+  a location inside 250 m (or a written reason), and a photo of the front
+  door. The draft checklist does not exist until all of it passes.
+- **A flag needs proof.** Anything not marked OK needs a photograph and a
+  note, and every room needs its video slot filled, or submit is refused
+  and names the first thing missing.
+- **Probation is real.** An inspector who is not `active` has every report
+  held — written, but invisible to the owner until a person reads it.
+
+Checklists are generated from the rooms the owner registered, so nobody
+can walk fewer rooms than were booked. Photos are shrunk to a 320px JPEG
+in the browser and stored as thumbnails; production uploads the
+full-resolution original to object storage and keeps only the pointer.
+
+### Signing in as an inspector
+
+| Number | Who | State |
+| --- | --- | --- |
+| `9000000001` | Ravi K. | Active, one job already claimed |
+| `9000000002` | Meena S. | On probation — 3 of 5 reports reviewed |
+| `9000000003` | Arun P. | Active, on site right now, mid-checklist |
+
+Owners are `9000000000` (Priya, the main demo), `9000000011`, `9000000012`.
+
+### What persists, and what does not
+
+Sessions are a signed cookie, so staying signed in works everywhere —
+locally, and across serverless instances in production.
+
+Everything else still lives in the JSON store, and that is per-process:
+
+- **The seeded demo** (Priya, the three inspectors, their properties,
+  reports and jobs) is rebuilt identically wherever the app runs, so
+  browsing it in production is solid.
+- **Anything created at runtime** — a new booking, an approved repair, a
+  brand-new account — lives only on the instance that handled the
+  request. Locally that is one process and it persists. In production it
+  may not survive the next request.
+
+So: demo and click through anywhere; test the flows that *write*
+something on localhost. Moving `store.ts` onto Postgres removes the
+distinction entirely.
+
+### Where the data lives
+
+Locally, in one JSON file at `.data/store.json`, seeded on first run
+(`src/lib/seed.ts`). No Postgres, no Docker, no connection string — `npm run
+dev` is the whole setup. Every read goes through `src/lib/queries.ts` and every
+write through `src/lib/actions.ts`, both scoped by owner, so moving to Postgres
+is a rewrite of `src/lib/store.ts` and nothing above it.
+
+```bash
+npm run reset   # clears the store; restart the dev server and it re-seeds
+```
+
+### Sign-in codes
+
+There is no SMS gateway, so the six-digit code is shown on the sign-in screen
+and marked as such. Set `SMS_PROVIDER_KEY` and wire `sendSms` in
+`src/lib/auth.ts` to MSG91 or Twilio, and it stops appearing.
+
+## Installing it on a phone
+
+The app is a PWA: `src/app/manifest.ts`, a small service worker in
+`public/sw.js`, maskable icons in `public/icons`, and an `/offline` card for
+when the connection drops. Account → **Add to home screen** always shows the
+steps for the phone you are holding.
+
+```bash
+npm run dev        # http://localhost:3000
+npm run dev:lan    # also reachable at http://<your-mac-ip>:3000
+npm run dev:https  # same, over HTTPS with a self-signed certificate
+```
+
+- **iPhone** — open the LAN address in Safari, Share → *Add to Home Screen*. It
+  opens full screen. Safari does not run the service worker over plain HTTP, so
+  the offline card only works on `localhost` or over HTTPS.
+- **Android** — Chrome only offers a real install over HTTPS, so use
+  `npm run dev:https` (accept the self-signed certificate warning) or a tunnel.
+  Over plain HTTP you still get a home-screen shortcut.
+
+The service worker never caches build output in development — it is registered
+as `/sw.js?dev=1`, which turns asset caching off, otherwise every CSS edit would
+be served from yesterday's cache.
 
 ## Stack
 
