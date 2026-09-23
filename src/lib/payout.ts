@@ -24,7 +24,7 @@ export function payoutFor(p: Property, kind: VisitKind, addOns: Record<string, n
   if (kind === "cleaning") n += RATES.cleaningSupervision;
   if (addOns.cleaning || addOns.deep) n += RATES.cleaningSupervision;
   if (addOns.car) n += RATES.perCar * addOns.car;
-  if (addOns.camera) n += RATES.camera;
+  n += RATES.camera; // every visit is filmed
   return Math.round(n / 10) * 10;
 }
 

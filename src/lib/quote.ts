@@ -119,16 +119,9 @@ export function quote(q: QuoteInput): Quote {
     }
   }
 
-  /* The body camera comes with the launch-offer inspection — the offer
-     says so — and is ₹500 on anything else. */
-  if (q.addOns.camera || q.founding) {
-    const a = addOns.find((x) => x.id === "camera")!;
-    lines.push(
-      q.founding
-        ? { k: a.name, note: "included free with your launch-offer inspection", v: 0, was: a.price }
-        : { k: a.name, note: a.note, v: a.price }
-    );
-  }
+  /* Every visit is filmed on a body camera, start to finish. It is part
+     of the visit, not an add-on — the site and the terms say so. */
+  lines.push({ k: "Full-visit video recording", note: "body camera from the moment they walk in until they leave · included on every visit", v: 0 });
 
   const cars = q.addOns.car ?? 0;
   if (cars) {
@@ -148,4 +141,4 @@ export const SLOTS = ["07:00 – 10:00", "10:00 – 13:00", "13:00 – 16:00", "
 
 /** Add-ons a booking can carry, and how many of each. Anything else the
     browser sends is dropped on the server. */
-export const ADD_ON_LIMITS: Record<string, number> = { cleaning: 1, deep: 1, car: 6, camera: 1 };
+export const ADD_ON_LIMITS: Record<string, number> = { cleaning: 1, deep: 1, car: 6 };

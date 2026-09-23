@@ -10,7 +10,6 @@ import { DayPicker, firstBookable } from "@/components/app/DayPicker";
 import { quote, inr, SLOTS } from "@/lib/quote";
 import { plans } from "@/lib/pricing";
 import { tiers, bhkLabel } from "@/lib/cleaning";
-import { addOns } from "@/lib/pricing";
 import { blockedBecause, eligible, hasFreeVisit, qualifies, terms } from "@/lib/offer";
 import { isServiced, HOME_CITY } from "@/lib/city";
 import { extraRooms } from "@/lib/rooms";
@@ -108,16 +107,15 @@ export function BookingForm({
   const blocked = offerOpen && !founding && !usePlan ? blockedBecause(property, kind, buyPlanId) : null;
   const cleanOk = !!plan && plan.left.cleans > 0 && ((kind === "cleaning" && tierId === "refresh") || (kind === "inspection" && !!adds.cleaning));
   const serviceOk = !!plan && plan.planId === "care-plus" && plan.left.services > 0 && kind === "inspection";
-  const addOnsSent = useMemo(() => (founding ? { ...adds, camera: 1 } : adds), [founding, adds]);
 
   const q = useMemo(
     () => quote({
-      kind, planId: buyPlanId, size, tierId: kind === "cleaning" ? tierId : "", addOns: addOnsSent, founding,
+      kind, planId: buyPlanId, size, tierId: kind === "cleaning" ? tierId : "", addOns: adds, founding,
       rooms: property?.rooms,
       plan: usePlan ? { name: plan!.name, left: plan!.left.visits - 1, total: plan!.total } : null,
       planClean: planClean && cleanOk, planService: serviceOk && !!planService.trim(),
     }),
-    [kind, buyPlanId, size, tierId, addOnsSent, founding, property, usePlan, plan, planClean, cleanOk, serviceOk, planService],
+    [kind, buyPlanId, size, tierId, adds, founding, property, usePlan, plan, planClean, cleanOk, serviceOk, planService],
   );
   const extras = property ? extraRooms(property.size, property.rooms, buyPlanId) : [];
 
@@ -139,7 +137,6 @@ export function BookingForm({
     );
   }
 
-  const camera = addOns.find((a) => a.id === "camera")!;
   let step = 1;
 
   return (
@@ -153,7 +150,7 @@ export function BookingForm({
       <input type="hidden" name="slot" value={slot} />
       {planClean && cleanOk && <input type="hidden" name="planClean" value="on" />}
       {serviceOk && planService.trim() && <input type="hidden" name="planService" value={planService.trim()} />}
-      {["cleaning", "deep", "car", "camera"].map((k) => <input key={k} type="hidden" name={`add_${k}`} value={addOnsSent[k] ?? 0} />)}
+      {["cleaning", "deep", "car"].map((k) => <input key={k} type="hidden" name={`add_${k}`} value={adds[k] ?? 0} />)}
 
       <div className="grid gap-4">
         {/* the launch offer, stated before they start choosing */}
@@ -326,10 +323,10 @@ export function BookingForm({
               {!!adds.cleaning && plan && plan.left.cleans > 0 && (
                 <Toggle on={planClean} onChange={setPlanClean} title={`Use one of your included refresh cleans (${plan.left.cleans} left)`} note="Turn this off to pay for this one and keep them." />
               )}
-              <Counter on={founding || !!adds.camera} I={Video} max={1} locked={founding}
-                title={camera.name}
+              <Counter on I={Video} max={1} locked
+                title="Full-visit video recording"
                 note="Body camera from the moment they walk in until they leave · the whole video on a private link"
-                price={founding ? "included" : inr(camera.price)} n={founding ? 1 : adds.camera ?? 0} onChange={(n) => setAdd("camera", n)} />
+                price="included" n={1} onChange={() => {}} />
               <Counter on={!!adds.car} I={Car} max={6} title="Car inspection" note="Started & idled, battery, tyres, leaks, odometer photo"
                 price={`${inr(700)} each`} n={adds.car ?? 0} onChange={(n) => setAdd("car", n)} />
               {serviceOk && (

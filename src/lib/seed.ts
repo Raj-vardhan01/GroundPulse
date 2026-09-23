@@ -439,7 +439,7 @@ export function seed(): DB {
         area: "Whitefield · Marathahalli · Indiranagar", city: "Bengaluru", baseLocality: "Marathahalli",
         areas: ["Marathahalli", "Whitefield", "Indiranagar", "Bellandur", "Koramangala", "HSR Layout"],
         rating: 4.9, visits: 212, since: "2024", bg: "Ex-facility supervisor, 11 yrs",
-        verified: true, status: "active", depositInr: 5000, reviewedReports: 5,
+        verified: true, status: "active", depositInr: 1500, reviewedReports: 5,
         availability: ["Weekday mornings", "Weekday afternoons", "Saturdays"],
         docs: [
           { name: "Aadhaar card", ok: true, expiresAt: null },
@@ -456,7 +456,7 @@ export function seed(): DB {
         area: "Koramangala · HSR", city: "Bengaluru", baseLocality: "HSR Layout",
         areas: ["HSR Layout", "Koramangala", "Sarjapur Road", "Bellandur", "Jayanagar"],
         rating: 5.0, visits: 148, since: "2025", bg: "Ex-bank operations, 8 yrs",
-        verified: true, status: "probation", depositInr: 5000, reviewedReports: 3,
+        verified: true, status: "probation", depositInr: 1500, reviewedReports: 3,
         availability: ["Weekday mornings", "Weekday evenings", "Sundays"],
         docs: [
           { name: "Aadhaar card", ok: true, expiresAt: null },
@@ -473,7 +473,7 @@ export function seed(): DB {
         area: "Yelahanka · Devanahalli", city: "Bengaluru", baseLocality: "Yelahanka",
         areas: ["Yelahanka", "Devanahalli", "Hebbal", "RT Nagar", "Malleshwaram"],
         rating: 4.8, visits: 96, since: "2025", bg: "Ex-Army JCO, plots & land",
-        verified: true, status: "active", depositInr: 5000, reviewedReports: 5,
+        verified: true, status: "active", depositInr: 1500, reviewedReports: 5,
         availability: ["Weekday mornings", "Saturdays", "Sundays"],
         docs: [
           { name: "Aadhaar card", ok: true, expiresAt: null },

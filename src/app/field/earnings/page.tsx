@@ -85,7 +85,7 @@ export default async function Earnings() {
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-tint text-accent"><ShieldCheck size={17} /></span>
           <div className="grow basis-[13rem]">
             <div className="text-[14.5px] font-medium">Security deposit · {money(ins.depositInr)}</div>
-            <p className="t-small mt-0.5 leading-snug">Held while you are with us, returned in full when you leave in good standing.</p>
+            <p className="t-small mt-0.5 leading-snug">₹500 held from each of your first three payouts — returned in full when you leave and hand the camera back in working order.</p>
           </div>
           <span className="chip chip-pass shrink-0"><Landmark size={10} className="mr-0.5" />Held</span>
         </Panel>

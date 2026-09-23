@@ -342,7 +342,7 @@ function makeVisit(d: DB, property: Property, v: NewVisit): Visit {
     amountInr: 0, paid: false, liveCall: false, notes: "", founding: false,
     subscriptionId: null, usesPlan: false, planClean: false, planService: "", lines: [],
     payoutInr: payoutFor(property, v.kind, addOns), otp: newOtp(), otpTries: 0,
-    claimedAt: null, checkIn: null, draft: null, recording: !!addOns.camera, rating: null,
+    claimedAt: null, checkIn: null, draft: null, recording: true, rating: null,
     createdAt: now(), cancelledAt: null, startedAt: null, endedAt: null, reportId: null,
     ...v,
   };
@@ -392,7 +392,6 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
 
   /* Whether the launch offer applies is decided here, never from the form. */
   const founding = !usePlan && eligible(user, property, kind, planId);
-  if (founding) addOns.camera = 1;
 
   const q = quote({
     kind, planId, size: property.size, tierId, addOns, founding, rooms: property.rooms,
