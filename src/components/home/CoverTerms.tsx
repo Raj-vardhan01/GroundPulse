@@ -45,7 +45,7 @@ export function CoverTerms() {
                 </div>
               ))}
             </div>
-            <p className="t-small mt-4">Cover starts with your first inspection and resets every plan year. Every repair is quoted by a verified provider — quote + a flat 10% Still Yours fee, shown to you in full — and approved by you before any work starts. Repairs inside the cover carry no fee. Full terms are shared at sign-up.</p>
+            <p className="t-small mt-4">Cover starts with your first inspection and resets every plan year. Every repair is quoted by a verified provider — quote + a flat 10% Still Yours fee, shown to you in full — and approved by you before any work starts. Repairs inside the cover carry no fee. Full terms are on our terms page.</p>
           </div>
         </Reveal>
 
@@ -53,12 +53,12 @@ export function CoverTerms() {
         <Reveal className="mt-10">
           <div id="guarantee" className="card grid gap-6 bg-ink p-6 text-white sm:p-8 md:grid-cols-[1.2fr_1fr] md:items-center md:p-10">
             <div>
-              <p className="text-[16px] font-medium text-white/70">The Still Yours Guarantee · every plan, every visit</p>
-              <h3 className="t-2 mt-1 max-w-[16ch]">Every visit protected up to ₹1 lakh.</h3>
-              <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">Theft or damage caused during a visit is covered — for one-time visits and every plan. It's built so that can't happen quietly in the first place; the guarantee is for the rare case.</p>
+              <p className="text-[16px] font-medium text-white/70">Our promise · every plan, every visit</p>
+              <h3 className="t-2 mt-1 max-w-[16ch]">We fix what we damage.</h3>
+              <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">If we break something while we're inside — a fitting, a tile, a pipe — we repair or replace it at our cost. It's built so that rarely happens: one verified person, every room on video, and an exit walkthrough before they leave.</p>
             </div>
             <ol className="grid gap-2">
-              {["One verified person, in only after you confirm · GPS + time on every photo", "Every room on video, plus an exit walkthrough before leaving", "Something off? Tell us on WhatsApp — any time until your next visit", "Verified evidence → covered up to ₹1 lakh. Keep cash, jewellery and documents locked away."].map((t, i) => (
+              {["One verified person, in only after you confirm · GPS + time on every photo", "Every room on video, plus an exit walkthrough before leaving", "Something off? Tell us on WhatsApp — any time until your next visit", "Anything we damaged, we fix at our cost. Cupboards and lockers are never opened — keep cash, jewellery and documents locked away."].map((t, i) => (
                 <li key={t} className="flex items-start gap-3 rounded-[12px] bg-white/[0.07] px-4 py-3 text-[14px]"><span className="mt-px shrink-0 text-white/40">0{i + 1}</span>{t}</li>
               ))}
             </ol>
