@@ -1,9 +1,10 @@
 /* ════════════════════════════════════════════════════════════════
    The owner app's domain, in one place.
 
-   Every shape here mirrors a table in `migrations/002_app.sql`, so
-   moving off the local JSON store onto Postgres is a rewrite of
-   `store.ts` alone — nothing above it changes.
+   Every shape here is what the Postgres tables will hold, so moving
+   off the local JSON store is a rewrite of `store.ts` alone — nothing
+   above it changes. `store.ts` also upgrades an older store.json to
+   these shapes on load, so nobody has to wipe their local data.
    ════════════════════════════════════════════════════════════════ */
 
 import type { BhkKey } from "@/lib/cleaning";
@@ -27,9 +28,15 @@ export type User = {
   id: string;
   role: Role;
   name: string;
+  /** "9876543210" for India, "+971501234567" everywhere else — see lib/phone */
   phone: string;
   email: string;
   livesIn: string;
+  /** the zone their browser reported, so times can be shown on their clock
+      next to IST */
+  tz: string;
+  /** which channels they want messages on; the app itself always shows everything */
+  prefs: { sms: boolean; email: boolean };
   createdAt: string;
   /** owners who have not finished the welcome flow still see it */
   onboardedAt: string | null;
@@ -37,6 +44,9 @@ export type User = {
   foundingNo: number | null;
   /** the offer is one free inspection per owner, so it is spent once */
   freeVisitUsedAt: string | null;
+  /** closed accounts keep their row — bills and reports keep their history —
+      but everything personal on it is blanked */
+  deletedAt: string | null;
 };
 
 export type PropertyKind = "home" | "plot" | "car";
@@ -51,6 +61,7 @@ export type Property = {
   label: string;
   address: string;
   locality: string;
+  /** always normalised — see lib/city */
   city: string;
   type: HomeType | "";
   size: BhkKey;
@@ -61,38 +72,72 @@ export type Property = {
   keyHolderPhone: string;
   /** which vector scene stands in for the cover photo */
   cover: "entrance" | "living" | "balcony" | "kitchen";
+  /** the exact spot, when somebody has marked it — see Pin */
+  pin: Pin | null;
   createdAt: string;
   archivedAt: string | null;
 };
 
-export type SubStatus = "active" | "lapsed" | "cancelled";
+/* Where the property actually stands. Every distance an inspector is
+   held to is measured from here, so it records who put it there: the
+   owner on a map, the owner standing at the gate, or the inspector at
+   the first visit — which stays unconfirmed until the owner agrees. */
+export type Pin = {
+  lat: number;
+  lng: number;
+  /** the phone's own error radius when it came from GPS; null from a map */
+  accuracyM: number | null;
+  source: "map" | "gps" | "inspector";
+  at: string;
+  confirmedAt: string | null;
+};
+
+/* A plan is bought at booking but only starts — and is only billed —
+   when its first visit happens. Until then it is "pending". */
+export type SubStatus = "pending" | "active" | "lapsed" | "cancelled";
 export type Subscription = {
   id: string;
   ownerId: string;
   propertyId: string;
-  planId: string;          // one-time | care | care-plus | plot-once
+  planId: string;          // care | care-plus
   visitsTotal: number;
+  /** inspections booked against the plan — done or still to come. Taken at
+      booking and given back on cancel, so two bookings can never both
+      take the last one. */
   visitsUsed: number;
+  /** refresh cleans included in the plan year, and how many are booked */
+  cleansTotal: number;
+  cleansUsed: number;
+  /** Care+ maintenance services, same idea */
+  servicesTotal: number;
+  servicesUsed: number;
   amountInr: number;
   startedAt: string;
   renewsAt: string | null;
   status: SubStatus;
+  /** the owner can say "do not renew" at any point in the year */
+  autoRenew: boolean;
+  /** the booking that bought it — the plan is billed, and starts, with it */
+  startedByVisitId: string | null;
   /** Care+ repair cover consumed this plan year */
   coverUsedInr: number;
 };
 
 /* A visit walks this line, and every screen in the app reads from it. */
 export type VisitStatus =
-  | "scheduled"   // paid / confirmed, nobody assigned yet
+  | "scheduled"   // confirmed, nobody assigned yet
   | "assigned"    // an inspector has it
   | "en_route"    // they are on the way
   | "on_site"     // checked in, walking the checklist
-  | "submitted"   // checklist done, report being written
+  | "submitted"   // checklist done — report written, or being reviewed
   | "ready"       // report published to the owner
-  | "closed"      // owner has read it and acted on everything
+  | "closed"      // owner has read it and decided everything in it
   | "cancelled";
 
 export type VisitKind = "inspection" | "cleaning" | "plot" | "car";
+
+/** One priced line, exactly as the owner saw it when they booked. */
+export type Line = { k: string; note: string; v: number; was?: number };
 
 export type Visit = {
   id: string;
@@ -104,10 +149,12 @@ export type Visit = {
   /** cleaning tier when kind === "cleaning", or an add-on clean on an inspection */
   tierId: "refresh" | "deep" | "";
   addOns: Record<string, number>;
-  scheduledFor: string;      // YYYY-MM-DD
-  slot: string;              // "10:00 – 13:00"
+  scheduledFor: string;      // YYYY-MM-DD, a Bengaluru day
+  slot: string;              // "10:00 – 13:00" IST
   status: VisitStatus;
   inspectorId: string;
+  /** what this visit bills once it has happened — the plan itself included,
+      when this is the booking that bought it */
   amountInr: number;
   paid: boolean;
   liveCall: boolean;
@@ -115,20 +162,40 @@ export type Visit = {
   /** booked against the launch offer: nothing charged, and repairs
       flagged on it carry no StillYours fee */
   founding: boolean;
+  /** the plan this visit belongs to, when it belongs to one */
+  subscriptionId: string | null;
+  /** takes one of the plan's inspections — the inspection line is ₹0 */
+  usesPlan: boolean;
+  /** a refresh clean taken from the plan's included cleans */
+  planClean: boolean;
+  /** a Care+ maintenance service booked onto this visit, in the owner's words */
+  planService: string;
+  /** the priced lines exactly as the owner saw them when booking */
+  lines: Line[];
   /** what the inspector earns for it — shown on the job board before
       they claim, because nobody should have to accept work blind */
   payoutInr: number;
   /** the owner's entry code. No OTP, no checklist — the inspectors'
       own declaration, enforced here rather than trusted */
   otp: string;
+  /** wrong codes tried at the door — five locks the door until ops has
+      spoken to the owner */
+  otpTries: number;
   claimedAt: string | null;
-  checkIn: { at: string; lat: number; lng: number; distanceM: number; doorPhoto: Photo | null } | null;
+  /** the door: when, where (null when GPS would not work there), how
+      sure the phone was, how far from the property's pin (-1 when there
+      was no location or no pin to measure from), the photo, and the
+      inspector's reason when they were far off or had no signal */
+  checkIn: { at: string; lat: number | null; lng: number | null; accuracyM: number | null; distanceM: number; doorPhoto: Photo | null; note: string } | null;
   /** the working checklist, saved on every tap so a dropped signal
       never costs somebody a room they already walked */
   draft: DraftRoom[] | null;
   /** body camera rolling for the whole visit, when it was booked */
   recording: boolean;
+  /** how the owner rated the inspector, once the report is in */
+  rating: { stars: number; note: string; at: string } | null;
   createdAt: string;
+  cancelledAt: string | null;
   startedAt: string | null;
   endedAt: string | null;
   reportId: string | null;
@@ -148,19 +215,37 @@ export type Photo = {
   lat: number | null;
   lng: number | null;
 };
-export type DraftItem = { t: string; s: ItemState | null; note: string; photos: Photo[] };
+/* A clip from the inspector's camera. The file lives in object storage
+   (a folder on disk in development); this is the pointer and the stamp. */
+export type Video = {
+  id: string;
+  /** visits/<visitId>/<id>.<ext>, or repairs/<issueId>/<id>.<ext> */
+  key: string;
+  mime: string;
+  sizeBytes: number;
+  durationS: number;
+  /** the first frame, a 320px JPEG — what a list shows before anybody presses play */
+  poster: string;
+  at: string;
+  lat: number | null;
+  lng: number | null;
+};
+export type DraftItem = { t: string; s: ItemState | null; note: string; photos: Photo[]; videos: Video[] };
 export type DraftRoom = {
   name: string;
   variant: "bathroom" | "kitchen" | "bedroom" | "balcony" | "electrical" | "entrance" | "living";
   items: DraftItem[];
-  /** the room's video slot — the visit cannot be submitted with one empty */
-  video: boolean;
+  /** the room's walkthrough, end to end — the visit cannot be submitted with one missing */
+  video: Video | null;
 };
-export type ReportItem = { t: string; s: ItemState; note?: string };
+/** The photographs travel with the item into the report — they are the proof. */
+export type ReportItem = { t: string; s: ItemState; note?: string; photos?: Photo[]; videos?: Video[] };
 export type ReportRoom = {
   name: string;
   variant: "bathroom" | "kitchen" | "bedroom" | "balcony" | "electrical" | "entrance" | "living";
   dur: string;
+  /** the room's walkthrough; reports from before real video have none */
+  video?: Video | null;
   items: ReportItem[];
 };
 
@@ -180,16 +265,27 @@ export type Report = {
   onSite: string;
   gps: string;
   videos: string;
+  /** the front door, photographed before anybody went in */
+  doorPhoto: Photo | null;
   publishedAt: string;
   readAt: string | null;
   /* An inspector on probation has every report read by a person before
      it reaches the owner. The report exists from the moment it is
-     submitted; this is what keeps it out of the owner's app until then. */
+     submitted; this is what keeps it — and everything flagged in it —
+     out of the owner's app until then. */
   heldForReview: boolean;
+  reviewedAt: string | null;
+  /** a private read-only link the owner can hand to family; null when off */
+  shareToken: string | null;
 };
 
 export type Decision = "pending" | "approved" | "declined";
+/* requested → the owner has approved and said when suits them
+   assigned  → a verified pro and a day are confirmed
+   in_progress / completed → the work, inspector present */
 export type RepairStatus = "requested" | "assigned" | "in_progress" | "completed";
+
+export type Quote = { labour: number; parts: number; fee: number; total: number; provider: string; trade: string };
 
 export type Issue = {
   id: string;
@@ -203,8 +299,17 @@ export type Issue = {
   severity: ItemState;       // attn | fail
   body: string;
   variant: ReportRoom["variant"];
-  quote: { labour: number; parts: number; fee: number; total: number; provider: string; trade: string } | null;
-  /** what Care+ absorbs of the quote, computed when the issue is raised */
+  /** the inspector's own photographs of it, and any clips */
+  photos: Photo[];
+  videos: Video[];
+  quote: Quote | null;
+  quotedAt: string | null;
+  /** whether Care+ cover can apply at all — ops says no for excluded work
+      (appliances, structural) and for anything flagged on the plan's
+      first visit, which the cover terms leave out */
+  coverEligible: boolean;
+  /** what the plan absorbs — an estimate until the owner approves, then
+      fixed at the number they approved */
   coveredInr: number;
   decision: Decision;
   decidedAt: string | null;
@@ -212,11 +317,20 @@ export type Issue = {
     status: RepairStatus;
     providerName: string;
     trade: string;
+    /** the day, chosen by the owner; "" until they have */
     scheduledFor: string;
+    slot: string;
     completedAt: string | null;
     note: string;
+    /** from the same spot as the before — a photo, a clip, or both */
+    afterPhoto: Photo | null;
+    afterVideo: Video | null;
   } | null;
 };
+
+/* due → paid, and for a paid bill on something that then did not happen:
+   refund_due → refunded. A bill that was never paid is simply removed. */
+export type InvoiceStatus = "due" | "paid" | "refund_due" | "refunded";
 
 export type Invoice = {
   id: string;
@@ -224,9 +338,11 @@ export type Invoice = {
   ownerId: string;
   propertyId: string;
   visitId: string | null;
+  issueId: string | null;
+  subscriptionId: string | null;
   title: string;
   amountInr: number;
-  status: "paid" | "due";
+  status: InvoiceStatus;
   method: string;
   createdAt: string;
 };
@@ -234,10 +350,15 @@ export type Invoice = {
 /* One append-only stream. The property timeline, the notification bell and
    the "who decided what" audit are three readings of this same table. */
 export type EventType =
-  | "property.added" | "visit.booked" | "visit.assigned" | "visit.en_route"
-  | "visit.started" | "visit.submitted" | "report.ready" | "issue.raised"
-  | "issue.approved" | "issue.declined" | "repair.assigned" | "repair.completed"
-  | "plan.started" | "invoice.paid" | "message";
+  | "property.added" | "property.updated" | "property.archived" | "property.pinned"
+  | "visit.booked" | "visit.moved" | "visit.cancelled" | "visit.assigned" | "visit.en_route"
+  | "visit.started" | "visit.submitted" | "report.ready" | "report.shared"
+  | "issue.raised" | "issue.quoted" | "issue.approved" | "issue.declined"
+  | "repair.scheduled" | "repair.assigned" | "repair.started" | "repair.completed"
+  | "plan.started" | "plan.upgraded" | "plan.renewal" | "plan.cancelled"
+  | "invoice.paid" | "invoice.refund"
+  | "ticket.opened" | "ticket.answered"
+  | "account.updated" | "message";
 
 export type Event = {
   id: string;
@@ -286,10 +407,34 @@ export type Inspector = {
   reviewedReports: number;
 };
 
+/* "Something went wrong with this visit" — written by the owner, answered
+   by a person on the ops side, and kept with the visit it is about. */
+export type TicketStatus = "open" | "answered" | "closed";
+export type Ticket = {
+  id: string;
+  ref: string;               // TCK-0101
+  ownerId: string;
+  propertyId: string | null;
+  visitId: string | null;
+  reportId: string | null;
+  topic: string;
+  body: string;
+  status: TicketStatus;
+  reply: string;
+  repliedAt: string | null;
+  createdAt: string;
+};
+
 export type Session = { id: string; userId: string; createdAt: string; expiresAt: string };
-export type Otp = { phone: string; code: string; expiresAt: string; attempts: number };
+
+/* Sign-in codes are checked against the signed cookie; these rows are the
+   brakes — how many codes a number has been sent lately, and how many
+   wrong guesses the current one has had. */
+export type Otp = { phone: string; purpose: "signin" | "change"; hash: string; expiresAt: string; attempts: number; sends: string[] };
 
 export type DB = {
+  /** bumped whenever a shape above changes; store.ts upgrades older files */
+  version: number;
   users: User[];
   properties: Property[];
   subscriptions: Subscription[];
@@ -299,6 +444,7 @@ export type DB = {
   invoices: Invoice[];
   events: Event[];
   inspectors: Inspector[];
+  tickets: Ticket[];
   sessions: Session[];
   otps: Otp[];
 };

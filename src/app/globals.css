@@ -225,7 +225,8 @@ body {
 .marquee-track { display: flex; width: max-content; animation: marquee 50s linear infinite; }
 @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes ping-soft { 0% { transform: scale(.7); opacity: .9 } 100% { transform: scale(2.6); opacity: 0 } }
-.ping { position: relative; }
+/* No position on .ping itself: unlayered, it would beat an `absolute` utility.
+   Each use says `relative` or `absolute` for itself. */
 .ping::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: currentColor; animation: ping-soft 1.8s var(--ease) infinite; }
 
 @media (prefers-reduced-motion: reduce) {

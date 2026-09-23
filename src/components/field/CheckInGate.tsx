@@ -5,41 +5,52 @@ import Image from "next/image";
 import { AlertTriangle, Check, DoorOpen, KeyRound, MapPin, Navigation, Radio } from "lucide-react";
 import { checkIn, startTravel, type FieldState } from "@/lib/fieldActions";
 import { SubmitButton } from "@/components/app/SubmitButton";
-import { PhotoInput, where } from "@/components/field/PhotoInput";
+import { PhotoInput } from "@/components/field/PhotoInput";
+import { where, type Coords } from "@/lib/where";
+import { distanceKm, tooFar } from "@/lib/geo";
 import { cn } from "@/lib/cn";
+import type { Pin } from "@/lib/types";
 
 /* The door. Four things have to be true before a checklist exists:
    the owner's code, a location, a photograph of the front door, and —
    if it was booked — the body camera running. None of them is a
    formality: they are the evidence the whole report rests on. */
-export function CheckInGate({ id, status, recording }: { id: string; status: string; recording: boolean }) {
+export function CheckInGate({ id, status, recording, pin }: { id: string; status: string; recording: boolean; pin: Pick<Pin, "lat" | "lng"> | null }) {
   const [state, submit] = useActionState(checkIn, { ok: false } as FieldState);
-  const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
+  const [travel, tellOwner] = useActionState(startTravel, { ok: false } as FieldState);
+  const [coords, setCoords] = useState<Coords>({ lat: null, lng: null, accuracy: null });
   const [locating, setLocating] = useState(false);
   const [door, setDoor] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [rolling, setRolling] = useState(!recording);
 
-  const locate = async () => { setLocating(true); setCoords(await where()); setLocating(false); };
+  const locate = async () => { setLocating(true); setCoords(await where({ precise: true })); setLocating(false); };
   /* Ask once on mount. The state change happens in the promise callback,
      not in the effect body — a synchronous setState here would re-render
      the whole gate before the first paint has landed. */
   useEffect(() => {
     let alive = true;
-    where().then((c) => { if (alive) setCoords(c); });
+    where({ precise: true }).then((c) => { if (alive) setCoords(c); });
     return () => { alive = false; };
   }, []);
 
-  const ready = otp.length === 4 && !!door && coords.lat !== null && rolling;
+  /* The same sum the server does, so the inspector knows before they
+     press the button whether they will be asked why. */
+  const located = coords.lat !== null && coords.lng !== null;
+  const distanceM = located && pin ? Math.round(distanceKm({ lat: coords.lat!, lng: coords.lng! }, pin) * 1000) : -1;
+  const far = tooFar(distanceM, coords.accuracy);
+  const needsReason = !located || far;
+  const ready = otp.length === 4 && !!door && located && rolling;
 
   return (
     <div className="grid gap-4">
       {status === "assigned" && (
-        <form action={startTravel}>
+        <form action={tellOwner}>
           <input type="hidden" name="id" value={id} />
           <SubmitButton className="btn-white w-full" pendingLabel="Telling them…">
             <Navigation size={16} /> Tell the owner I am on the way
           </SubmitButton>
+          {travel.error && <p className="mt-2 text-[13px] leading-snug text-[#b03434]">{travel.error}</p>}
         </form>
       )}
 
@@ -47,6 +58,7 @@ export function CheckInGate({ id, status, recording }: { id: string; status: str
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="lat" value={coords.lat ?? ""} />
         <input type="hidden" name="lng" value={coords.lng ?? ""} />
+        <input type="hidden" name="accuracy" value={coords.accuracy ?? ""} />
         <input type="hidden" name="doorPhoto" value={door ?? ""} />
 
         <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Start the visit</h2>
@@ -55,8 +67,18 @@ export function CheckInGate({ id, status, recording }: { id: string; status: str
         <ol className="mt-5 grid gap-3">
           {/* 1 — location */}
           <Step n={1} done={coords.lat !== null} title="Your location" I={MapPin}>
-            {coords.lat !== null ? (
-              <p className="t-small tabular-nums">{coords.lat.toFixed(4)}° N, {coords.lng!.toFixed(4)}° E — stamped on every photo</p>
+            {located ? (
+              <div>
+                <p className="t-small tabular-nums">
+                  {coords.lat!.toFixed(4)}° N, {coords.lng!.toFixed(4)}° E{coords.accuracy !== null && ` · ±${Math.round(coords.accuracy)} m`} — stamped on every photo
+                </p>
+                <p className={cn("t-small mt-1 font-medium", far ? "text-[#b03434]" : "text-pass")}>
+                  {distanceM < 0
+                    ? "No pin on this property yet — where you stand now becomes it, and the owner confirms."
+                    : far ? `${distanceM} m from the owner's pin. If you are at the right gate, say why below.` : `${distanceM} m from the owner's pin.`}
+                </p>
+                {far && <button type="button" onClick={locate} className="btn btn-white btn-sm mt-2">{locating ? "Finding you…" : "Read my location again"}</button>}
+              </div>
             ) : (
               <div>
                 <p className="t-small">{locating ? "Finding you…" : "GPS is off, or the browser refused. Turn it on — every photograph is stamped with it."}</p>
@@ -99,10 +121,10 @@ export function CheckInGate({ id, status, recording }: { id: string; status: str
           </Step>
         </ol>
 
-        {coords.lat === null && (
+        {needsReason && (
           <label className="mt-4 block">
-            <span className="t-small">If GPS will not work here, say why — it goes on the report.</span>
-            <input name="reason" className="mt-1.5 h-11 w-full rounded-[12px] border border-line-2 px-3 text-[14px] outline-none focus:border-accent" placeholder="Basement, no signal" />
+            <span className="t-small">{located ? "Far from the pin? Say why — it goes on the report." : "If GPS will not work here, say why — it goes on the report."}</span>
+            <input name="reason" className="mt-1.5 h-11 w-full rounded-[12px] border border-line-2 px-3 text-[14px] outline-none focus:border-accent" placeholder={located ? "The gate is on the service road behind" : "Basement, no signal"} />
           </label>
         )}
 

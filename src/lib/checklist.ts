@@ -5,7 +5,7 @@
    case, not a fixed list.
    ════════════════════════════════════════════════════════════════ */
 
-import type { DraftRoom, Property, ReportRoom, RoomKey } from "@/lib/types";
+import type { DraftRoom, Property, ReportRoom, RoomKey, Visit } from "@/lib/types";
 
 type Block = { name: string; variant: ReportRoom["variant"]; items: string[] };
 
@@ -35,21 +35,35 @@ const perRoom: Record<RoomKey, { one: string; variant: ReportRoom["variant"]; it
   balcony: { one: "Balcony", variant: "balcony", items: ["Railing", "Drainage", "Plants / pests"] },
   study: { one: "Study / store", variant: "living", items: ["Damp & ventilation", "Stored items intact", "Sockets & switches"] },
   terrace: { one: "Terrace / garden", variant: "balcony", items: ["Waterproofing & pooling", "Boundary & gate", "Growth & debris"] },
-  parking: { one: "Parking", variant: "entrance", items: ["Started & idled 10 min", "Battery, tyres, leaks", "Cover on, odometer photo"] },
+  /* The space itself. Starting and checking a car is the ₹700 car
+     inspection, and only happens when it was booked — see CAR below. */
+  parking: { one: "Parking", variant: "entrance", items: ["Space, gate & access", "Seepage, debris or damage", "Vehicle present, cover on"] },
+};
+
+/* One block per car booked on the visit. */
+const CAR: Omit<Block, "name"> = {
+  variant: "entrance",
+  items: ["Started & idled 10 min", "Battery, tyres, leaks", "Odometer photo"],
 };
 
 const order: RoomKey[] = ["living", "kitchen", "bed", "bath", "balcony", "study", "terrace", "parking"];
 
-/** Every room block a visit to this property will produce, in walk order. */
-export function blocksFor(p: Property): Block[] {
-  if (p.kind === "plot") return PLOT_BLOCKS;
+const carBlocks = (v?: Pick<Visit, "addOns"> | null): Block[] => {
+  const n = Math.max(0, Math.min(6, v?.addOns?.car ?? 0));
+  return Array.from({ length: n }, (_, i) => ({ name: n > 1 ? `Car ${i + 1}` : "Car", ...CAR }));
+};
+
+/** Every block a visit to this property will produce, in walk order.
+    Pass the visit and the cars booked on it are walked too. */
+export function blocksFor(p: Property, v?: Pick<Visit, "addOns"> | null): Block[] {
+  if (p.kind === "plot") return [...PLOT_BLOCKS, ...carBlocks(v)];
   const out: Block[] = [ENTRY];
   for (const k of order) {
     const n = p.rooms?.[k] ?? 0;
     const t = perRoom[k];
     for (let i = 0; i < n; i++) out.push({ name: n > 1 ? `${t.one} ${i + 1}` : t.one, variant: t.variant, items: t.items });
   }
-  out.push(ELECTRICAL, EXIT);
+  out.push(...carBlocks(v), ELECTRICAL, EXIT);
   return out;
 }
 
@@ -60,7 +74,7 @@ const PLOT_BLOCKS: Block[] = [
   { name: "Utilities & works", variant: "electrical", items: ["Road or utility work touching the plot", "Water logging & drainage"] },
 ];
 
-export const itemCount = (p: Property) => blocksFor(p).reduce((n, b) => n + b.items.length, 0);
+export const itemCount = (p: Property, v?: Pick<Visit, "addOns"> | null) => blocksFor(p, v).reduce((n, b) => n + b.items.length, 0);
 
 /* ── health score ────────────────────────────────────────────────
    Plain arithmetic, printed on the report so nobody has to trust a
@@ -85,10 +99,10 @@ export function outstanding(draft: DraftRoom[]) {
     const unanswered = r.items.filter((i) => i.s === null).length;
     if (unanswered) out.push(`${r.name} — ${unanswered} item${unanswered > 1 ? "s" : ""} unanswered`);
     for (const i of r.items) {
-      if (i.s && i.s !== "pass" && !i.photos.length) out.push(`${r.name} · ${i.t} — flagged with no photograph`);
+      if (i.s && i.s !== "pass" && !i.photos.length && !(i.videos ?? []).length) out.push(`${r.name} · ${i.t} — flagged with no photo or video`);
       if (i.s && i.s !== "pass" && !i.note.trim()) out.push(`${r.name} · ${i.t} — flagged with no note`);
     }
-    if (!r.video) out.push(`${r.name} — video slot empty`);
+    if (!r.video) out.push(`${r.name} — room video missing`);
   }
   return out;
 }

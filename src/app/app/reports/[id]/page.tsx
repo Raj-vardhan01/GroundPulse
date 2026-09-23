@@ -2,19 +2,21 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft, BadgeCheck, Check, Clock, Flag, KeyRound, MapPin, Play, Video,
+  ArrowLeft, BadgeCheck, Check, Clock, Flag, KeyRound, MapPin, Video,
 } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { reportView } from "@/lib/queries";
 import { HealthRing } from "@/components/ui/HealthRing";
-import { EvidenceFrame } from "@/components/ui/EvidenceFrame";
 import { Reveal } from "@/components/ui/Reveal";
 import { Panel, PanelHead, Stat } from "@/components/app/ui";
 import { IssueCard } from "@/components/app/IssueCard";
+import { PhotoStrip } from "@/components/app/PhotoStrip";
+import { VideoClip } from "@/components/app/VideoClip";
 import { MarkRead } from "@/components/app/MarkRead";
 import { HEALTH } from "@/lib/checklist";
 import { fmtDate, fmtDateTime, fmtDayDate } from "@/lib/format";
 import { bhkLabel } from "@/lib/cleaning";
+import { checkInWords } from "@/lib/geo";
 import { cn } from "@/lib/cn";
 import type { ItemState } from "@/lib/types";
 
@@ -27,10 +29,17 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
   const view = await reportView(user.id, id);
   if (!view) notFound();
 
-  const { report: r, property: p, visit: v, inspector, issues } = view;
+  const { report: r, property: p, visit: v, inspector, issues, subscription, invoicesByIssue } = view;
+  const card = (i: (typeof issues)[number]) => (
+    <IssueCard key={i.id} issue={i} founding={v.founding === true} sub={subscription} invoice={invoicesByIssue[i.id]} tz={user.tz} />
+  );
   const open = issues.filter((i) => i.decision === "pending");
   const settled = issues.filter((i) => i.decision !== "pending");
   const total = r.counts.pass + r.counts.attn + r.counts.fail;
+  /* Say exactly how much of the evidence carries a location — a photo the
+     phone could not place is still a photo, but not a GPS-stamped one. */
+  const photos = r.rooms.flatMap((room) => room.items.flatMap((i) => i.photos ?? []));
+  const located = photos.filter((ph) => ph.lat !== null && ph.lng !== null).length;
 
   return (
     <>
@@ -64,7 +73,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
               <Meta I={KeyRound} k="Entered with OTP" v={`${r.otpAt} · shared by you`} />
               <Meta I={Clock} k="On site" v={r.onSite} />
               <Meta I={MapPin} k="GPS" v={r.gps} />
-              <Meta I={Video} k="Video" v={r.videos} />
+              {r.videos && <Meta I={Video} k="Video" v={r.videos} />}
               <Meta I={Check} k="Delivered" v={fmtDateTime(r.publishedAt)} />
             </div>
           </Panel>
@@ -86,13 +95,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
             </div>
 
             <Panel className="p-5">
-              <div className="flex items-center justify-between">
-                <span className="text-[14px] font-medium">Exit walkthrough</span>
-                <span className="chip">filmed before leaving</span>
-              </div>
-              <p className="t-small mt-1">Every room, wardrobes closed, gas off, main door locked.</p>
-              <VideoTile title="Whole home" dur="1:12" variant="living" className="mt-3" />
-              <Link href="/app/help" className="t-small mt-3 flex items-center justify-between rounded-[12px] bg-paper px-4 py-3 transition hover:bg-beige">
+              <Link href="/app/help" className="t-small flex items-center justify-between rounded-[12px] bg-paper px-4 py-3 transition hover:bg-beige">
                 <span>Something wrong with this visit?</span><span className="font-medium text-accent">Tell us →</span>
               </Link>
             </Panel>
@@ -107,14 +110,14 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
             <span className="grid h-8 w-8 place-items-center rounded-full bg-fail-soft text-fail"><Flag size={15} /></span>
             <h2 className="serif text-[22px] tracking-[-0.03em]">{open.length} {open.length === 1 ? "issue needs" : "issues need"} your decision</h2>
           </div>
-          <div className="grid gap-4">{open.map((i) => <IssueCard key={i.id} issue={i} />)}</div>
+          <div className="grid gap-4">{open.map(card)}</div>
         </Reveal>
       )}
 
       {settled.length > 0 && (
         <Reveal delay={0.05} className="mt-6">
           <h2 className="serif pb-3 text-[22px] tracking-[-0.03em]">Already decided</h2>
-          <div className="grid gap-4">{settled.map((i) => <IssueCard key={i.id} issue={i} />)}</div>
+          <div className="grid gap-4">{settled.map(card)}</div>
         </Reveal>
       )}
 
@@ -128,14 +131,18 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {r.rooms.map((room, n) => {
           const worst: ItemState = room.items.some((i) => i.s === "fail") ? "fail" : room.items.some((i) => i.s === "attn") ? "attn" : "pass";
+          /* every photograph from the room, OK items included — a meter
+             reading or a closed gas valve is proof too */
+          const shots = room.items.flatMap((i) => i.photos ?? []);
           return (
             <Reveal key={room.name} delay={0.02 * n}>
               <Panel className="h-full p-4">
-                <VideoTile title={room.name} dur={room.dur} variant={room.variant} tone={worst} />
-                <div className="mt-3 flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-[15px] font-medium">{room.name}</span>
                   <span className={cn("shrink-0", chipOf(worst))}>{labelOf(worst)}</span>
                 </div>
+                {room.video && <VideoClip v={room.video} label={`${room.name} walkthrough`} className="mt-3" />}
+                {shots.length > 0 && <PhotoStrip photos={shots} label={room.name} size={64} className="mt-3" />}
                 <ul className="mt-2 divide-y divide-line">
                   {room.items.map((it) => (
                     <li key={it.t} className="py-2">
@@ -159,7 +166,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
           <ol className="grid gap-px bg-line sm:grid-cols-4">
             {[
               ["OTP shared", `${r.otpAt} — by you`],
-              ["Inspector entered", `${r.onSite.split(" → ")[0]} · GPS matched`],
+              ["Inspector entered", `${r.onSite.split(" → ")[0]}${v.checkIn ? ` · ${checkInWords(v.checkIn).short}` : ""}`],
               ["Checklist submitted", r.onSite.split(" → ")[1] ?? "—"],
               ["Report delivered", fmtDateTime(r.publishedAt)],
             ].map(([k, val]) => (
@@ -170,7 +177,7 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
             ))}
           </ol>
           <p className="t-small border-t border-line px-5 py-3.5">
-            Visit {v.ref} · {fmtDayDate(v.scheduledFor)} · every photograph GPS- and time-stamped, stored privately, visible only to you.
+            Visit {v.ref} · {fmtDayDate(v.scheduledFor)} · {photos.length ? `${located} of ${photos.length} photographs GPS-stamped, every one time-stamped` : "every photograph time-stamped"}, stored privately, visible only to you.
           </p>
         </Panel>
       </Reveal>
@@ -188,12 +195,3 @@ function Meta({ I, k, v }: { I: typeof Clock; k: string; v: string }) {
   );
 }
 
-function VideoTile({ title, dur, variant, className, tone }: { title: string; dur: string; variant: "bathroom" | "kitchen" | "bedroom" | "balcony" | "electrical" | "entrance" | "living"; className?: string; tone?: ItemState }) {
-  return (
-    <div className={cn("relative", className)}>
-      <EvidenceFrame variant={variant} id="" room={title} time={dur} tone={tone === "attn" ? "attn" : tone === "fail" ? "fail" : "pass"} ratio="16 / 10" dense />
-      <span className="absolute left-1/2 top-[42%] grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-ink"><Play size={16} className="ml-0.5 fill-ink" /></span>
-      <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white"><Video size={10} /> {dur}</span>
-    </div>
-  );
-}

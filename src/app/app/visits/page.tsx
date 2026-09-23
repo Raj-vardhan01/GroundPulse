@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { BadgeCheck, CalendarDays, Plus } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
-import { visits, properties, inspectorsById } from "@/lib/queries";
+import { visits, properties, inspectorsById, openableReports, isOverdue } from "@/lib/queries";
 import { Empty, PageHead, Panel, PanelHead, StatusPill, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
 import { fmtDayDate, relative } from "@/lib/format";
@@ -12,19 +12,22 @@ export const metadata = { title: "Visits" };
 
 const kindLabel = (k: Visit["kind"]) => (k === "cleaning" ? "Cleaning" : k === "plot" ? "Plot visit" : "Inspection");
 
-function VisitRows({ rows, props, inspectors }: { rows: Visit[]; props: Property[]; inspectors: Record<string, Inspector> }) {
+function VisitRows({ rows, props, inspectors, openable }: { rows: Visit[]; props: Property[]; inspectors: Record<string, Inspector>; openable: Set<string> }) {
   return (
     <ul className="divide-y divide-line">
       {rows.map((v) => {
         const ins = inspectors[v.inspectorId];
-        const day = new Date(v.scheduledFor);
+        const [, mm, dd] = v.scheduledFor.split("-").map(Number);
+        /* A report still with the reviewer is not the owner's to open yet —
+           the visit page says so instead of a 404. */
+        const href = v.reportId && openable.has(v.reportId) ? `/app/reports/${v.reportId}` : `/app/visits/${v.id}`;
         return (
           <li key={v.id}>
-            <Link href={(v.reportId ? `/app/reports/${v.reportId}` : `/app/visits/${v.id}`) as Route} className="flex items-center gap-4 px-5 py-4 transition hover:bg-paper">
+            <Link href={href as Route} className="flex items-center gap-4 px-5 py-4 transition hover:bg-paper">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px] bg-paper text-center leading-none">
-                <span className="block font-mono text-[15px] font-semibold tabular-nums">{day.getDate()}</span>
+                <span className="block font-mono text-[15px] font-semibold tabular-nums">{dd}</span>
                 <span className="mt-0.5 block text-[9.5px] font-semibold uppercase tracking-[0.06em] text-text-3">
-                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][day.getMonth()]}
+                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][mm - 1]}
                 </span>
               </span>
               <div className="min-w-0 flex-1">
@@ -34,9 +37,9 @@ function VisitRows({ rows, props, inspectors }: { rows: Visit[]; props: Property
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <StatusPill status={v.status} />
+                {isOverdue(v) ? <span className="chip chip-warn">Needs a new day</span> : <StatusPill status={v.status} />}
                 <div className="t-small mt-1">
-                  {v.amountInr ? money(v.amountInr) : "On your plan"}
+                  {v.status === "cancelled" ? "₹0" : v.founding ? "Free" : v.amountInr ? money(v.amountInr) : "On your plan"}
                   {ins && <BadgeCheck size={11} className="ml-1 inline -translate-y-px text-accent" />}
                 </div>
               </div>
@@ -50,7 +53,7 @@ function VisitRows({ rows, props, inspectors }: { rows: Visit[]; props: Property
 
 export default async function Page() {
   const user = await requireOwner();
-  const [all, props, inspectors] = await Promise.all([visits(user.id), properties(user.id), inspectorsById()]);
+  const [all, props, inspectors, openable] = await Promise.all([visits(user.id), properties(user.id), inspectorsById(), openableReports(user.id)]);
 
   const upcoming = all.filter((v) => !["ready", "closed", "cancelled"].includes(v.status)).sort((a, b) => (a.scheduledFor < b.scheduledFor ? -1 : 1));
   const past = all.filter((v) => ["ready", "closed", "cancelled"].includes(v.status));
@@ -75,7 +78,7 @@ export default async function Page() {
             <Reveal>
               <Panel>
                 <PanelHead title="Coming up" meta={`${upcoming.length} booked · next ${relative(upcoming[0].scheduledFor)}`} />
-                <VisitRows rows={upcoming} props={props} inspectors={inspectors} />
+                <VisitRows rows={upcoming} props={props} inspectors={inspectors} openable={openable} />
               </Panel>
             </Reveal>
           )}
@@ -83,7 +86,7 @@ export default async function Page() {
             <Reveal delay={0.05}>
               <Panel>
                 <PanelHead title="Done" meta={`${past.length} ${past.length === 1 ? "visit" : "visits"} on record`} />
-                <VisitRows rows={past} props={props} inspectors={inspectors} />
+                <VisitRows rows={past} props={props} inspectors={inspectors} openable={openable} />
               </Panel>
             </Reveal>
           )}

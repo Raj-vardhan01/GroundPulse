@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowRight, Bath, BedDouble, Building2, Car, ChefHat, Home, KeyRound, LandPlot, MapPin, Minus, Plus, Sofa, Sun, Warehouse } from "lucide-react";
+import { ArrowRight, Bath, BedDouble, Building2, Car, ChefHat, Home, Info, KeyRound, LandPlot, MapPin, Minus, Plus, Sofa, Sun, Warehouse } from "lucide-react";
 import { addProperty, type FormState } from "@/lib/actions";
 import { SubmitButton } from "@/components/app/SubmitButton";
+import { PinPicker, type PinValue } from "@/components/app/PinPicker";
 import { bhkLabel, bhkKeys, coverage, type BhkKey } from "@/lib/cleaning";
 import { cn } from "@/lib/cn";
+import type { MapConfig } from "@/lib/ola";
 import type { PropertyKind, RoomKey } from "@/lib/types";
 
 const input = "h-12 w-full rounded-[12px] border border-line-2 bg-white px-4 text-[15px] text-ink outline-none transition placeholder:text-text-3 focus:border-accent focus:ring-4 focus:ring-accent/10";
@@ -52,11 +54,13 @@ const fromSize = (s: BhkKey): Record<RoomKey, number> => ({
 
 const TYPES = ["Apartment", "Villa", "Independent house", "Builder floor"] as const;
 
-export function PropertyForm({ welcome = false }: { welcome?: boolean }) {
+export function PropertyForm({ welcome = false, map }: { welcome?: boolean; map: MapConfig }) {
   const [state, submit] = useActionState(addProperty, { ok: false } as FormState);
   const [kind, setKind] = useState<PropertyKind>("home");
   const [size, setSize] = useState<BhkKey>("2");
   const [rooms, setRooms] = useState<Record<RoomKey, number>>(fromSize("2"));
+  const [pin, setPin] = useState<PinValue | null>(null);
+  const [locality, setLocality] = useState("");
   const isPlot = kind === "plot";
 
   const pickSize = (s: BhkKey) => { setSize(s); setRooms(fromSize(s)); };
@@ -99,8 +103,27 @@ export function PropertyForm({ welcome = false }: { welcome?: boolean }) {
               <input name="address" required placeholder={isPlot ? "Survey 114/2, Chikkajala, Devanahalli" : "C-14, 100 Ft Road, Indiranagar"} className="h-12 w-full bg-transparent text-[15px] outline-none placeholder:text-text-3" />
             </div>
           </Field>
-          <Field label="Locality"><input name="locality" placeholder="Indiranagar" className={input} /></Field>
+          <Field label="Locality"><input name="locality" value={locality} onChange={(e) => setLocality(e.target.value)} placeholder="Indiranagar" className={input} /></Field>
           <Field label="City" hint="Bengaluru only, for now"><input name="city" defaultValue="Bengaluru" className={input} /></Field>
+          {/* not a <Field>: a label around it would steer every tap on the map into the search box */}
+          <div className="sm:col-span-2">
+            <span className="mb-1.5 flex items-center justify-between gap-3">
+              <span className="text-[13px] font-medium text-text-2">The exact spot</span>
+              <span className="rounded-full bg-beige px-2.5 py-0.5 text-[11.5px] font-semibold text-text-2">Optional</span>
+            </span>
+            {/* Said before the tools, not after them: a guessed pin is worse
+                than none, because every visit is measured from it. */}
+            <div className="mb-3 flex gap-2.5 rounded-[12px] bg-paper p-3.5">
+              <Info size={15} className="mt-0.5 shrink-0 text-accent" />
+              <p className="text-[13.5px] leading-snug text-text-2">
+                <span className="font-semibold text-ink">Only if you know exactly where it is.</span>{" "}
+                Not sure? Leave this empty — your first inspector marks the spot at the {isPlot ? "boundary" : "gate"}, and you confirm it.
+                A guessed pin does more harm than none: every visit is measured from it.
+              </p>
+            </div>
+            {/* Fill the locality from the map only while the owner has not typed one. */}
+            <PinPicker value={pin} onChange={setPin} config={map} plot={isPlot} onPlace={(h) => { if (h.locality) setLocality((cur) => cur || h.locality); }} />
+          </div>
         </div>
       </Group>
 

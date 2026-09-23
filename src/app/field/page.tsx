@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Info, LayoutGrid, MapPin, Navigation } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Info, LayoutGrid, MapPin, Navigation, Wrench } from "lucide-react";
 import { requireInspector } from "@/lib/auth";
-import { inspectorFor, liveJob, openJobs, doneJobs, STATUS_COPY, CAN_WORK } from "@/lib/field";
+import { inspectorFor, liveJob, openJobs, doneJobs, repairJobs, STATUS_COPY, CAN_WORK } from "@/lib/field";
 import { JobCard, JobTags } from "@/components/field/JobCard";
 import { Panel, PanelHead, Stat, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
@@ -16,7 +16,7 @@ export default async function Today() {
   const copy = STATUS_COPY[ins.status];
   const canWork = CAN_WORK.includes(ins.status);
 
-  const [live, board, done] = await Promise.all([liveJob(ins), openJobs(ins, "near"), doneJobs(ins)]);
+  const [live, board, done, repairs] = await Promise.all([liveJob(ins), openJobs(ins, "near"), doneJobs(ins), repairJobs(ins)]);
   const first = ins.name.split(" ")[0];
   const hour = new Date().getHours();
 
@@ -107,6 +107,29 @@ export default async function Today() {
           </Reveal>
         </>
       ) : null}
+
+      {/* repairs on things they found — theirs to photograph after */}
+      {repairs.length > 0 && (
+        <Reveal delay={0.09}>
+          <Panel>
+            <PanelHead title="Repairs to witness" meta="After photo, same angle as yours" />
+            <ul className="divide-y divide-line">
+              {repairs.map((r) => (
+                <li key={r.issue.id}>
+                  <Link href={`/field/repair/${r.issue.id}` as Route} className="flex items-center gap-3 px-5 py-3.5 transition hover:bg-paper">
+                    <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", r.due ? "bg-accent text-white" : "bg-beige text-text-2")}><Wrench size={15} /></span>
+                    <div className="min-w-0 grow">
+                      <div className="truncate text-[14.5px] font-medium">{r.issue.title}</div>
+                      <div className="t-small truncate">{r.property.label} · {r.due ? "due now — take the after photo" : `${fmtDayDate(r.issue.repair!.scheduledFor)} · ${r.issue.repair!.slot}`}</div>
+                    </div>
+                    <ArrowRight size={15} className="shrink-0 text-text-3" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </Reveal>
+      )}
 
       <Reveal delay={0.1}>
         <div className="grid grid-cols-3 gap-2">

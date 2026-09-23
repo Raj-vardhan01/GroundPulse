@@ -27,7 +27,9 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       unread={events}
       counts={{
         visits: vs.filter((v) => ["scheduled", "assigned", "en_route", "on_site", "submitted"].includes(v.status)).length,
-        reports: issues.length,
+        /* decisions the owner can actually make — an issue still waiting
+           for its quote is not one yet */
+        reports: issues.filter((i) => i.quote).length,
         due: invs.filter((i) => i.status === "due").length,
       }}
     >

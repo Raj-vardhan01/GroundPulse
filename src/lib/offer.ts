@@ -12,6 +12,7 @@
 
 import type { BhkKey } from "@/lib/cleaning";
 import type { User, Property, VisitKind } from "@/lib/types";
+import { sameCity } from "@/lib/city";
 
 export const LIMIT = 10;
 
@@ -43,14 +44,12 @@ export function eligible(
   planId: string
 ) {
   if (!hasFreeVisit(u) || !p) return false;
-  return (
-    kind === "inspection" &&
-    planId === FREE_PLAN &&
-    p.kind === "home" &&
-    SIZES.includes(p.size) &&
-    p.city.trim().toLowerCase() === CITY.toLowerCase()
-  );
+  return kind === "inspection" && planId === FREE_PLAN && qualifies(p);
 }
+
+/** Is this property the kind the free inspection covers? */
+export const qualifies = (p: Pick<Property, "kind" | "size" | "city">) =>
+  p.kind === "home" && SIZES.includes(p.size) && sameCity(p.city, CITY);
 
 /** Why a founding owner's booking does not qualify — said plainly, so
     nobody has to guess which of the terms caught them. */
@@ -62,7 +61,7 @@ export function blockedBecause(
   if (!p) return null;
   if (p.kind !== "home") return "The free inspection covers homes — a plot visit is charged normally.";
   if (!SIZES.includes(p.size)) return "The free inspection covers homes up to 2 BHK. This one is larger, so it is charged normally.";
-  if (p.city.trim().toLowerCase() !== CITY.toLowerCase()) return `The free inspection is ${CITY} only for now.`;
+  if (!sameCity(p.city, CITY)) return `The free inspection is ${CITY} only for now.`;
   if (kind === "cleaning") return "Cleaning is not part of the free inspection.";
   if (kind !== "inspection" || planId !== FREE_PLAN) return "Your free visit is a one-time inspection. Pick that and it costs nothing.";
   return null;

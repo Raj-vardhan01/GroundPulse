@@ -58,7 +58,7 @@ export function InstallHint() {
         <motion.div
           initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
           transition={{ duration: 0.5, ease: EASE }}
-          className="fixed inset-x-3 z-[55] mx-auto max-w-[460px] lg:left-auto lg:right-6 lg:mx-0"
+          className="fixed inset-x-3 z-[55] mx-auto max-w-[460px] lg:left-auto lg:right-6 lg:mx-0 print:hidden"
           style={{ bottom: "calc(84px + env(safe-area-inset-bottom))" }}
         >
           <div className="card border border-line bg-white p-4 shadow-float">

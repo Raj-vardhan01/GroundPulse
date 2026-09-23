@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { ArrowRight, Check, Gift } from "lucide-react";
-import { hasFreeVisit, terms, LIMIT } from "@/lib/offer";
+import { hasFreeVisit, qualifies, terms, LIMIT } from "@/lib/offer";
 import { fmtDate } from "@/lib/format";
 import type { User, Property } from "@/lib/types";
 import { cn } from "@/lib/cn";
@@ -13,9 +13,7 @@ export function FoundingCard({ user, properties, compact = false }: { user: User
   if (user.foundingNo === null || user.foundingNo > LIMIT) return null;
 
   const open = hasFreeVisit(user);
-  const qualifying = properties.filter(
-    (p) => p.kind === "home" && (p.size === "1" || p.size === "2") && p.city.trim().toLowerCase() === "bengaluru"
-  );
+  const qualifying = properties.filter(qualifies);
 
   if (!open) {
     return (
@@ -50,7 +48,7 @@ export function FoundingCard({ user, properties, compact = false }: { user: User
           </p>
         </div>
         <Link
-          href={(qualifying.length ? `/app/book?property=${qualifying[0].id}` : "/app/properties/new") as Route}
+          href={(qualifying.length ? `/app/book?property=${qualifying[0].id}&plan=one-time` : "/app/properties/new") as Route}
           className="btn btn-white btn-sm shrink-0"
         >
           {qualifying.length ? "Book it free" : "Add a property"} <ArrowRight size={15} />

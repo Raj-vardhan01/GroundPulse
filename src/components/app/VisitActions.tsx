@@ -4,57 +4,67 @@ import { useActionState, useState } from "react";
 import { CalendarClock, Check, Trash2, X } from "lucide-react";
 import { cancelVisit, rescheduleVisit, type FormState } from "@/lib/actions";
 import { SubmitButton } from "@/components/app/SubmitButton";
-import { SLOTS } from "@/lib/quote";
-import { cn } from "@/lib/cn";
+import { DayPicker, firstBookable } from "@/components/app/DayPicker";
 
-const days = Array.from({ length: 28 }, (_, i) => new Date(Date.now() + (i + 2) * 86_400_000));
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/* One object for "nothing has happened yet". A fresh literal on every
+   render never equals the last one, and the check below would set state
+   on every server render — forever. */
+const IDLE: FormState = { ok: false };
 
-/** Moving a visit is free until the day before — so the button says so
-    rather than hiding behind a support number. */
-export function VisitActions({ id, slot }: { id: string; slot: string }) {
-  const [state, submit] = useActionState(rescheduleVisit, { ok: false } as FormState);
+/** Moving or cancelling, free until the day before — so the buttons say
+    so rather than hiding behind a support number. On the day itself the
+    server refuses, and so does this panel, with the reason. */
+export function VisitActions({
+  id, slot, blocked, cancelNote, tz,
+}: {
+  id: string;
+  slot: string;
+  /** why it cannot be changed from here right now, if it cannot */
+  blocked: string | null;
+  /** what cancelling will do to money or a plan, said before they press it */
+  cancelNote: string;
+  tz: string;
+}) {
+  const [moved, move] = useActionState(rescheduleVisit, IDLE);
+  const [cancelled, cancel] = useActionState(cancelVisit, IDLE);
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [date, setDate] = useState(iso(days[2]));
+  const [date, setDate] = useState(() => firstBookable());
   const [pick, setPick] = useState(slot);
+  /* Close the panel the moment a move lands — the page behind it has
+     already re-rendered with the new day. */
+  const [seen, setSeen] = useState<FormState>(IDLE);
+  if (moved !== seen) {
+    setSeen(moved);
+    if (moved.ok) setOpen(false);
+  }
+
+  if (blocked) {
+    return (
+      <div className="border-t border-line p-4">
+        <p className="t-small leading-snug">{blocked}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-line p-4">
       {!open && !confirming && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setOpen(true)} className="btn btn-white btn-sm"><CalendarClock size={14} /> Move this visit</button>
           <button onClick={() => setConfirming(true)} className="btn btn-ghost btn-sm text-text-2"><Trash2 size={14} /> Cancel</button>
-          {state.ok && <span className="self-center text-[13px] text-pass">Moved — we are finding an inspector for the new day.</span>}
+          {moved.ok && moved.message && <span className="text-[13px] font-medium text-pass" role="status"><Check size={13} className="mr-1 inline" />{moved.message} We are finding an inspector for it.</span>}
         </div>
       )}
 
       {open && (
-        <form action={submit} className="grid gap-3">
+        <form action={move} className="grid gap-3">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="scheduledFor" value={date} />
           <input type="hidden" name="slot" value={pick} />
           <div className="t-label">Pick another day</div>
-          <div className="hscroll -mx-1 px-1 pb-1">
-            {days.map((d) => {
-              const k = iso(d);
-              return (
-                <button key={k} type="button" onClick={() => setDate(k)}
-                  className={cn("grid w-[58px] shrink-0 place-items-center rounded-[12px] border py-2 transition", date === k ? "border-accent bg-accent text-white" : "border-line-2 hover:bg-paper")}>
-                  <span className="text-[17px] font-medium tabular-nums leading-none">{d.getDate()}</span>
-                  <span className={cn("mt-1 text-[10px]", date === k ? "text-white/60" : "text-text-3")}>{MONTHS[d.getMonth()]}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {SLOTS.map((s) => (
-              <button key={s} type="button" onClick={() => setPick(s)}
-                className={cn("h-10 rounded-[10px] border text-[12.5px] font-medium tabular-nums transition", pick === s ? "border-accent bg-accent-tint text-accent-2" : "border-line-2 text-text-2")}>{s}</button>
-            ))}
-          </div>
-          {state.error && <p className="text-[13px] text-fail">{state.error}</p>}
+          <DayPicker compact date={date} onDate={setDate} slot={pick} onSlot={setPick} tz={tz} />
+          {moved.error && <p className="text-[13px] text-fail" role="alert">{moved.error}</p>}
           <div className="flex gap-2">
             <SubmitButton className="btn-sm" pendingLabel="Moving…"><Check size={14} /> Confirm new day</SubmitButton>
             <button type="button" onClick={() => setOpen(false)} className="btn btn-white btn-sm"><X size={14} /> Keep as it is</button>
@@ -63,12 +73,13 @@ export function VisitActions({ id, slot }: { id: string; slot: string }) {
       )}
 
       {confirming && (
-        <form action={cancelVisit} className="rounded-[14px] bg-fail-soft p-4">
+        <form action={cancel} className="rounded-[14px] bg-fail-soft p-4">
           <input type="hidden" name="id" value={id} />
           <p className="text-[14px] font-medium text-[#b03434]">Cancel this visit?</p>
-          <p className="mt-1 text-[13px] leading-snug text-[#b03434]/80">Nothing is charged. You can book another day whenever you like.</p>
+          <p className="mt-1 text-[13px] leading-snug text-[#b03434]/80">{cancelNote}</p>
+          {cancelled.error && <p className="mt-2 text-[13px] font-medium text-[#b03434]" role="alert">{cancelled.error}</p>}
           <div className="mt-3 flex gap-2">
-            <button className="btn btn-sm bg-fail text-white [box-shadow:inset_0_-3px_0_0_rgba(0,0,0,.15)]"><Trash2 size={14} /> Yes, cancel it</button>
+            <SubmitButton className="btn-sm bg-fail text-white [box-shadow:inset_0_-3px_0_0_rgba(0,0,0,.15)]" pendingLabel="Cancelling…"><Trash2 size={14} /> Yes, cancel it</SubmitButton>
             <button type="button" onClick={() => setConfirming(false)} className="btn btn-white btn-sm">Keep it</button>
           </div>
         </form>

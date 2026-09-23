@@ -40,7 +40,9 @@ const VISIT_LOOK: Record<VisitStatus, { label: string; chip: string; live?: bool
   assigned: { label: "Inspector assigned", chip: "chip-accent" },
   en_route: { label: "On the way", chip: "chip-warn", live: true },
   on_site: { label: "On site now", chip: "chip-accent", live: true },
-  submitted: { label: "Writing the report", chip: "chip-warn", live: true },
+  /* only a report held for review stays here — an active inspector's
+     goes straight to "ready" */
+  submitted: { label: "Report being checked", chip: "chip-warn", live: true },
   ready: { label: "Report ready", chip: "chip-pass" },
   closed: { label: "Closed", chip: "chip-pass" },
   cancelled: { label: "Cancelled", chip: "chip-fail" },
@@ -90,4 +92,4 @@ export function PageHead({ eyebrow, title, lede, action }: { eyebrow?: string; t
   );
 }
 
-export const money = (n: number) => "₹" + n.toLocaleString("en-IN");
+export { money } from "@/components/app/money";

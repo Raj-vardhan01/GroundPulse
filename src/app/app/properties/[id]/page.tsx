@@ -12,6 +12,8 @@ import { EvidenceFrame } from "@/components/ui/EvidenceFrame";
 import { Reveal } from "@/components/ui/Reveal";
 import { Panel, PanelHead, Stat, StatusPill, money } from "@/components/app/ui";
 import { AccessNotes } from "@/components/app/AccessNotes";
+import { PinPanel } from "@/components/app/PinPanel";
+import { mapConfig } from "@/lib/ola";
 import { blocksFor, itemCount } from "@/lib/checklist";
 import { bhkLabel } from "@/lib/cleaning";
 import { fmtDate, fmtDayDate, relative } from "@/lib/format";
@@ -139,6 +141,13 @@ export default async function Page({ params }: PageProps<"/app/properties/[id]">
 
         {/* ── the practical column ────────────────────────── */}
         <div className="grid gap-4 self-start">
+          <Reveal>
+            <Panel id="location" className={cn(p.pin?.source === "inspector" && !p.pin.confirmedAt && "border-warn/40")}>
+              <PanelHead title="Where it is" meta="The pin every visit is measured from" />
+              <PinPanel id={p.id} plot={p.kind === "plot"} pin={p.pin} map={mapConfig()} />
+            </Panel>
+          </Reveal>
+
           <Reveal>
             <Panel>
               <PanelHead title="Access & keys" meta="What the inspector reads before they leave" />

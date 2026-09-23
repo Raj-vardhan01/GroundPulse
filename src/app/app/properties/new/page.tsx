@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { PropertyForm } from "@/components/app/PropertyForm";
+import { mapConfig } from "@/lib/ola";
 import { PageHead } from "@/components/app/ui";
 
 export const metadata = { title: "Add a property" };
@@ -16,7 +17,7 @@ export default async function Page() {
         title="Add a property"
         lede="What it is, where it is, and how somebody gets in. The rooms you list become the checklist an inspector walks."
       />
-      <PropertyForm />
+      <PropertyForm map={mapConfig()} />
     </>
   );
 }

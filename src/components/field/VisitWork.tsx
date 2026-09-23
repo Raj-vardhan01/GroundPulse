@@ -3,20 +3,29 @@
 import { useActionState, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import {
-  AlertTriangle, Check, ChevronDown, Flag, Send, Video, X,
+  AlertTriangle, Check, ChevronDown, Flag, Play, Send, Video, X,
 } from "lucide-react";
-import { addPhoto, dropPhoto, setItem, setNote, setVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
+import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, setItem, setNote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
 import { PhotoInput } from "@/components/field/PhotoInput";
+import { VideoInput, type Uploaded } from "@/components/field/VideoInput";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { outstanding } from "@/lib/checklist";
 import { cn } from "@/lib/cn";
-import type { DraftItem, DraftRoom, ItemState } from "@/lib/types";
+import type { DraftItem, DraftRoom, ItemState, Video as Clip } from "@/lib/types";
 
 /* The checklist, on a phone, in a house with one bar of signal.
 
    Every tap writes to the server, but the screen never waits for it —
    local state is what renders, and the action follows behind. An
    inspector marking forty items cannot feel a round trip on each one. */
+
+/** A room walkthrough stops itself here; a clip of one problem, sooner. */
+const ROOM_SECONDS = 90;
+const ITEM_SECONDS = 30;
+
+const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+/** What the screen shows the moment an upload lands; the server keeps its own checked copy. */
+const asClip = (u: Uploaded): Clip => ({ ...u, sizeBytes: 0, at: new Date().toISOString() });
 
 const VERDICTS: { s: ItemState; label: string; cls: string }[] = [
   { s: "pass", label: "OK", cls: "bg-pass text-white" },
@@ -30,7 +39,7 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
   const [review, setReview] = useState(false);
   const [, start] = useTransition();
 
-  const send = (action: (fd: FormData) => Promise<void>, fields: Record<string, string>) => {
+  const send = (action: (fd: FormData) => Promise<unknown>, fields: Record<string, string>) => {
     const fd = new FormData();
     fd.set("id", id);
     for (const [k, v] of Object.entries(fields)) fd.set(k, v);
@@ -49,16 +58,26 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
     send(setNote, { room, item, note: value });
   };
   const photo = (room: string, item: string, thumb: string, c: { lat: number | null; lng: number | null }) => {
-    edit(room, item, (i) => ({ ...i, photos: [...i.photos, { id: `tmp_${Date.now()}`, thumb, at: new Date().toISOString(), lat: c.lat, lng: c.lng }] }));
-    send(addPhoto, { room, item, thumb, lat: String(c.lat ?? ""), lng: String(c.lng ?? "") });
+    /* the same id on both sides, so removing it a second later removes it on the server too */
+    const photoId = crypto.randomUUID();
+    edit(room, item, (i) => ({ ...i, photos: [...i.photos, { id: photoId, thumb, at: new Date().toISOString(), lat: c.lat, lng: c.lng }] }));
+    send(addPhoto, { room, item, thumb, photoId, lat: String(c.lat ?? ""), lng: String(c.lng ?? "") });
   };
   const removePhoto = (room: string, item: string, photoId: string) => {
     edit(room, item, (i) => ({ ...i, photos: i.photos.filter((p) => p.id !== photoId) }));
     send(dropPhoto, { room, item, photoId });
   };
-  const video = (room: string) => {
-    setDraft((d) => d.map((r) => (r.name === room ? { ...r, video: !r.video } : r)));
-    send(setVideo, { room });
+  const roomVideo = (room: string, u: Uploaded) => {
+    setDraft((d) => d.map((r) => (r.name === room ? { ...r, video: asClip(u) } : r)));
+    send(setRoomVideo, { room, video: JSON.stringify(u) });
+  };
+  const itemVideo = (room: string, item: string, u: Uploaded) => {
+    edit(room, item, (i) => ({ ...i, videos: [...i.videos, asClip(u)] }));
+    send(addItemVideo, { room, item, video: JSON.stringify(u) });
+  };
+  const removeVideo = (room: string, item: string, key: string) => {
+    edit(room, item, (i) => ({ ...i, videos: i.videos.filter((v) => v.key !== key) }));
+    send(dropItemVideo, { room, item, key });
   };
 
   const total = draft.reduce((n, r) => n + r.items.length, 0);
@@ -83,7 +102,7 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
 
       {draft.map((room) => {
         const done = room.items.filter((i) => i.s !== null).length;
-        const complete = done === room.items.length && room.video;
+        const complete = done === room.items.length && !!room.video;
         const isOpen = open === room.name;
         return (
           <section key={room.name} className={cn("card border bg-white shadow-card", complete ? "border-pass/30" : "border-line")}>
@@ -94,7 +113,7 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
               </span>
               <span className="grow basis-[8rem]">
                 <span className="block text-[15.5px] font-semibold">{room.name}</span>
-                <span className="t-small block">{room.video ? "video done" : "video slot empty"}</span>
+                <span className="t-small block">{done === room.items.length ? "all answered" : `${room.items.length - done} to go`} · {room.video ? "video done" : "video missing"}</span>
               </span>
               <ChevronDown size={18} className={cn("shrink-0 text-text-3 transition-transform", isOpen && "rotate-180")} />
             </button>
@@ -103,20 +122,34 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
               <div className="border-t border-line">
                 {room.items.map((item) => (
                   <Item
-                    key={item.t} item={item}
+                    key={item.t} item={item} visitId={id}
                     onVerdict={(s) => verdict(room.name, item.t, s)}
                     onNote={(v) => note(room.name, item.t, v)}
                     onPhoto={(t, c) => photo(room.name, item.t, t, c)}
                     onDrop={(pid) => removePhoto(room.name, item.t, pid)}
+                    onVideo={(u) => itemVideo(room.name, item.t, u)}
+                    onDropVideo={(key) => removeVideo(room.name, item.t, key)}
                   />
                 ))}
-                <div className="flex flex-wrap items-center gap-3 border-t border-line bg-paper px-4 py-3.5">
-                  <Video size={15} className="shrink-0 text-text-3" />
-                  <span className="grow basis-[10rem] text-[13.5px] text-text-2">Film this room end to end before you move on.</span>
-                  <button type="button" onClick={() => video(room.name)}
-                    className={cn("btn btn-sm shrink-0", room.video ? "btn-white" : "btn-accent")}>
-                    {room.video ? <><Check size={14} /> Filmed</> : "Mark filmed"}
-                  </button>
+                {/* the room's walkthrough — the visit cannot be submitted without one */}
+                <div className="border-t border-line bg-paper px-4 py-3.5">
+                  {room.video ? (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {room.video.poster
+                        ? <Image src={room.video.poster} alt="" width={80} height={56} unoptimized className="h-14 w-20 shrink-0 rounded-[8px] object-cover" />
+                        : <span className="grid h-14 w-20 shrink-0 place-items-center rounded-[8px] bg-beige text-text-3"><Video size={16} /></span>}
+                      <span className="grow basis-[8rem]">
+                        <span className="block text-[13.5px] font-medium">Room video · {fmt(room.video.durationS)}</span>
+                        <span className="t-small block">Uploaded and stamped</span>
+                      </span>
+                      <VideoInput scope="visit" id={id} label="Re-record" maxSeconds={ROOM_SECONDS} onVideo={(u) => roomVideo(room.name, u)} />
+                    </div>
+                  ) : (
+                    <div className="grid gap-2">
+                      <p className="flex items-center gap-2 text-[13.5px] text-text-2"><Video size={15} className="shrink-0 text-text-3" /> Walk this room end to end on video — up to a minute and a half.</p>
+                      <VideoInput big scope="visit" id={id} label="Record the room" maxSeconds={ROOM_SECONDS} onVideo={(u) => roomVideo(room.name, u)} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -134,13 +167,16 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
 }
 
 function Item({
-  item, onVerdict, onNote, onPhoto, onDrop,
+  item, visitId, onVerdict, onNote, onPhoto, onDrop, onVideo, onDropVideo,
 }: {
   item: DraftItem;
+  visitId: string;
   onVerdict: (s: ItemState) => void;
   onNote: (v: string) => void;
   onPhoto: (thumb: string, c: { lat: number | null; lng: number | null }) => void;
   onDrop: (photoId: string) => void;
+  onVideo: (u: Uploaded) => void;
+  onDropVideo: (key: string) => void;
 }) {
   const needsProof = item.s === "attn" || item.s === "fail";
   return (
@@ -161,7 +197,7 @@ function Item({
         <div className="mt-3 rounded-[12px] bg-paper p-3">
           <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-text-2">
             <Flag size={12} className={item.s === "fail" ? "text-fail" : "text-warn"} />
-            A flag needs a photograph and a line about it — the owner decides from this.
+            A flag needs a photo or a video, and a line about it — the owner decides from this.
           </p>
           <textarea
             defaultValue={item.note} onBlur={(e) => onNote(e.target.value)} rows={2}
@@ -178,7 +214,20 @@ function Item({
                 </button>
               </span>
             ))}
-            <PhotoInput onPhoto={onPhoto} label={item.photos.length ? "Another" : "Add photo"} />
+            {item.videos.map((v) => (
+              <span key={v.key} className="relative">
+                {v.poster
+                  ? <Image src={v.poster} alt="" width={56} height={56} unoptimized className="h-14 w-14 rounded-[8px] object-cover" />
+                  : <span className="grid h-14 w-14 place-items-center rounded-[8px] bg-beige" />}
+                <span className="absolute inset-0 grid place-items-center"><Play size={16} className="fill-white text-white drop-shadow" /></span>
+                <button type="button" onClick={() => onDropVideo(v.key)} aria-label="Remove video"
+                  className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-ink text-white">
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+            <PhotoInput onPhoto={onPhoto} label={item.photos.length ? "Another photo" : "Add photo"} />
+            {item.videos.length < 3 && <VideoInput scope="visit" id={visitId} label="Add video" maxSeconds={ITEM_SECONDS} onVideo={onVideo} />}
           </div>
         </div>
       )}
@@ -221,7 +270,7 @@ function Review({
             </div>
           ))}
         </div>
-        <p className="t-small mt-2.5">{photos} photograph{photos === 1 ? "" : "s"} · {draft.filter((r) => r.video).length} of {draft.length} rooms filmed</p>
+        <p className="t-small mt-2.5">{photos} photograph{photos === 1 ? "" : "s"} · {draft.filter((r) => r.video).length} of {draft.length} rooms filmed — all from the camera, stamped with time and place</p>
       </div>
 
       {todo.length > 0 && (

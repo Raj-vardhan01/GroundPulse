@@ -1,14 +1,17 @@
 /* ════════════════════════════════════════════════════════════════
-   "Nearby", without a geocoder.
+   "Nearby", and "were they really there".
 
-   We have no mapping bill and no address-to-coordinate service, so
-   distance is measured between locality centres rather than between
-   doors. That is honest to about a kilometre, which is exactly the
-   precision an inspector planning a day actually needs — the walk
-   from the gate to the flat is not what decides the route.
+   Two different precisions. Planning a day only needs to be honest to
+   about a kilometre, so an inspector's base and any property nobody
+   has pinned yet are measured from their locality's centre.
 
-   Wire a real geocoder later and only `coordsOf` changes.
+   Holding an inspector to a doorstep needs the doorstep. That is the
+   property's pin — marked by the owner, or by the first inspector who
+   got in with the owner's code — and nothing is ever judged against a
+   locality centre: with no pin, a check-in is recorded, not measured.
    ════════════════════════════════════════════════════════════════ */
+
+import type { Property, Visit } from "@/lib/types";
 
 export type Point = { lat: number; lng: number };
 
@@ -62,3 +65,46 @@ export const fmtKm = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `$
     what a two-wheeler actually averages here, plus five minutes to park
     and find the place. */
 export const rideMinutes = (km: number) => Math.max(5, Math.round((km / 18) * 60) + 5);
+
+export const fmtLatLng = (lat: number, lng: number) => `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
+
+/* ── the property's own spot ─────────────────────────────────── */
+
+/** Where a property is for planning: its pin, or its locality's centre. */
+export const pointOf = (p: Pick<Property, "pin" | "locality" | "city">): Point =>
+  p.pin ? { lat: p.pin.lat, lng: p.pin.lng } : coordsOf(p.locality, p.city);
+
+/** Directions in the app the inspector already rides with — to the pin
+    when there is one, to the written address when there is not. */
+export function navigateHref(p: Pick<Property, "pin" | "address" | "city">) {
+  const to = p.pin ? `${p.pin.lat},${p.pin.lng}` : `${p.address}, ${p.city}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(to)}`;
+}
+
+/* ── the door ────────────────────────────────────────────────── */
+
+/** Standing at the property. Indoors GPS drifts, so this is generous —
+    it catches "I am checking in from home", not "wrong stairwell". */
+export const CHECKIN_RADIUS_M = 150;
+/** A phone that says "±40 m" may really be 40 m closer, and gets that
+    benefit. One that says "±2 km" is not evidence of anything, so the
+    benefit stops here. */
+const MAX_SLACK_M = 100;
+/** Sure enough of itself to become the pin when there was none. */
+export const PIN_FROM_VISIT_MAX_ACCURACY_M = 75;
+
+/** Too far from the pin to accept without a reason. Unknown is never too far. */
+export const tooFar = (distanceM: number, accuracyM: number | null) =>
+  distanceM >= 0 && distanceM - Math.min(accuracyM ?? 0, MAX_SLACK_M) > CHECKIN_RADIUS_M;
+
+type CheckIn = NonNullable<Visit["checkIn"]>;
+
+/** One description of a check-in for the owner's visit page, the report
+    and the inspector's job — so it never says more in one place than
+    the evidence holds in another. */
+export function checkInWords(ci: Pick<CheckIn, "lat" | "lng" | "accuracyM" | "distanceM">) {
+  if (ci.lat === null || ci.lng === null) return { short: "no GPS there", long: "no GPS there" };
+  if (ci.distanceM < 0) return { short: "location recorded", long: "location recorded · no pin yet to measure it from" };
+  const pm = ci.accuracyM !== null ? ` (±${Math.round(ci.accuracyM)} m)` : "";
+  return { short: `${ci.distanceM} m from the pin`, long: `${ci.distanceM} m from the pin${pm}` };
+}

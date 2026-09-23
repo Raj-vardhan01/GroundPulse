@@ -7,7 +7,7 @@ import { StatusPill } from "@/components/app/ui";
 import { fmtDate, relative } from "@/lib/format";
 import { bhkLabel } from "@/lib/cleaning";
 import { cn } from "@/lib/cn";
-import type { PropertyView } from "@/lib/queries";
+import { isOverdue, type PropertyView } from "@/lib/queries";
 
 /** The card the whole app is really about: one property, its condition,
     and the single most useful thing to know about it right now. */
@@ -21,7 +21,7 @@ export function PropertyCard({ v }: { v: PropertyView }) {
         {liveVisit && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-[11.5px] font-semibold shadow-card">
             <span className="ping relative h-[6px] w-[6px] rounded-full bg-accent text-accent" />
-            {liveVisit.status === "on_site" ? "Inspector on site" : liveVisit.status === "en_route" ? "On the way" : "Report being written"}
+            {liveVisit.status === "on_site" ? "Inspector on site" : liveVisit.status === "en_route" ? "On the way" : "Report being checked"}
           </span>
         )}
       </div>
@@ -41,6 +41,9 @@ export function PropertyCard({ v }: { v: PropertyView }) {
             {openIssues.length > 0
               ? <span className={cn("chip", openIssues.some((i) => i.severity === "fail") ? "chip-fail" : "chip-warn")}>{openIssues.length} waiting on you</span>
               : score !== null && <span className="chip chip-pass">Nothing open</span>}
+            {p.pin?.source === "inspector" && !p.pin.confirmedAt
+              ? <span className="chip chip-warn">Check the pin</span>
+              : !p.pin && p.kind === "plot" && <span className="chip chip-warn">No pin yet</span>}
           </div>
         </div>
 
@@ -51,7 +54,12 @@ export function PropertyCard({ v }: { v: PropertyView }) {
 
       <div className="flex items-center gap-2 border-t border-line px-5 py-3.5 text-[13px]">
         <CalendarDays size={13} className="shrink-0 text-text-3" />
-        {nextVisit ? (
+        {nextVisit && isOverdue(nextVisit) ? (
+          <>
+            <span className="text-text-2">Visit on {fmtDate(nextVisit.scheduledFor)} was missed</span>
+            <span className="chip chip-warn ml-auto">Needs a new day</span>
+          </>
+        ) : nextVisit ? (
           <>
             <span className="text-text-2">Next visit {relative(nextVisit.scheduledFor)}</span>
             <span className="ml-auto"><StatusPill status={nextVisit.status} /></span>

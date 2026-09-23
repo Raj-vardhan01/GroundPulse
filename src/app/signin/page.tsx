@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { ArrowLeft, ArrowRight, BadgeCheck, CalendarCheck, IndianRupee, KeyRound, LogOut, MapPinned, Timer } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
-import { currentUser } from "@/lib/auth";
+import { currentUser, homeFor, prettyPhone } from "@/lib/auth";
 import { switchAccount } from "@/lib/actions";
 import { SignInForm } from "./SignInForm";
 import { cn } from "@/lib/cn";
@@ -51,8 +51,8 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
   /* Somebody already signed in is not necessarily in the wrong place —
      they may have come here to switch. Bouncing them silently is what
      made an inspector link look like it opened the owner app. */
-  const home = user?.role === "inspector" ? "/field" : "/app";
-  const mismatch = !!user && ((wants === "inspector") !== (user.role === "inspector"));
+  const home = user ? homeFor(user.role) : "/app";
+  const mismatch = !!user && user.role !== "admin" && ((wants === "inspector") !== (user.role === "inspector"));
 
   return (
     <main className="min-h-dvh lg:grid lg:grid-cols-[1.05fr_1fr]">
@@ -91,7 +91,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
               </h1>
               <p className="t-small mt-2.5">
                 This browser is signed in as <b className="text-ink">{user.name || "your account"}</b> ·{" "}
-                {user.role === "inspector" ? "inspector" : "owner"} · +91 {user.phone.slice(0, 5)} {user.phone.slice(5)}.
+                {user.role === "inspector" ? "inspector" : user.role === "admin" ? "ops" : "owner"} · {prettyPhone(user.phone)}.
                 {mismatch && wants === "inspector" && " The inspector app needs the number you applied with."}
                 {mismatch && wants === "owner" && " Your properties are on a different number."}
               </p>
@@ -102,7 +102,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
                   link ends up in the owner app. */}
               <div className={cn("mt-7 grid gap-3", mismatch && "[&>form]:order-first")}>
                 <Link href={home as Route} className={cn("w-full", mismatch ? "btn btn-white" : "btn btn-accent")}>
-                  {user.role === "inspector" ? "Go to my jobs" : "Go to my properties"}
+                  {user.role === "inspector" ? "Go to my jobs" : user.role === "admin" ? "Go to the ops console" : "Go to my properties"}
                   {!mismatch && <ArrowRight size={16} />}
                 </Link>
 

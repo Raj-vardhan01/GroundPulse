@@ -59,7 +59,7 @@ export default async function Page() {
               <PanelHead title="Privacy" meta="Short, because there is not much to it" />
               <ul className="grid gap-3 p-5">
                 {[
-                  "Your photographs and videos are private. They are served on signed links that expire, and only you and the inspector assigned to that visit can open them.",
+                  "Your photographs are private: only you and the inspector assigned to that visit can open them. Every one is taken live in the inspector's camera, never picked from a gallery.",
                   "We never sell or share your property data. There is no advertising business here to feed.",
                   "Every decision you make is written to an audit log that nobody — including us — can edit afterwards.",
                 ].map((t) => (

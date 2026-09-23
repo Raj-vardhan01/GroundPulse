@@ -2,8 +2,6 @@ import Link from "next/link";
 import { CreditCard, Download, IndianRupee, ShieldCheck } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
 import { invoices, properties } from "@/lib/queries";
-import { payInvoice } from "@/lib/actions";
-import { SubmitButton } from "@/components/app/SubmitButton";
 import { Empty, PageHead, Panel, PanelHead, Stat, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
 import { fmtDate, relative } from "@/lib/format";
@@ -18,6 +16,11 @@ export default async function Page() {
   const due = all.filter((i) => i.status === "due");
   const paid = all.filter((i) => i.status === "paid");
   const spent = paid.reduce((n, i) => n + i.amountInr, 0);
+  /* No gateway yet: bills are paid by UPI and confirmed by ops once the
+     money is in. The bill number in the UPI note is how it is matched. */
+  const upi = process.env.UPI_ID?.trim() ?? "";
+  const upiLink = (amount: number, ref: string) =>
+    `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent("StillYours")}&am=${amount}&cu=INR&tn=${encodeURIComponent(ref)}`;
 
   return (
     <>
@@ -53,16 +56,21 @@ export default async function Page() {
                         {i.method && <div className="t-small mt-0.5 flex items-center gap-1 text-accent-2"><ShieldCheck size={11} /> {i.method}</div>}
                       </div>
                       <span className="shrink-0 text-[17px] font-medium tabular-nums">{money(i.amountInr)}</span>
-                      <form action={payInvoice} className="shrink-0">
-                        <input type="hidden" name="id" value={i.id} />
-                        <SubmitButton className="btn-sm" pendingLabel="Recording…">Mark paid</SubmitButton>
-                      </form>
+                      {upi && <a href={upiLink(i.amountInr, i.ref)} className="btn btn-accent btn-sm shrink-0">Pay by UPI</a>}
                     </li>
                   ))}
                 </ul>
-                <p className="t-small border-t border-line px-5 py-3.5">
-                  No payment gateway is wired up locally, so this records the payment against the bill. Razorpay slots in behind this same button.
-                </p>
+                <div className="t-small grid gap-1.5 border-t border-line px-5 py-3.5 leading-relaxed">
+                  {upi ? (
+                    <p>
+                      Pay by UPI to <span className="select-all font-mono font-medium text-ink">{upi}</span>, with the bill number (like <span className="font-mono">{due[0].ref}</span>) in the note.
+                      “Pay by UPI” opens your UPI app with the amount and the number filled in, on a phone.
+                    </p>
+                  ) : (
+                    <p>We send the payment details for each bill on WhatsApp and email.</p>
+                  )}
+                  <p>We confirm it within a working day and it moves to History. Paying from abroad without UPI? <Link href="/app/help" className="font-medium text-accent underline underline-offset-2">Write to us</Link> and we send bank details.</p>
+                </div>
               </Panel>
             </Reveal>
           )}

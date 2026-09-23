@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft, BadgeCheck, CheckCircle2, ClipboardList, Clock, KeyRound, MapPin,
-  MessageSquareQuote, Phone, Radio, Undo2, Video,
+  MessageSquareQuote, Navigation, Phone, Radio, Undo2, Video,
 } from "lucide-react";
 import { requireInspector } from "@/lib/auth";
 import { inspectorFor, jobView } from "@/lib/field";
@@ -14,6 +14,7 @@ import { JobTags } from "@/components/field/JobCard";
 import { Panel, PanelHead, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
 import { fmtDayDate, fmtTime } from "@/lib/format";
+import { checkInWords, navigateHref } from "@/lib/geo";
 import { cn } from "@/lib/cn";
 
 export default async function LiveVisit({ params, searchParams }: PageProps<"/field/visit/[id]">) {
@@ -56,9 +57,15 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
           <div className={cn("mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t pt-3.5 text-[13px]", onSite ? "border-white/12 text-white/70" : "border-line text-text-2")}>
             <span className="flex items-center gap-1.5"><Clock size={12} /> {fmtDayDate(v.scheduledFor)} · {v.slot}</span>
             {v.startedAt && <span className="flex items-center gap-1.5"><KeyRound size={12} /> in at {fmtTime(v.startedAt)}</span>}
-            {v.checkIn && <span className="flex items-center gap-1.5"><MapPin size={12} /> {v.checkIn.distanceM} m from the address</span>}
+            {v.checkIn && <span className="flex items-center gap-1.5"><MapPin size={12} /> {checkInWords(v.checkIn).short}</span>}
             {v.recording && <span className="flex items-center gap-1.5"><Radio size={12} /> body cam</span>}
           </div>
+
+          {!onSite && !finished && (
+            <a href={navigateHref(j.property)} target="_blank" rel="noopener" className="btn btn-white btn-sm mt-3 w-full">
+              <Navigation size={14} /> {j.property.pin ? "Navigate to the pin" : "Navigate to the address"}
+            </a>
+          )}
 
           {onSite && v.checkIn?.doorPhoto && (
             <div className="mt-3 flex items-center gap-3 rounded-[12px] bg-white/[0.07] p-2.5">
@@ -109,7 +116,7 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
         <VisitWork id={v.id} draft={v.draft} />
       ) : (
         <>
-          <Reveal delay={0.05}><CheckInGate id={v.id} status={v.status} recording={v.recording} /></Reveal>
+          <Reveal delay={0.05}><CheckInGate id={v.id} status={v.status} recording={v.recording} pin={j.property.pin} /></Reveal>
 
           <Reveal delay={0.08}>
             <Panel>

@@ -13,7 +13,7 @@ export const metadata = { title: "Help" };
 const PICKED = [
   "How do I know the inspector actually checked every room?",
   "Can a repair happen without my approval?",
-  "Where are my photos and videos stored?",
+  "Where are my photos stored?",
   "How quickly do I get the report?",
   "How do I know I can trust the inspector?",
   "Who is there when the cleaning or repair happens?",

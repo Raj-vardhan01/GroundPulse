@@ -6,7 +6,7 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bell, CalendarDays, CreditCard, FileText, Home, LifeBuoy, LogOut, Plus,
+  Bell, CalendarDays, CreditCard, FileText, Home, LifeBuoy, LogOut, Menu, Plus,
   Settings, ShieldCheck, Sparkles, X,
 } from "lucide-react";
 import { Mark, Wordmark } from "@/components/ui/Logo";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
 import type { Event } from "@/lib/types";
 import { relative } from "@/lib/format";
+import { prettyPhone } from "@/lib/phone";
 
 type Nav = { href: Route; label: string; I: typeof Home; badge?: number };
 
@@ -52,7 +53,7 @@ export function AppShell({
   return (
     <div className="app-scope min-h-dvh bg-paper lg:grid lg:grid-cols-[268px_1fr]">
       {/* ── desktop rail ─────────────────────────────────────── */}
-      <aside className="on-dark sticky top-0 hidden h-dvh flex-col bg-accent px-4 py-6 lg:flex">
+      <aside className="on-dark sticky top-0 hidden h-dvh flex-col bg-accent px-4 py-6 lg:flex print:!hidden">
         <Link href="/app" className="mb-8 flex items-center gap-2.5 px-2">
           <Mark size={34} inverted />
           <Wordmark size={23} inverted />
@@ -70,7 +71,7 @@ export function AppShell({
 
         <div className="mt-6 rounded-[16px] bg-white/[0.07] p-4">
           <div className="text-[13.5px] font-semibold">{user.name || "Your account"}</div>
-          <div className="mt-0.5 text-[12px] text-white/55">+91 {user.phone.slice(0, 5)} {user.phone.slice(5)}</div>
+          <div className="mt-0.5 text-[12px] text-white/55">{prettyPhone(user.phone)}</div>
           <form action={doSignOut}>
             <button className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-white/70 transition hover:text-white">
               <LogOut size={13} /> Sign out
@@ -82,7 +83,7 @@ export function AppShell({
       {/* ── content ──────────────────────────────────────────── */}
       <div className="flex min-h-dvh flex-col">
         {/* mobile top bar */}
-        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-line bg-paper/92 px-4 py-3 backdrop-blur-md lg:hidden" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
+        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-line bg-paper/92 px-4 py-3 backdrop-blur-md lg:hidden print:hidden" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
           <Link href="/app" className="flex items-center gap-2"><Mark size={28} /><Wordmark size={19} /></Link>
           <button onClick={() => setBell(true)} aria-label="Notifications" className="relative ml-auto grid h-10 w-10 place-items-center rounded-full bg-white shadow-card">
             <Bell size={17} />
@@ -91,7 +92,7 @@ export function AppShell({
         </header>
 
         {/* desktop top bar */}
-        <header className="sticky top-0 z-40 hidden items-center gap-3 border-b border-line bg-paper/85 px-8 py-3.5 backdrop-blur-md lg:flex">
+        <header className="sticky top-0 z-40 hidden items-center gap-3 border-b border-line bg-paper/85 px-8 py-3.5 backdrop-blur-md lg:flex print:!hidden">
           <Breadcrumb path={path} />
           <button onClick={() => setBell(true)} className="relative ml-auto inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[13.5px] font-medium shadow-card transition hover:shadow-float">
             <Bell size={15} /> Activity
@@ -99,12 +100,12 @@ export function AppShell({
           </button>
         </header>
 
-        <main className="flex-1 px-4 pb-[104px] pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7">
+        <main className="flex-1 px-4 pb-[104px] pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7 print:p-0">
           <div className="mx-auto w-full max-w-[1120px]">{children}</div>
         </main>
 
         {/* mobile tab bar */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/94 backdrop-blur-lg lg:hidden" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/94 backdrop-blur-lg lg:hidden print:hidden" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
           <div className="mx-auto grid max-w-[520px] grid-cols-5 items-end px-2 pt-2">
             <Tab href="/app" label="Home" I={Home} on={active("/app")} />
             <Tab href="/app/visits" label="Visits" I={CalendarDays} on={active("/app/visits")} badge={counts.visits} />
@@ -112,7 +113,9 @@ export function AppShell({
               <span className="grid h-12 w-12 -translate-y-1.5 place-items-center rounded-full bg-accent text-white shadow-float"><Plus size={21} /></span>
             </Link>
             <Tab href="/app/reports" label="Reports" I={FileText} on={active("/app/reports")} badge={counts.reports} />
-            <Tab href="/app/account" label="Account" I={Settings} on={active("/app/account")} />
+            {/* Everything that is not a tab lives behind this one: properties,
+                plan, billing, activity, help, account. */}
+            <Tab href="/app/account" label="More" I={Menu} on={["/app/account", "/app/properties", "/app/plan", "/app/billing", "/app/activity", "/app/help"].some((h) => active(h))} />
           </div>
         </nav>
       </div>
