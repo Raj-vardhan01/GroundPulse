@@ -5,7 +5,8 @@ import { site } from "@/lib/site";
 import { carePlusCover, inr } from "@/lib/pricing";
 import { LIMIT, terms as offerTerms } from "@/lib/offer";
 import { LEAD_DAYS, WINDOW_DAYS } from "@/lib/format";
-import { OVERTIME } from "@/lib/payout";
+import { DEPOSIT, hoursWords, OVERTIME } from "@/lib/payout";
+import { HOLD, PENALTY } from "@/lib/jobs";
 import { FEE_RATE } from "@/lib/repair";
 import { ADVANCE_RATE } from "@/lib/quote";
 import { CHECKIN_RADIUS_M } from "@/lib/geo";
@@ -276,14 +277,18 @@ export default function Page() {
         <p>These terms apply to every inspector on the roster, in addition to the rest of these Terms. They are public on purpose — the person walking into an owner&apos;s home should be held to something the owner can read.</p>
         <Points n={23} items={[
           <>Inspectors are independent professionals engaged by StillYours visit by visit, not employees. Only numbers on the StillYours roster can sign in to the inspector app.</>,
-          <>What a job pays is shown on it before you claim it. Time on site beyond the first {OVERTIME.freeMinutes / 60} hours, measured from check-in to submission, is paid at {inr(OVERTIME.perHour)} for every hour begun — by StillYours, never added to the owner&apos;s bill.</>,
+          <>What a job pays is shown on it before you claim it. Time on site beyond the first {hoursWords(OVERTIME.included["3"])} ({hoursWords(OVERTIME.included["4"])} for a 4 BHK or larger), measured from check-in to submission, is paid at {inr(OVERTIME.perHour)} for every hour begun — by StillYours, never added to the owner&apos;s bill.</>,
           <>A day&apos;s earnings are paid to the UPI ID on your profile by the end of that day.</>,
           <>You check in only at the property, with the owner&apos;s entry code and a photo of the door. You walk every item honestly, photograph and film what the checklist asks, and never use a photo you did not take there and then.</>,
           <>Where you price a repair, you enter Urban Company&apos;s price for that service on the day, and parts at their rate card, truthfully. You never accept money, gifts or commission from an owner or a professional.</>,
           <>You never open cupboards, wardrobes, lockers or any locked storage, never keep an owner&apos;s keys overnight, and never let anyone into a property.</>,
           <>Addresses, entry codes, photos and everything else you learn on a job are confidential. They stay in the app and are never shared, copied or posted anywhere.</>,
           <>The body camera is StillYours property, issued against a signed receipt. You wear it for the whole of every visit; footage is uploaded after each visit and wiped from the device. If it is lost or damaged, its replacement cost of ₹9,000 is deducted from your fees.</>,
-          <>₹500 is held back from each of your first three payouts — ₹1,500 in all — and returned in full when you leave and hand the camera back in working order.</>,
+          <>Your deposit is held back from your pay, never asked for in cash: {DEPOSIT.rate * 100}% of what each job pays, until it reaches {inr(DEPOSIT.target)}. Overtime is always paid in full and never held. It is returned when you leave in good standing and hand the camera back in working order, less any deduction below that has not been taken back.</>,
+          <>You may hold up to {HOLD.max} claimed jobs at once — {HOLD.untilUnlock} until {inr(DEPOSIT.unlock)} of your deposit is in — no more than {HOLD.perDay} on one day and one per time window, and work one at a time.</>,
+          <>Handing a claimed job back is free until {PENALTY.freeReleaseHours} hours before its window opens. After that, {inr(PENALTY.lateRelease)} comes off your deposit.</>,
+          <>If a job&apos;s window closes and you have not checked in, it is a missed visit: {inr(PENALTY.noShow)} comes off your deposit, the job goes back to the board, and the owner may move or cancel it free. If you had told the owner you were on the way, you have {PENALTY.enRouteGraceMinutes} minutes past the window to check in first. {PENALTY.pauseAfter} missed visits in {PENALTY.pauseWindowDays} days pause your account until we have spoken with you.</>,
+          <>A deduction that takes your deposit below {inr(DEPOSIT.target)}, or below zero, is made good from your next jobs in the same way — {DEPOSIT.rate * 100}% of each one&apos;s pay. Every deduction is listed in the app with the visit it was for. If you missed a visit because of a real emergency, tell us: we can take the deduction back, and a miss we take back does not count towards a pause.</>,
           <>A new inspector&apos;s first two visits are done with one of the founders beside them.</>,
           <>We may remove anyone from the roster who breaks these terms, puts an owner&apos;s property or trust at risk, or falls below the rating standard owners expect.</>,
         ]} />

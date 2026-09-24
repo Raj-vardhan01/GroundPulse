@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { Route } from "next";
 import { ArrowRight, Bike, CalendarClock, IndianRupee, Lock, MapPinned } from "lucide-react";
 import { requireInspector } from "@/lib/auth";
-import { inspectorFor, liveJob, openJobs, CAN_WORK, STATUS_COPY, type Sort } from "@/lib/field";
+import { inspectorFor, heldJobs, openJobs, CAN_WORK, STATUS_COPY, type Sort } from "@/lib/field";
+import { HOLD, holdMax, PENALTY } from "@/lib/jobs";
+import { DEPOSIT } from "@/lib/payout";
+import { inr } from "@/lib/pricing";
 import { JobCard } from "@/components/field/JobCard";
 import { Empty, Panel } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
@@ -22,15 +25,16 @@ export default async function Board({ searchParams }: PageProps<"/field/jobs">) 
   const sp = await searchParams;
   const sort = (SORTS.some((s) => s.k === sp.sort) ? sp.sort : "near") as Sort;
 
-  const [jobs, live] = await Promise.all([openJobs(ins, sort), liveJob(ins)]);
+  const [jobs, held] = await Promise.all([openJobs(ins, sort), heldJobs(ins)]);
   const canWork = CAN_WORK.includes(ins.status);
+  const max = holdMax(ins);
 
   return (
     <div className="grid gap-4">
       <div>
         <p className="t-label flex items-center gap-1.5"><MapPinned size={13} /> {ins.city} · you start from {ins.baseLocality}</p>
         <h1 className="serif mt-1 text-[clamp(1.7rem,6vw,2.2rem)] leading-[1.06] tracking-[-0.035em]">The board</h1>
-        <p className="t-small mt-1.5">Every unclaimed job in your city. Claim one, finish it, come back for the next.</p>
+        <p className="t-small mt-1.5">Every unclaimed job in your city and 20 km past it. Hold up to {max}{max < HOLD.max ? ` until ${inr(DEPOSIT.unlock)} of your deposit is in (${HOLD.max} after)` : ""}, {HOLD.perDay} a day, one per window — hand one back free until {PENALTY.freeReleaseHours} hours before.</p>
       </div>
 
       {!canWork && (
@@ -42,14 +46,14 @@ export default async function Board({ searchParams }: PageProps<"/field/jobs">) 
         </div>
       )}
 
-      {live && (
+      {held.length > 0 && (
         <Reveal>
-          <Link href={`/field/visit/${live.visit.id}` as Route} className="card flex flex-wrap items-center gap-3 border border-accent/25 bg-accent-tint p-4 transition hover:shadow-card">
+          <Link href="/field" className="card flex flex-wrap items-center gap-3 border border-accent/25 bg-accent-tint p-4 transition hover:shadow-card">
             <Lock size={16} className="shrink-0 text-accent" />
             <p className="grow basis-[14rem] text-[13.5px] leading-snug text-accent-2">
-              <b>{live.property.label}</b> is still open. One job at a time — finish it and the board unlocks.
+              You are holding <b>{held.length} of {max}</b>{held.length >= max ? " — finish one or hand one back to claim more." : "."}
             </p>
-            <span className="btn btn-pill btn-sm shrink-0 border-accent/20">Open it <ArrowRight size={14} /></span>
+            <span className="btn btn-pill btn-sm shrink-0 border-accent/20">Your jobs <ArrowRight size={14} /></span>
           </Link>
         </Reveal>
       )}

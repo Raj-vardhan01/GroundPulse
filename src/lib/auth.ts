@@ -11,13 +11,14 @@
    marked — unless SMS_IN_DEV=1.
    ════════════════════════════════════════════════════════════════ */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, mutate, now, uid } from "@/lib/store";
 import { LIMIT } from "@/lib/offer";
 import { isAccountPhone, isIndianMobile, parsePhone, reachOn } from "@/lib/phone";
 import { canInspect, ensureInspector, mayInspect, NOT_ON_ROSTER } from "@/lib/roster";
+import { sweepMissed } from "@/lib/jobs";
 import type { Otp, User } from "@/lib/types";
 
 export { prettyPhone } from "@/lib/phone";
@@ -41,9 +42,13 @@ const SEND_WINDOW_MS = 15 * 60_000;
 const MAX_SENDS_PER_IP = 12;
 const ipSends = new Map<string, number[]>();
 
-async function ipAllowed() {
+async function clientIp() {
   const h = await headers();
-  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "local";
+  return (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "local";
+}
+
+async function ipAllowed() {
+  const ip = await clientIp();
   const t = Date.now();
   const recent = (ipSends.get(ip) ?? []).filter((s) => t - s < SEND_WINDOW_MS);
   if (recent.length >= MAX_SENDS_PER_IP) return false;
@@ -408,6 +413,7 @@ export const homeFor = (role: User["role"]) => (role === "inspector" ? "/field" 
 /** Guard for everything under /app. Sends people to sign in, and new
     owners to the welcome flow, before any page body renders. */
 export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
+  await sweepMissed();
   const user = await currentUser();
   if (!user) redirect("/signin");
   if (user.role !== "owner") redirect(homeFor(user.role));
@@ -420,16 +426,67 @@ export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
     row has an account but no work yet — that is a real state, not an
     error, so it is handled by the page rather than bounced. */
 export async function requireInspector() {
+  await sweepMissed();
   const user = await currentUser();
   if (!user) redirect("/signin");
   if (user.role !== "inspector") redirect(homeFor(user.role));
   return user;
 }
 
-/** Guard for the ops console. */
+/* ── ops: one page, one password ──────────────────────────────────
+   The ops console is not an account. Whoever knows OPS_PASSWORD is ops,
+   for twelve hours at a time, in a cookie signed like a session. The
+   password lives in the environment, never in this repository.
+
+   Six digits is only a million guesses, so wrong ones are braked twice:
+   five per address in fifteen minutes, and thirty an hour from
+   everybody together — per server instance, like the SMS brakes. An
+   attack locks ops out for the hour too; that is the right way round. */
+const OPS_COOKIE = "sy_ops";
+const OPS_HOURS = 12;
+const OPS_TRIES_PER_IP = 5;
+const OPS_TRIES_ALL = 30;
+const opsMisses = new Map<string, number[]>();
+let opsMissesAll: number[] = [];
+
+/** Null when the password was right and the cookie is set; otherwise why not. */
+export async function opsSignIn(password: string): Promise<string | null> {
+  const expected = process.env.OPS_PASSWORD;
+  if (!expected) return "OPS_PASSWORD is not set on this server.";
+  const ip = await clientIp();
+  const t = Date.now();
+  const mine = (opsMisses.get(ip) ?? []).filter((s) => t - s < 15 * 60_000);
+  opsMissesAll = opsMissesAll.filter((s) => t - s < 60 * 60_000);
+  if (mine.length >= OPS_TRIES_PER_IP || opsMissesAll.length >= OPS_TRIES_ALL) return "Too many wrong tries. Wait a while, then try again.";
+
+  /* hashed first, so the comparison is the same length and constant-time */
+  const same = timingSafeEqual(createHash("sha256").update(password).digest(), createHash("sha256").update(expected).digest());
+  if (!same) {
+    opsMisses.set(ip, [...mine, t]);
+    opsMissesAll.push(t);
+    return "That is not the password.";
+  }
+  const body = b64(JSON.stringify({ ops: 1, e: t + OPS_HOURS * 3_600_000 }));
+  const jar = await cookies();
+  jar.set(OPS_COOKIE, `${body}.${sign(body)}`, {
+    httpOnly: true, sameSite: "strict", path: "/", secure: process.env.NODE_ENV === "production", maxAge: OPS_HOURS * 3600,
+  });
+  return null;
+}
+
+export async function isOps() {
+  const jar = await cookies();
+  const p = openSigned<{ ops?: number; e?: number }>(jar.get(OPS_COOKIE)?.value);
+  return p?.ops === 1 && (p.e ?? 0) > Date.now();
+}
+
+export async function opsSignOut() {
+  const jar = await cookies();
+  jar.delete(OPS_COOKIE);
+}
+
+/** Guard for everything ops writes. The page itself shows the password
+    form instead of bouncing anywhere. */
 export async function requireAdmin() {
-  const user = await currentUser();
-  if (!user) redirect("/signin");
-  if (user.role !== "admin") redirect(homeFor(user.role));
-  return user;
+  if (!(await isOps())) redirect("/ops");
 }

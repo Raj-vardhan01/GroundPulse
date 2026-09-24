@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { Route } from "next";
 import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Info, LayoutGrid, MapPin, Navigation, Wrench } from "lucide-react";
 import { requireInspector } from "@/lib/auth";
-import { inspectorFor, liveJob, openJobs, doneJobs, repairJobs, STATUS_COPY, CAN_WORK } from "@/lib/field";
+import { inspectorFor, heldJobs, openJobs, doneJobs, repairJobs, STATUS_COPY, CAN_WORK } from "@/lib/field";
+import { HOLD, holdMax, PENALTY, UNDER_WAY } from "@/lib/jobs";
+import { DEPOSIT } from "@/lib/payout";
 import { JobCard, JobTags } from "@/components/field/JobCard";
 import { Panel, PanelHead, Stat, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
@@ -16,7 +18,13 @@ export default async function Today() {
   const copy = STATUS_COPY[ins.status];
   const canWork = CAN_WORK.includes(ins.status);
 
-  const [live, board, done, repairs] = await Promise.all([liveJob(ins), openJobs(ins, "near"), doneJobs(ins), repairJobs(ins)]);
+  const [held, board, done, repairs] = await Promise.all([heldJobs(ins), openJobs(ins, "near"), doneJobs(ins), repairJobs(ins)]);
+  /* The one under way leads; the rest wait their turn. */
+  const live = held.find((j) => UNDER_WAY.includes(j.visit.status)) ?? held[0] ?? null;
+  const waiting = held.filter((j) => j !== live);
+  const max = holdMax(ins);
+  const room = held.length < max;
+  const owed = ins.depositInr < 0;
   const first = ins.name.split(" ")[0];
   const hour = new Date().getHours();
 
@@ -26,7 +34,7 @@ export default async function Today() {
         <div>
           <p className="t-label">{hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"}, {first}</p>
           <h1 className="serif mt-1 text-[clamp(1.7rem,6vw,2.2rem)] leading-[1.06] tracking-[-0.035em]">
-            {live ? "You have a job open." : canWork ? `${board.length} job${board.length === 1 ? "" : "s"} on the board.` : "Nothing to do yet."}
+            {live ? (UNDER_WAY.includes(live.visit.status) ? "You have a job under way." : `You are holding ${held.length} job${held.length === 1 ? "" : "s"}.`) : canWork ? `${board.length} job${board.length === 1 ? "" : "s"} on the board.` : "Nothing to do yet."}
           </h1>
         </div>
       </Reveal>
@@ -58,8 +66,8 @@ export default async function Today() {
         </Reveal>
       )}
 
-      {/* the one job they are holding */}
-      {live ? (
+      {/* the job in hand — the one under way, or the next one due */}
+      {live && (
         <Reveal delay={0.06}>
           <div className="on-dark card bg-ink p-5 shadow-float sm:p-6">
             <div className="flex flex-wrap items-start gap-3">
@@ -83,13 +91,29 @@ export default async function Today() {
             </Link>
           </div>
         </Reveal>
-      ) : canWork ? (
+      )}
+
+      {/* the rest they have claimed, in the order they are due */}
+      {waiting.length > 0 && (
+        <Reveal delay={0.07}>
+          <Panel>
+            <PanelHead title="Also yours" meta={`${held.length} of ${max} held`} />
+            <div className="grid gap-3 p-4">
+              {waiting.map((j) => <JobCard key={j.visit.id} j={j} href={`/field/visit/${j.visit.id}`} />)}
+            </div>
+          </Panel>
+        </Reveal>
+      )}
+
+      {canWork && (
         <>
           <Reveal delay={0.06}>
             <div className="card flex flex-wrap items-center gap-3 border border-accent/20 bg-accent-tint p-4">
               <Navigation size={17} className="shrink-0 text-accent" />
               <p className="grow basis-[14rem] text-[14px] leading-snug text-accent-2">
-                Nothing open. Take one job at a time — finish it, and the board comes back.
+                {room
+                  ? `Hold up to ${max} jobs, ${HOLD.perDay} a day, one per window — and walk one at a time. Hand one back free until ${PENALTY.freeReleaseHours} hours before it; a missed visit costs ₹${PENALTY.noShow}.`
+                  : `You are holding ${held.length} — the most at once${max < HOLD.max ? ` until ${money(DEPOSIT.unlock)} of your deposit is in` : ""}. Finish one or hand one back to claim more.`}
               </p>
               <Link href="/field/jobs" className="btn btn-pill btn-sm shrink-0 border-accent/20"><LayoutGrid size={14} /> See the board</Link>
             </div>
@@ -106,7 +130,7 @@ export default async function Today() {
             </Panel>
           </Reveal>
         </>
-      ) : null}
+      )}
 
       {/* repairs on things they found — theirs to photograph after */}
       {repairs.length > 0 && (
@@ -135,7 +159,7 @@ export default async function Today() {
         <div className="grid grid-cols-3 gap-2">
           <Stat n={done.length} l="Visits done" className="border border-line bg-white shadow-card" />
           <Stat n={ins.rating} l="Your rating" tone="accent" className="border border-line bg-white shadow-card" />
-          <Stat n={money(ins.depositInr)} l="Deposit held" className="border border-line bg-white shadow-card" />
+          <Stat n={owed ? `−${money(-ins.depositInr)}` : money(ins.depositInr)} l={owed ? "Owed, off your next pay" : "Deposit held"} tone={owed ? "fail" : undefined} className="border border-line bg-white shadow-card" />
         </div>
       </Reveal>
 

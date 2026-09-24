@@ -211,6 +211,16 @@ export type Visit = {
   advanceInr: number;
   /** ₹200 for every hour past two on site — paid by us, not the owner */
   overtimeInr: number;
+  /** when the inspector who held it did not turn up. The owner may then
+      move or cancel it even on the day, free */
+  missedAt?: string | null;
+  /** what was held back from this job's pay towards the deposit */
+  depositHeldInr?: number;
+  /** when the inspector let the cleaning crew start — every before photo
+      is taken by then, and no after photo is taken until well past it */
+  crewStartedAt?: string | null;
+  /** when ops sent this job's pay to the inspector's UPI */
+  payoutSentAt?: string | null;
 };
 
 export type ItemState = "pass" | "attn" | "fail";
@@ -260,6 +270,11 @@ export type DraftRoom = {
   items: DraftItem[];
   /** the room's walkthrough, end to end — the visit cannot be submitted with one missing */
   video: Video | null;
+  /** on a visit with a clean, the room from the same spot before the crew
+      starts and after they finish. null is still to take; absent is a
+      room the crew does not clean, or a visit with no clean */
+  before?: Photo | null;
+  after?: Photo | null;
 };
 /** The photographs travel with the item into the report — they are the proof. */
 export type ReportItem = { t: string; s: ItemState; note?: string; photos?: Photo[]; videos?: Video[] };
@@ -269,6 +284,9 @@ export type ReportRoom = {
   dur: string;
   /** the room's walkthrough; reports from before real video have none */
   video?: Video | null;
+  /** the clean, from the same spot, when the visit had one */
+  before?: Photo | null;
+  after?: Photo | null;
   items: ReportItem[];
 };
 
@@ -464,6 +482,25 @@ export type Inspector = {
   reviewedReports: number;
   /** where the day's earnings go, by the end of that day */
   upiId: string;
+  /** deductions from the deposit — a missed visit, a job handed back late */
+  penalties?: Penalty[];
+};
+
+export type Penalty = {
+  id: string;
+  at: string;
+  visitId: string;
+  /** the visit's ref, as the inspector would recognise it */
+  ref: string;
+  kind: "no_show" | "late_release";
+  amountInr: number;
+  /** taken back by ops — a real emergency. It no longer counts towards a pause */
+  waivedAt?: string | null;
+  waivedWhy?: string | null;
+  /** of a waived amount, what the deposit had no room for — sent to their UPI */
+  refundInr?: number;
+  /** when ops sent that refund */
+  refundSentAt?: string | null;
 };
 
 /* "Something went wrong with this visit" — written by the owner, answered

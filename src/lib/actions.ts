@@ -511,7 +511,8 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
     moved or cancelled: that was not the owner's doing. */
 function changeBlocked(v: Visit): string | null {
   if (!["unpaid", "scheduled", "assigned"].includes(v.status)) return "This visit can no longer be changed — it has already started.";
-  if (v.scheduledFor === todayKey()) return "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it.";
+  /* On the day a visit is fixed — unless we are the ones who missed it. */
+  if (v.scheduledFor === todayKey() && !v.missedAt) return "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it.";
   return null;
 }
 
@@ -553,6 +554,7 @@ export async function rescheduleVisit(_prev: FormState, fd: FormData): Promise<F
     const hadInspector = !!v.inspectorId;
     v.scheduledFor = date;
     v.slot = slot;
+    v.missedAt = null;
     /* Whoever claimed it claimed that day. The new day goes back on the
        board for whoever can make it — unless the advance is still unpaid,
        in which case it stays off the board until it is. */

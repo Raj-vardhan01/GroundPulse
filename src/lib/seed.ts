@@ -154,7 +154,7 @@ type VisitSeed = Partial<Visit> & Pick<Visit, "id" | "ref" | "propertyId"> & { p
 const visit = ({ property, ...v }: VisitSeed): Visit => {
   const kind: VisitKind = v.kind ?? "inspection";
   const addOns = v.addOns ?? {};
-  return {
+  const out = {
     ownerId: property.ownerId,
     kind,
     planId: "one-time",
@@ -191,6 +191,9 @@ const visit = ({ property, ...v }: VisitSeed): Visit => {
     overtimeInr: 0,
     ...v,
   } as Visit;
+  /* work before today was paid on its day, as the earnings page says */
+  if (["submitted", "ready", "closed"].includes(out.status) && out.scheduledFor < dateOf(0)) out.payoutSentAt ??= out.endedAt ?? out.createdAt;
+  return out;
 };
 
 const planLine = (name: string, note = "included in your plan"): Line => ({ k: `${name} inspection`, note, v: 0 });

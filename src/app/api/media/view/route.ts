@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentUser, isOps } from "@/lib/auth";
 import { APPS_LIVE } from "@/lib/flags";
 import { db } from "@/lib/store";
 import { balanceDue } from "@/lib/payments";
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
      clips open with the rest of it. */
   const open = !!report && !report.heldForReview && !balanceDue(d, visit.id);
   const allowed =
-    user?.role === "admin" ||
+    (await isOps()) ||
     (!!user && inspector?.userId === user.id) ||
     (!!user && user.id === visit.ownerId && open) ||
     (open && token.length >= 20 && report!.shareToken === token);

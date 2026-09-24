@@ -6,9 +6,9 @@
    1. An inspector sees the jobs in their own city and 20 km past it — and
       only the next two weeks of them. A plan books a year of visits in
       one go; a board full of dates three months out is noise.
-   2. One job in hand at a time. Claiming a second while the first is
-      still being walked is how a house gets half-walked. A report
-      waiting on a reviewer is not in hand — the walking is done.
+   2. Up to five jobs claimed, three on any day, never two in one window —
+      and only one under way at a time: a house is never half-walked for
+      the next (lib/jobs). A report waiting on a reviewer is not in hand.
    3. The work happens on the day it was booked for. Not the day
       before because it suits, not after it quietly went past.
    ════════════════════════════════════════════════════════════════ */
@@ -17,7 +17,9 @@ import { db } from "@/lib/store";
 import { coordsOf, distanceKm, pointOf, rideMinutes } from "@/lib/geo";
 import { blocksFor, itemCount } from "@/lib/checklist";
 import { inReach } from "@/lib/city";
+import { claimRefusal, HELD, UNDER_WAY, windowEnd, windowStart } from "@/lib/jobs";
 import { daysBetween, todayKey } from "@/lib/format";
+import { reachOn } from "@/lib/phone";
 import type { Inspector, InspectorStatus, Issue, Property, Visit } from "@/lib/types";
 
 /** A job physically in hand — claimed, travelling, or being walked. */
@@ -54,7 +56,7 @@ async function view(v: Visit, from: { lat: number; lng: number }): Promise<JobVi
     visit: v,
     property,
     ownerName: owner?.name || "Owner",
-    ownerPhone: owner && !owner.deletedAt ? owner.phone : "",
+    ownerPhone: owner && !owner.deletedAt ? reachOn(owner) : "",
     km,
     minutes: rideMinutes(km),
     items: itemCount(property, v),
@@ -77,10 +79,11 @@ export function claimBlock(ins: Inspector): string | null {
   return null;
 }
 
-/** Is this job on the board's window — today up to two weeks out? */
-export const onBoardWindow = (v: Pick<Visit, "scheduledFor">) => {
+/** Is this job on the board's window — today up to two weeks out, and
+    not a window that has already closed? */
+export const onBoardWindow = (v: Pick<Visit, "scheduledFor" | "slot">) => {
   const gap = daysBetween(todayKey(), v.scheduledFor);
-  return gap >= 0 && gap <= BOARD_DAYS;
+  return gap >= 0 && gap <= BOARD_DAYS && Date.now() < windowEnd(v);
 };
 
 export type Sort = "near" | "soon" | "pay";
@@ -103,12 +106,21 @@ export async function openJobs(ins: Inspector, sort: Sort = "near"): Promise<Job
   return views.sort(by[sort]);
 }
 
-/** The one job they are holding, if any. */
-export async function liveJob(ins: Inspector): Promise<JobView | null> {
+/** Every job in their hands — the one under way first, then by day and window. */
+export async function heldJobs(ins: Inspector): Promise<JobView[]> {
   const d = await db();
-  const v = d.visits.find((x) => x.inspectorId === ins.id && LIVE.includes(x.status));
-  if (!v) return null;
-  return view(v, coordsOf(ins.baseLocality, ins.city));
+  const mine = d.visits
+    .filter((x) => x.inspectorId === ins.id && HELD.includes(x.status))
+    .sort((a, b) => Number(UNDER_WAY.includes(b.status)) - Number(UNDER_WAY.includes(a.status)) || windowStart(a) - windowStart(b));
+  const from = coordsOf(ins.baseLocality, ins.city);
+  return (await Promise.all(mine.map((v) => view(v, from)))).filter(Boolean) as JobView[];
+}
+
+/** Why they cannot claim this one, or null. */
+export async function claimCheck(ins: Inspector, visitId: string) {
+  const d = await db();
+  const v = d.visits.find((x) => x.id === visitId);
+  return v ? claimRefusal(d, ins, v) : "This job is no longer on the board.";
 }
 
 /** Reports of theirs a reviewer has not read yet. */
@@ -186,7 +198,8 @@ export async function earnings(ins: Inspector) {
   const mine = d.visits.filter((v) => v.inspectorId === ins.id && ["submitted", "ready", "closed"].includes(v.status));
   const today = todayKey();
   const pay = (v: Visit) => v.payoutInr + (v.overtimeInr ?? 0);
-  const sum = (rows: Visit[]) => rows.reduce((n, v) => n + pay(v), 0);
+  /* what reaches their UPI — less what went to the deposit */
+  const sum = (rows: Visit[]) => rows.reduce((n, v) => n + pay(v) - (v.depositHeldInr ?? 0), 0);
   return {
     today: sum(mine.filter((v) => v.scheduledFor === today)),
     paidOut: sum(mine.filter((v) => v.scheduledFor < today)),

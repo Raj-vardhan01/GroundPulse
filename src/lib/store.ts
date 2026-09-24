@@ -215,6 +215,16 @@ function migrate(d: DB): DB {
     for (const i of d.inspectors) (i as unknown as Loose).upiId ??= "";
   }
 
+  if (version < 9) {
+    /* Ops now records each inspector payout as it is sent. Everything
+       finished before today was paid on its day — the earnings page has
+       said so all along — so only today's work starts out owed. */
+    const today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+    for (const v of d.visits) {
+      if (["submitted", "ready", "closed"].includes(v.status) && v.scheduledFor < today) v.payoutSentAt ??= v.endedAt ?? v.createdAt;
+    }
+  }
+
   d.version = STORE_VERSION;
   return d;
 }

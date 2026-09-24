@@ -14,15 +14,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireInspector } from "@/lib/auth";
 import { db, mutate, now, uid, reportRef, issueRef } from "@/lib/store";
-import { inspectorFor, LIVE, claimBlock, onBoardWindow } from "@/lib/field";
-import { blocksFor, countItems, scoreOf, outstanding } from "@/lib/checklist";
+import { inspectorFor, claimBlock, onBoardWindow } from "@/lib/field";
+import { claimRefusal, freeReleaseUntil, holdForDeposit, penalise, UNDER_WAY } from "@/lib/jobs";
+import { afterOpen, afterOpensAt, blocksFor, cleanOf, countItems, draftFrom, scoreOf, outstanding } from "@/lib/checklist";
 import { checkInWords, distanceKm, fmtLatLng, PIN_FROM_VISIT_MAX_ACCURACY_M, tooFar } from "@/lib/geo";
 import { inReach } from "@/lib/city";
 import { fmtDayDate, fmtTime, todayKey } from "@/lib/format";
 import { pushEvent } from "@/lib/events";
 import { deliverReport } from "@/lib/lifecycle";
 import { discard, readVideo } from "@/lib/media";
-import { overtimeFor } from "@/lib/payout";
+import { includedMinutes, overtimeFor } from "@/lib/payout";
 import { coverFor, urbanCompanyQuote } from "@/lib/repair";
 import { initialsOf } from "@/lib/roster";
 import type { DraftRoom, ItemState, Photo, ReportRoom } from "@/lib/types";
@@ -58,12 +59,12 @@ export async function claimJob(fd: FormData) {
   const id = str(fd, "id", 60);
 
   await mutate((d) => {
-    /* One at a time, checked against the store rather than against
-       whatever the page happened to render a moment ago. */
-    if (d.visits.some((v) => v.inspectorId === ins.id && LIVE.includes(v.status))) return;
-
     const v = d.visits.find((x) => x.id === id);
     if (!v || v.status !== "scheduled" || v.inspectorId || !onBoardWindow(v)) return;
+    /* Five at most (two until ₹1,500 of deposit), three a day, one per
+       window — checked against the store rather than whatever the page
+       rendered a moment ago. */
+    if (claimRefusal(d, d.inspectors.find((x) => x.id === ins.id) ?? ins, v)) return;
     const p = d.properties.find((x) => x.id === v.propertyId);
     if (!p || !inReach(p, ins.city)) return;
 
@@ -91,6 +92,10 @@ export async function releaseJob(fd: FormData) {
        certainly once the OTP is used — walking away is a phone call to
        ops, not a button. */
     if (!v || v.status !== "assigned") return;
+    /* Free until 24 hours before the window; after that it costs. */
+    const late = Date.now() >= freeReleaseUntil(v);
+    const me = d.inspectors.find((x) => x.id === ins.id);
+    if (late && me) penalise(d, me, v, "late_release");
     v.inspectorId = "";
     v.claimedAt = null;
     v.status = "scheduled";
@@ -107,6 +112,11 @@ export async function releaseJob(fd: FormData) {
   revalidatePath("/app", "layout");
   redirect("/field/jobs");
 }
+
+/** Another job already under way — only one at a time. */
+const busyElsewhere = (visits: { id: string; inspectorId: string; status: string }[], insId: string, id: string) =>
+  visits.some((x) => x.inspectorId === insId && x.id !== id && (UNDER_WAY as string[]).includes(x.status));
+const ONE_AT_A_TIME = "Finish the job you are on first — one house at a time.";
 
 /** The visit has to happen on the day it was booked for. */
 const notToday = (scheduledFor: string) =>
@@ -125,6 +135,7 @@ export async function startTravel(_prev: FieldState, fd: FormData): Promise<Fiel
   if (!v0 || v0.status !== "assigned") return { ok: false, error: "This visit is not waiting to start." };
   const day = notToday(v0.scheduledFor);
   if (day) return { ok: false, error: day };
+  if (busyElsewhere(d0.visits, ins.id, id)) return { ok: false, error: ONE_AT_A_TIME };
 
   await mutate((d) => {
     const v = d.visits.find((x) => x.id === id)!;
@@ -161,6 +172,7 @@ export async function checkIn(_prev: FieldState, fd: FormData): Promise<FieldSta
   if (!["assigned", "en_route"].includes(v0.status)) return { ok: false, error: "This visit has already started." };
   const day = notToday(v0.scheduledFor);
   if (day) return { ok: false, error: day };
+  if (busyElsewhere(d0.visits, ins.id, id)) return { ok: false, error: ONE_AT_A_TIME };
 
   if ((v0.otpTries ?? 0) >= MAX_OTP_TRIES) return { ok: false, error: "Too many wrong codes on this visit. Call ops — they will check with the owner and unlock it." };
   if (otp !== v0.otp) {
@@ -208,11 +220,11 @@ export async function checkIn(_prev: FieldState, fd: FormData): Promise<FieldSta
       });
     }
     /* The checklist is generated from the rooms the owner registered and
-       the cars they booked, so nobody can quietly walk fewer than that. */
-    v.draft = blocksFor(property, v).map((b) => ({
-      name: b.name, variant: b.variant, video: null,
-      items: b.items.map((t) => ({ t, s: null, note: "", photos: [], videos: [] })),
-    }));
+       the cars they booked, so nobody can quietly walk fewer than that —
+       and with a clean booked, every room the crew cleans waits for its
+       before and after photos. */
+    const withClean = !!cleanOf(v);
+    v.draft = blocksFor(property, v).map((b) => draftFrom(b, withClean));
     pushEvent(d, {
       ownerId: v.ownerId, propertyId: v.propertyId, visitId: v.id, type: "visit.started",
       title: `${ins.name} is on site`, body: `${property.label} · entered at ${fmtTime(now())} IST with your code`,
@@ -323,6 +335,70 @@ export async function dropPhoto(fd: FormData) {
   });
 }
 
+/* ── a clean on the visit ────────────────────────────────────── */
+
+/** One photo of a room the crew cleans — before they start, or after
+    they finish, from the same spot. The rules are checked here, not in
+    the screen: no before photo once the crew is working, and no after
+    photo until they have worked long enough to have done the job. */
+export async function setCleanPhoto(fd: FormData): Promise<FieldState> {
+  const { ins } = await me();
+  if (!ins) return { ok: false, error: "Your inspector profile is not set up yet." };
+  const id = str(fd, "id", 60);
+  const room = str(fd, "room", 80);
+  const which = str(fd, "which", 8);
+  const thumb = str(fd, "thumb", MAX_PHOTO_CHARS);
+  const photoId = str(fd, "photoId", 60);
+  if (which !== "before" && which !== "after") return { ok: false, error: "Before or after?" };
+  if (!thumb.startsWith("data:image/")) return { ok: false, error: "That photo did not come through. Take it again." };
+
+  const error = await mutate((d) => {
+    const v = d.visits.find((x) => x.id === id && x.inspectorId === ins.id);
+    if (!v || v.status !== "on_site" || !v.draft) return "This visit is not open.";
+    const r = v.draft.find((x) => x.name === room);
+    if (!r || r.before === undefined) return "The crew does not clean that room.";
+    const shot = photo(thumb, num(fd, "lat"), num(fd, "lng"), photoId);
+    if (which === "before") {
+      if (v.crewStartedAt) return "The crew has started — the before photos are closed.";
+      r.before = shot;
+      return null;
+    }
+    const size = d.properties.find((x) => x.id === v.propertyId)?.size ?? "2";
+    if (!v.crewStartedAt) return "Take every before photo and let the crew start first.";
+    if (!afterOpen(v, size)) return `After photos open at ${fmtTime(new Date(afterOpensAt(v, size)!).toISOString())} — stay with the crew until then.`;
+    r.after = shot;
+    return null;
+  });
+  revalidatePath(`/field/visit/${id}`);
+  return error ? { ok: false, error } : { ok: true };
+}
+
+/** The crew starts once every room is photographed as it was. */
+export async function startCrew(_prev: FieldState, fd: FormData): Promise<FieldState> {
+  const { ins } = await me();
+  if (!ins) return { ok: false, error: "Your inspector profile is not set up yet." };
+  const id = str(fd, "id", 60);
+  const error = await mutate((d) => {
+    const v = d.visits.find((x) => x.id === id && x.inspectorId === ins.id);
+    if (!v || v.status !== "on_site" || !v.draft) return "This visit is not open.";
+    if (v.crewStartedAt) return null;
+    const left = v.draft.filter((r) => r.before === null).map((r) => r.name);
+    if (left.length) return `Before photos still to take: ${left.join(", ")}.`;
+    v.crewStartedAt = now();
+    const p = d.properties.find((x) => x.id === v.propertyId);
+    pushEvent(d, {
+      ownerId: v.ownerId, propertyId: v.propertyId, visitId: v.id, type: "visit.started",
+      title: "The cleaning crew has started",
+      body: `${p?.label ?? "Your property"} · ${fmtTime(now())} IST · every room photographed first, ${ins.name} staying with them`,
+      href: `/app/visits/${v.id}`,
+    });
+    return null;
+  });
+  revalidatePath(`/field/visit/${id}`);
+  revalidatePath("/app", "layout");
+  return error ? { ok: false, error } : { ok: true };
+}
+
 /* ── clips ───────────────────────────────────────────────────── */
 
 /** Enough to show a problem from two sides; more is a re-shoot. */
@@ -406,6 +482,7 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
       variant: r.variant,
       dur: "",
       video: r.video,
+      ...(r.before !== undefined ? { before: r.before, after: r.after ?? null } : {}),
       items: r.items.map((i) => ({
         t: i.t, s: i.s as ItemState,
         ...(i.note ? { note: i.note } : {}),
@@ -457,7 +534,12 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
 
     v.status = "submitted";
     v.endedAt = now();
-    v.overtimeInr = overtimeFor(v.startedAt, v.endedAt);
+    /* two hours on site are part of the job — two and a half on a 4 BHK and up */
+    const home = d.properties.find((x) => x.id === v.propertyId);
+    v.overtimeInr = home ? overtimeFor(v.startedAt, v.endedAt, includedMinutes(home, v.kind)) : 0;
+    /* the deposit is built from pay, half of each job, not asked for in cash */
+    const who = d.inspectors.find((x) => x.id === v.inspectorId);
+    if (who) holdForDeposit(who, v);
     v.reportId = reportId;
     v.draft = null;
 
