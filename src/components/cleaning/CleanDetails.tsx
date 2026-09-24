@@ -154,7 +154,7 @@ export function CleanKit() {
           </ol>
           <div className="mt-6 border-t border-white/10 pt-5">
             <p className="text-[13.5px] leading-relaxed text-white/75">That is the entire list. No keys couriered, no spare set with a neighbour, nobody taking a day off to supervise strangers in your house.</p>
-            <Link href="/access?plan=deep" className="btn btn-white btn-sm mt-4 w-full sm:w-auto">Book a clean <ArrowRight size={15} /></Link>
+            <Link href="/access" className="btn btn-white btn-sm mt-4 w-full sm:w-auto">Join the waitlist <ArrowRight size={15} /></Link>
           </div>
         </div>
       </div>
@@ -202,7 +202,7 @@ export function CleanCrew() {
               Good cleaning crews already exist in this city. What doesn&rsquo;t exist, for an owner who isn&rsquo;t in the country, is somebody to let
               them in, stay while they work, tell you the truth about the result and carry the blame if it&rsquo;s wrong. That is the whole job we do.
             </p>
-            <Link href="/access?plan=deep" className="btn btn-accent mt-6">Book a clean <ArrowRight size={16} /></Link>
+            <Link href="/access" className="btn btn-accent mt-6">Join the waitlist <ArrowRight size={16} /></Link>
           </div>
           <ol className="grid gap-3 sm:grid-cols-2">
             {roles.map((r, i) => (
@@ -339,7 +339,7 @@ export function CleanPrices() {
               <div className="text-[18px] font-medium tracking-[-0.02em]">Everything that can be added, and what it costs</div>
               <div className="t-small mt-0.5">Chosen in your quote, before you pay. Nothing is added at the door.</div>
             </div>
-            <Link href="/access?service=cleaning" className="btn btn-accent btn-sm shrink-0">Build your quote <ArrowRight size={15} /></Link>
+            <Link href="/access" className="btn btn-accent btn-sm shrink-0">Join the waitlist <ArrowRight size={15} /></Link>
           </div>
           <div className="mt-5 grid gap-3 lg:grid-cols-3">
             {extraGroups.map((g) => (

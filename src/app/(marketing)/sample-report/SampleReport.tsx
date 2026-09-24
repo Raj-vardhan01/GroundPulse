@@ -189,7 +189,7 @@ export function SampleReport() {
         <div className="mt-8">{tab === "home" ? <HomeReport approved={approved} setApproved={setApproved} /> : <PlotReport />}</div>
         <div className="mt-10 flex flex-col items-center gap-3 text-center">
           <p className="t-body text-text-2">Want one of these for your place?</p>
-          <Link href="/access" className="btn btn-accent">Book your first visit <ArrowRight size={16} /></Link>
+          <Link href="/access" className="btn btn-accent">Join the waitlist <ArrowRight size={16} /></Link>
         </div>
       </div>
       <div className="h-16 md:h-24" />

@@ -33,7 +33,7 @@ export function FoundingOffer() {
               We&apos;re taking our first ten owners at no cost — and the two of us do these visits ourselves, so we learn the job
               properly before anyone else ever walks into your home.
             </p>
-            <Link href="/access?plan=one-time" className="btn btn-white mt-7">Book your free inspection <ArrowRight size={16} /></Link>
+            <Link href="/access" className="btn btn-white mt-7">Join the waitlist <ArrowRight size={16} /></Link>
             <p className="mt-3 text-[13px] text-white/50">The offer closes when ten owners have booked.</p>
           </div>
 
