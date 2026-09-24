@@ -6,8 +6,10 @@
    ════════════════════════════════════════════════════════════════ */
 
 import type { DraftRoom, Property, ReportRoom, RoomKey, Visit } from "@/lib/types";
+import { tierById, type BhkKey, type Tier } from "@/lib/cleaning";
 
-type Block = { name: string; variant: ReportRoom["variant"]; items: string[] };
+/** `cleaned`: a room the crew cleans, so it is photographed before and after */
+type Block = { name: string; variant: ReportRoom["variant"]; items: string[]; cleaned?: boolean };
 
 const ENTRY: Block = {
   name: "Entrance & hallway",
@@ -61,7 +63,7 @@ export function blocksFor(p: Property, v?: Pick<Visit, "addOns"> | null): Block[
   for (const k of order) {
     const n = p.rooms?.[k] ?? 0;
     const t = perRoom[k];
-    for (let i = 0; i < n; i++) out.push({ name: n > 1 ? `${t.one} ${i + 1}` : t.one, variant: t.variant, items: t.items });
+    for (let i = 0; i < n; i++) out.push({ name: n > 1 ? `${t.one} ${i + 1}` : t.one, variant: t.variant, items: t.items, cleaned: k !== "parking" });
   }
   out.push(...carBlocks(v), ELECTRICAL, EXIT);
   return out;
@@ -96,6 +98,8 @@ export const countItems = (rooms: ReportRoom[]) => {
 export function outstanding(draft: DraftRoom[]) {
   const out: string[] = [];
   for (const r of draft) {
+    if (r.before === null) out.push(`${r.name} — before photo missing`);
+    if (r.after === null) out.push(`${r.name} — after photo missing`);
     const unanswered = r.items.filter((i) => i.s === null).length;
     if (unanswered) out.push(`${r.name} — ${unanswered} item${unanswered > 1 ? "s" : ""} unanswered`);
     for (const i of r.items) {
@@ -106,3 +110,43 @@ export function outstanding(draft: DraftRoom[]) {
   }
   return out;
 }
+
+/* ── a clean on the visit ────────────────────────────────────────
+   Every room the crew cleans is photographed from one spot before they
+   start and from the same spot after they finish. The inspector stays
+   for the job: the after photos do not open until the crew has worked
+   at least half the shortest time the clean takes — a refresh of a
+   2 BHK is "2–3 hrs", so an hour. */
+
+/** The clean booked on this visit — its own visit, or one ridden onto an
+    inspection — or null. */
+export function cleanOf(v: Pick<Visit, "kind" | "tierId" | "addOns">): Tier | null {
+  if (v.kind === "cleaning") return tierById(v.tierId === "deep" ? "deep" : "refresh");
+  if (v.addOns?.deep) return tierById("deep");
+  if (v.addOns?.cleaning) return tierById("refresh");
+  return null;
+}
+
+/** Minutes the crew works before the after photos open. */
+export function crewFloorMinutes(t: Tier, size: BhkKey) {
+  const shortest = Number.parseFloat(t.hours[size]) || 2;
+  return Math.round((shortest * 60) / 2);
+}
+
+/** When the after photos open, or null before the crew has started. */
+export const afterOpensAt = (v: Pick<Visit, "kind" | "tierId" | "addOns" | "crewStartedAt">, size: BhkKey) => {
+  const t = cleanOf(v);
+  return t && v.crewStartedAt ? Date.parse(v.crewStartedAt) + crewFloorMinutes(t, size) * 60_000 : null;
+};
+
+export const afterOpen = (v: Pick<Visit, "kind" | "tierId" | "addOns" | "crewStartedAt">, size: BhkKey) => {
+  const at = afterOpensAt(v, size);
+  return at !== null && Date.now() >= at;
+};
+
+/** A draft room, with the clean's photo slots when the crew cleans it. */
+export const draftFrom = (b: Block, withClean: boolean): DraftRoom => ({
+  name: b.name, variant: b.variant, video: null,
+  items: b.items.map((t) => ({ t, s: null, note: "", photos: [], videos: [] })),
+  ...(withClean && b.cleaned ? { before: null, after: null } : {}),
+});

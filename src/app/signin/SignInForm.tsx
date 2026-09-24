@@ -105,8 +105,8 @@ function Inner({ side, restart }: { side: "owner" | "inspector"; restart: () => 
               <div className="mt-4 flex items-start gap-2.5 rounded-[12px] border border-gold/40 bg-gold-soft px-4 py-3">
                 <Lock size={14} className="mt-0.5 shrink-0 text-gold-2" />
                 <div className="text-[13px] leading-snug text-[#7a5209]">
-                  No SMS gateway is configured, so here is the code: <b className="font-mono text-[15px] tracking-[0.1em]">{sent.devCode}</b>
-                  <div className="mt-0.5 text-[11.5px] opacity-80">Set SMS_PROVIDER_KEY and this stops appearing.</div>
+                  Development: no SMS is sent from this server, so here is the code: <b className="font-mono text-[15px] tracking-[0.1em]">{sent.devCode}</b>
+                  <div className="mt-0.5 text-[11.5px] opacity-80">In production the code only ever arrives by SMS.</div>
                 </div>
               </div>
             )}

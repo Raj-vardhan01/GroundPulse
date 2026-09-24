@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowLeft, ArrowRight, BadgeCheck, CalendarCheck, Fingerprint, IndianRupee, KeyRound, LogOut, MapPinned, Repeat, ShieldCheck, Timer } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, CalendarCheck, Fingerprint, IndianRupee, KeyRound, LogOut, MapPinned, ShieldCheck, Timer } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
-import { currentUser, homeFor, otherSide, prettyPhone } from "@/lib/auth";
-import { switchAccount, switchApp } from "@/lib/actions";
+import { currentUser, homeFor, prettyPhone } from "@/lib/auth";
+import { switchAccount } from "@/lib/actions";
+import { googleReady } from "@/lib/google";
 import { SignInForm } from "./SignInForm";
+import { OwnerDoor } from "./OwnerDoor";
 import { cn } from "@/lib/cn";
 import { notFound } from "next/navigation";
 import { APPS_LIVE } from "@/lib/flags";
@@ -54,8 +56,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
      made an inspector link look like it opened the owner app. */
   const home = user ? homeFor(user.role) : "/app";
   const mismatch = !!user && user.role !== "admin" && ((wants === "inspector") !== (user.role === "inspector"));
-  /* The same number may be both. Then switching is one tap, no code. */
-  const canSwitch = mismatch && (await otherSide()) === wants;
+  const error = typeof sp.error === "string" ? sp.error : undefined;
 
   return (
     <main className="min-h-dvh lg:grid lg:grid-cols-[1.05fr_1fr]">
@@ -111,14 +112,13 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
             {user ? (
               <div className="w-full">
                 <h1 className="serif text-[clamp(2rem,4vw,2.6rem)] leading-[1.05] tracking-[-0.035em]">
-                  {canSwitch ? (inspector ? "Open the inspector app?" : "Open your owner app?") : mismatch ? "That is a different account." : "You are already signed in."}
+                  {mismatch ? "That is a different account." : "You are already signed in."}
                 </h1>
                 <p className="t-small mt-2.5">
                   This browser is signed in as <b className="text-ink">{user.name || "your account"}</b> ·{" "}
-                  {user.role === "inspector" ? "inspector" : user.role === "admin" ? "ops" : "owner"} · {prettyPhone(user.phone)}.
-                  {canSwitch && " Your number is on both — no new code needed."}
-                  {mismatch && !canSwitch && wants === "inspector" && " This number is not on the inspector roster."}
-                  {mismatch && !canSwitch && wants === "owner" && " Your properties are on a different number."}
+                  {user.role === "inspector" ? "inspector" : user.role === "admin" ? "ops" : "owner"} · {user.email && user.role !== "inspector" ? user.email : prettyPhone(user.phone)}.
+                  {mismatch && wants === "inspector" && " The inspector app needs a number on the inspector roster."}
+                  {mismatch && wants === "owner" && " Owners sign in with Google."}
                 </p>
 
                 {/* On a mismatch the obvious button has to be the one that
@@ -131,36 +131,25 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
                     {!mismatch && <ArrowRight size={16} />}
                   </Link>
 
-                  {canSwitch ? (
-                    <div className="grid gap-2">
-                      <form action={switchApp}>
-                        <input type="hidden" name="as" value={wants} />
-                        <button className="btn btn-accent w-full"><Repeat size={15} /> {inspector ? "Open the inspector app" : "Open the owner app"}</button>
-                      </form>
-                      <form action={switchAccount} className="text-center">
-                        <input type="hidden" name="as" value={wants} />
-                        <button className="text-[13px] font-medium text-text-2 underline underline-offset-4 hover:text-ink">Sign in with a different number</button>
-                      </form>
-                    </div>
-                  ) : (
-                    <form action={switchAccount}>
-                      <input type="hidden" name="as" value={wants} />
-                      <button className={cn("w-full", mismatch ? "btn btn-accent" : "btn btn-white")}>
-                        <LogOut size={15} />
-                        {mismatch
-                          ? wants === "inspector" ? "Sign in with an inspector number" : "Sign in as the owner"
-                          : "Sign in as somebody else"}
-                      </button>
-                    </form>
-                  )}
+                  <form action={switchAccount}>
+                    <input type="hidden" name="as" value={wants} />
+                    <button className={cn("w-full", mismatch ? "btn btn-accent" : "btn btn-white")}>
+                      <LogOut size={15} />
+                      {mismatch
+                        ? wants === "inspector" ? "Sign in with an inspector number" : "Sign in with Google"
+                        : "Sign in as somebody else"}
+                    </button>
+                  </form>
                 </div>
 
                 <p className="t-small mt-4 text-center leading-snug">
                   Signing in as somebody else ends this session on this device — nothing on either account changes.
                 </p>
               </div>
+            ) : inspector ? (
+              <SignInForm key={wants} side="inspector" />
             ) : (
-              <SignInForm key={wants} side={wants} />
+              <OwnerDoor googleOn={googleReady()} dev={process.env.NODE_ENV !== "production"} error={error} />
             )}
           </div>
 
@@ -176,7 +165,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
           {inspector ? (
             <>Not an inspector? <Link href="/signin" className="font-medium text-white underline underline-offset-4">Owner sign in</Link> · Want to join? <Link href={"/access?role=inspector" as Route} className="font-medium text-white underline underline-offset-4">Apply</Link></>
           ) : (
-            <>New here? Signing in with your number creates your account. By continuing you agree to our <Link href="/terms" className="underline underline-offset-4">Terms</Link> and <Link href={"/privacy" as Route} className="underline underline-offset-4">Privacy Policy</Link> — your property media stays private and is never sold.</>
+            <>New here? Signing in with Google creates your account. By continuing you agree to our <Link href="/terms" className="underline underline-offset-4">Terms</Link> and <Link href={"/privacy" as Route} className="underline underline-offset-4">Privacy Policy</Link> — your property media stays private and is never sold.</>
           )}
         </p>
       </section>

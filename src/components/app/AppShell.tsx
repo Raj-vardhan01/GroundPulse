@@ -22,7 +22,7 @@ type Nav = { href: Route; label: string; I: typeof Home; badge?: number };
 export function AppShell({
   user, unread, counts, children,
 }: {
-  user: { name: string; phone: string };
+  user: { name: string; phone: string; email?: string };
   unread: Event[];
   counts: { visits: number; reports: number; due: number };
   children: React.ReactNode;
@@ -71,7 +71,7 @@ export function AppShell({
 
         <div className="mt-6 rounded-[16px] bg-white/[0.07] p-4">
           <div className="text-[13.5px] font-semibold">{user.name || "Your account"}</div>
-          <div className="mt-0.5 text-[12px] text-white/55">{prettyPhone(user.phone)}</div>
+          <div className="mt-0.5 truncate text-[12px] text-white/55">{user.email || prettyPhone(user.phone)}</div>
           <form action={doSignOut}>
             <button className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-white/70 transition hover:text-white">
               <LogOut size={13} /> Sign out

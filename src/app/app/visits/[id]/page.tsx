@@ -73,12 +73,22 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
 
   const blocked = !movable ? null
     : overdue ? null
-    : today ? "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it."
+    : today && !v.missedAt ? "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it."
     : null;
 
   return (
     <>
       <Link href="/app/visits" className="mb-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-text-2 transition hover:text-ink"><ArrowLeft size={14} /> Visits</Link>
+
+      {/* we did not turn up — the owner chooses, free */}
+      {v.missedAt && movable && (
+        <Reveal className="mb-4">
+          <div className="card border border-fail/25 bg-fail-soft p-5">
+            <div className="text-[15.5px] font-semibold">Our inspector could not make it — we are sorry.</div>
+            <p className="t-small mt-1 leading-snug">Move this visit to a new day at no charge, or cancel it and everything you paid for it comes back. Both are below.</p>
+          </div>
+        </Reveal>
+      )}
 
       {/* booked, not yet confirmed: the 25% */}
       {unpaid && (

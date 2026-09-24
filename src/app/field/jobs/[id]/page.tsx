@@ -5,7 +5,9 @@ import {
   ArrowLeft, Bike, CalendarDays, ClipboardList, Hand, KeyRound, Lock, MapPin, MessageSquareQuote, Video,
 } from "lucide-react";
 import { requireInspector } from "@/lib/auth";
-import { inspectorFor, jobView, liveJob, CAN_WORK, STATUS_COPY } from "@/lib/field";
+import { inspectorFor, jobView, claimCheck, CAN_WORK, STATUS_COPY } from "@/lib/field";
+import { freeReleaseUntil, freeToHandBack, PENALTY } from "@/lib/jobs";
+import { fmtDateTime } from "@/lib/format";
 import { claimJob } from "@/lib/fieldActions";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { JobTags } from "@/components/field/JobCard";
@@ -14,7 +16,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { blocksFor } from "@/lib/checklist";
 import { fmtDayDate, relative } from "@/lib/format";
 import { fmtKm } from "@/lib/geo";
-import { OVERTIME, RATES } from "@/lib/payout";
+import { hoursWords, includedMinutes, OVERTIME, payLines } from "@/lib/payout";
 
 export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">) {
   const user = await requireInspector();
@@ -23,11 +25,15 @@ export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">
   const j = await jobView(ins, id);
   if (!j) notFound();
 
-  const live = await liveJob(ins);
-  const blocked = live && live.visit.id !== j.visit.id;
+  const mine = j.visit.inspectorId === ins.id;
+  const refusal = mine ? null : await claimCheck(ins, j.visit.id);
+  const freeUntil = freeReleaseUntil(j.visit);
   const canWork = CAN_WORK.includes(ins.status);
   const blocks = blocksFor(j.property);
-  const a = j.visit.addOns;
+  /* A job booked before the rates changed pays what it was booked at —
+     the lines are shown only when they add up to it. */
+  const lines = payLines(j.property, j.visit.kind, j.visit.addOns);
+  const current = lines.reduce((n, l) => n + l.v, 0) === j.visit.payoutInr;
 
   return (
     <div className="grid gap-4">
@@ -63,21 +69,15 @@ export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">
         <Panel>
           <PanelHead title="What this pays" meta="Per visit, paid the same day" />
           <ul className="grid gap-2 p-5 text-[13.5px]">
-            {j.visit.kind === "plot"
-              ? <Row k="Boundary walk" v={RATES.plot} />
-              : <>
-                  <Row k="Turning up, entry checks, exit walkthrough" v={RATES.base} />
-                  <Row k={`${blocks.length} room blocks × ${money(RATES.perRoom)}`} v={blocks.length * RATES.perRoom} />
-                </>}
-            {(j.visit.kind === "cleaning" || a.cleaning || a.deep) && <Row k="Staying with the cleaning crew" v={RATES.cleaningSupervision} />}
-            {!!a.car && <Row k={`Car check × ${a.car}`} v={RATES.perCar * a.car} />}
-            <Row k="Body camera, worn and handed over" v={RATES.camera} />
+            {current
+              ? lines.map((l) => <Row key={l.k} k={l.k} v={l.v} />)
+              : <Row k="At the rates when it was booked" v={j.visit.payoutInr} />}
             <li className="flex justify-between border-t border-line pt-2 text-[15px] font-semibold">
               <span>Total</span><span className="tabular-nums">{money(j.visit.payoutInr)}</span>
             </li>
           </ul>
           <p className="t-small border-t border-line px-5 py-3 leading-snug">
-            Plus {money(OVERTIME.perHour)} for every hour on site past the first {OVERTIME.freeMinutes / 60} — counted from check-in to submit, paid by us, never added to the owner&apos;s bill.
+            Plus {money(OVERTIME.perHour)} for every hour on site past the first {hoursWords(includedMinutes(j.property, j.visit.kind))} — counted from check-in to submit, paid by us, never added to the owner&apos;s bill.
           </p>
         </Panel>
       </Reveal>
@@ -136,18 +136,23 @@ export default async function JobBrief({ params }: PageProps<"/field/jobs/[id]">
             <Link href={`/field/visit/${j.visit.id}` as Route} className="btn btn-accent w-full">Open this job</Link>
           ) : !canWork ? (
             <p className="flex items-start gap-2 text-[13.5px] leading-snug text-text-2"><Lock size={15} className="mt-0.5 shrink-0" /> {STATUS_COPY[ins.status].note}</p>
-          ) : blocked ? (
+          ) : refusal ? (
             <>
               <p className="flex items-start gap-2 text-[13.5px] leading-snug text-text-2">
-                <Lock size={15} className="mt-0.5 shrink-0" /> You still have <b className="mx-1">{live!.property.label}</b> open. One job at a time.
+                <Lock size={15} className="mt-0.5 shrink-0" /> {refusal}
               </p>
-              <Link href={`/field/visit/${live!.visit.id}` as Route} className="btn btn-white btn-sm mt-3 w-full">Finish that one first</Link>
+              <Link href="/field" className="btn btn-white btn-sm mt-3 w-full">See your jobs</Link>
             </>
           ) : (
             <form action={claimJob}>
               <input type="hidden" name="id" value={j.visit.id} />
               <SubmitButton className="w-full" pendingLabel="Claiming…"><Hand size={16} /> Claim this job</SubmitButton>
-              <p className="t-small mt-2 text-center leading-snug">You can hand it back any time before you go in.</p>
+              <p className="t-small mt-2 text-center leading-snug">
+                {freeToHandBack(j.visit)
+                  ? <>Hand it back free until {fmtDateTime(new Date(freeUntil).toISOString())}; after that ₹{PENALTY.lateRelease} comes off your deposit.</>
+                  : <>This one is under {PENALTY.freeReleaseHours} hours away — handing it back costs ₹{PENALTY.lateRelease}.</>}
+                {" "}Not turning up costs ₹{PENALTY.noShow} — once you have told the owner you are on the way, you get {PENALTY.enRouteGraceMinutes} minutes past the window to check in.
+              </p>
             </form>
           )}
         </div>

@@ -11,7 +11,8 @@
    ════════════════════════════════════════════════════════════════ */
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { opsSignIn, opsSignOut, requireAdmin } from "@/lib/auth";
 import { db, mutate, now, uid } from "@/lib/store";
 import { pushEvent } from "@/lib/events";
 import { cancelVisitIn, deliverReport } from "@/lib/lifecycle";
@@ -21,6 +22,7 @@ import { coverFor, makeQuote } from "@/lib/repair";
 import { liveSub } from "@/lib/plans";
 import { fmtDayDate } from "@/lib/format";
 import { inr } from "@/lib/pricing";
+import { DEPOSIT } from "@/lib/payout";
 import type { InspectorStatus } from "@/lib/types";
 
 export type OpsState = { ok: boolean; error?: string; message?: string };
@@ -33,6 +35,19 @@ const refresh = () => {
   revalidatePath("/app", "layout");
   revalidatePath("/field", "layout");
 };
+
+/* ── the door ────────────────────────────────────────────────── */
+
+export async function opsLogin(_prev: OpsState, fd: FormData): Promise<OpsState> {
+  const error = await opsSignIn(String(fd.get("password") ?? "").slice(0, 100));
+  if (error) return { ok: false, error };
+  redirect("/ops");
+}
+
+export async function opsLogout() {
+  await opsSignOut();
+  redirect("/ops");
+}
 
 /* ── visits ──────────────────────────────────────────────────── */
 
@@ -295,6 +310,27 @@ export async function markRefunded(fd: FormData) {
 
 /* ── inspectors ──────────────────────────────────────────────── */
 
+/** The inspector's pay has gone to their UPI. Only the jobs and refunds
+    that were on the screen when ops sent it — anything submitted since
+    waits for the next one. */
+export async function markPayoutSent(fd: FormData) {
+  await requireAdmin();
+  const insId = s(fd, "inspectorId", 60);
+  const ids = (key: string) => new Set(s(fd, key, 4000).split(",").filter(Boolean));
+  const visitIds = ids("visitIds");
+  const penaltyIds = ids("penaltyIds");
+  await mutate((d) => {
+    const at = now();
+    for (const v of d.visits) {
+      if (visitIds.has(v.id) && v.inspectorId === insId && ["submitted", "ready", "closed"].includes(v.status) && !v.payoutSentAt) v.payoutSentAt = at;
+    }
+    for (const p of d.inspectors.find((x) => x.id === insId)?.penalties ?? []) {
+      if (penaltyIds.has(p.id) && (p.refundInr ?? 0) > 0 && !p.refundSentAt) p.refundSentAt = at;
+    }
+  });
+  refresh();
+}
+
 const STATUSES: InspectorStatus[] = ["applied", "screened", "interviewed", "trial", "probation", "active", "paused"];
 
 export async function setInspectorStatus(fd: FormData) {
@@ -316,4 +352,38 @@ export async function setInspectorStatus(fd: FormData) {
     }
   });
   refresh();
+}
+
+/** Take a deduction back — a missed visit with a real reason behind it,
+    heard on a call. The money goes back on the deposit, and a waived
+    miss stops counting towards a pause; lifting a pause it already
+    caused is `setInspectorStatus`. What the deposit has no room for is
+    theirs in cash — the message says how much to send to their UPI. */
+export async function waivePenalty(_prev: OpsState, fd: FormData): Promise<OpsState> {
+  await requireAdmin();
+  const insId = s(fd, "inspectorId", 60);
+  const penaltyId = s(fd, "penaltyId", 60);
+  const why = s(fd, "why", 200);
+  if (!why) return { ok: false, error: "Write down why — the inspector sees it." };
+
+  const done = await mutate((d) => {
+    const ins = d.inspectors.find((x) => x.id === insId);
+    const p = ins?.penalties?.find((x) => x.id === penaltyId);
+    if (!ins || !p || p.waivedAt) return null;
+    const back = Math.min(p.amountInr, Math.max(0, DEPOSIT.target - ins.depositInr));
+    p.waivedAt = now();
+    p.waivedWhy = why;
+    p.refundInr = p.amountInr - back;
+    ins.depositInr += back;
+    return { name: ins.name, back, refund: p.refundInr };
+  });
+  if (!done) return { ok: false, error: "No such deduction, or it was already taken back." };
+  const { name, back, refund } = done;
+  refresh();
+  return {
+    ok: true,
+    message: refund
+      ? `${inr(back)} back on ${name}'s deposit. Send ${inr(refund)} to their UPI — the deposit is already full.`
+      : `${inr(back)} back on ${name}'s deposit.`,
+  };
 }

@@ -52,7 +52,7 @@ export default function Page() {
 
       <Clause id="collect" n={2} title="What we collect">
         <Table head={["Whose, and what", "Details"]} rows={[
-          ["Owners — your account", "Name, mobile number, email address, the city or country you live in, your time zone, and your notification preferences."],
+          ["Owners — your account", "From Google sign-in: your name, email address and Google account ID — never your Google password. From you: your mobile number, the city or country you live in, your time zone, and your notification preferences."],
           ["Owners — your properties", "Addresses, map pins, size and rooms, access notes, who holds the keys, and each visit's entry code."],
           ["Visits and reports", "Photographs and video of the property, the time and — where the phone can tell — the location they were taken at, the checklist, the inspector's notes, and the inspector's location when checking in at the door."],
           ["Decisions and payments", "Bookings, approvals and declines with your reasons, ratings, support messages, bills, and payment references from Razorpay. We never receive your card number, UPI PIN or bank login."],
@@ -89,7 +89,8 @@ export default function Page() {
           ["The inspector on your visit", "The property's address and pin, access notes, key holder, entry code, your name and number (for the live call you asked for) — only for the visits they are assigned."],
           ["Repair and cleaning professionals", "The address, the issue and the day — only for work you have approved."],
           ["People you share a report with", "The report you chose to share, through a private link you can switch off at any time."],
-          ["Service providers who process data for us", "Hosting and database (Vercel and our database host), video storage (Cloudflare R2), payments (Razorpay), maps and address search (Ola Maps), and email and SMS delivery for sign-in codes and updates. They may use it only to provide their service to us."],
+          ["Google", "Signs owners in. Google tells us who you are; we tell Google nothing about your properties."],
+          ["Service providers who process data for us", "Hosting and database (Vercel and our database host), video storage (Cloudflare R2), payments (Razorpay), maps and address search (Ola Maps), email delivery, and SMS delivery for sign-in codes (Fast2SMS). They may use it only to provide their service to us."],
           ["Authorities", "Where the law requires it, or to protect someone's safety."],
           ["A successor business", "If StillYours is merged or sold, under the same protections as this policy."],
         ]} />
@@ -140,7 +141,8 @@ export default function Page() {
       <Clause id="cookies" n={10} title="Cookies and similar">
         <Table head={["Name", "Purpose"]} rows={[
           ["sy_session", "Keeps you signed in, for up to 30 days. Essential."],
-          ["sy_otp", "Holds a scrambled sign-in code while you enter it, for 10 minutes. Essential."],
+          ["sy_otp", "Inspectors: holds a scrambled sign-in code while it is entered, for 10 minutes. Essential."],
+          ["sy_oauth", "Owners: holds a one-time check while you sign in with Google, for 10 minutes. Essential."],
           ["A setting in your browser", "Remembers that you dismissed the “add to home screen” hint."],
         ]} />
         <p>We use no advertising cookies, no analytics trackers and no third-party pixels.</p>

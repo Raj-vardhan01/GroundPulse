@@ -44,7 +44,7 @@ layer is on Postgres, not before: see "What persists" below.
 
 | Route | What it is |
 | --- | --- |
-| `/signin` | Phone-OTP sign in. Your number is the account — no password |
+| `/signin` | Two doors: owners continue with Google (then give a phone number); inspectors use their rostered mobile and an SMS code |
 | `/welcome` | Three-step first run: who you are → your property → your first visit |
 | `/app` | Home — portfolio health, whatever is waiting on your decision, a live visit in progress, your properties |
 | `/app/properties` · `/app/properties/[id]` | Every property, its health, its visits, its checklist, its access notes |
@@ -57,11 +57,11 @@ layer is on Postgres, not before: see "What persists" below.
 
 ### The demo account
 
-Sign in as **+91 90000 00000** (the code is shown on screen — see below) and you
+On a laptop, use the development sign-in on the owner door with **priya@example.in** and you
 land in an account that has been running a while: three properties, a delivered
 report with a decision waiting, a visit happening right now, and a repair
-already closed out. Any other number creates a fresh account and walks the
-welcome flow.
+already closed out. Any other email creates a fresh account and walks the
+welcome flow, which starts by asking for a phone number.
 
 ## The inspector app
 
@@ -143,9 +143,11 @@ npm run reset   # clears the store; restart the dev server and it re-seeds
 
 ### Sign-in codes
 
-There is no SMS gateway, so the six-digit code is shown on the sign-in screen
-and marked as such. Set `SMS_PROVIDER_KEY` and wire `sendSms` in
-`src/lib/auth.ts` to MSG91 or Twilio, and it stops appearing.
+Codes go out by SMS through Fast2SMS's OTP route when `FAST2SMS_API_KEY` is
+set — Indian mobiles only; a number from abroad is told so. On a laptop no SMS
+is sent (the demo accounts use made-up numbers) and the code is shown on the
+sign-in screen instead, unless `SMS_IN_DEV=1`. See `sendSms` in
+`src/lib/auth.ts`.
 
 ## Installing it on a phone
 

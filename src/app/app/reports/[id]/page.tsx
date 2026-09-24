@@ -15,7 +15,8 @@ import { PhotoStrip } from "@/components/app/PhotoStrip";
 import { VideoClip } from "@/components/app/VideoClip";
 import { MarkRead } from "@/components/app/MarkRead";
 import { HEALTH } from "@/lib/checklist";
-import { fmtDate, fmtDateTime, fmtDayDate } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtDayDate, fmtTime } from "@/lib/format";
+import Image from "next/image";
 import { bhkLabel } from "@/lib/cleaning";
 import { checkInWords } from "@/lib/geo";
 import { cn } from "@/lib/cn";
@@ -158,6 +159,19 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
                   <span className="truncate text-[15px] font-medium">{room.name}</span>
                   <span className={cn("shrink-0", chipOf(worst))}>{labelOf(worst)}</span>
                 </div>
+                {/* the clean, from the same spot — the owner judges the work, not a tick */}
+                {(room.before || room.after) && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {([["Before", room.before], ["After", room.after]] as const).map(([k, ph]) => (
+                      <figure key={k}>
+                        {ph
+                          ? <Image src={ph.thumb} alt={`${room.name}, ${k.toLowerCase()} the clean`} width={320} height={240} unoptimized className="aspect-[4/3] w-full rounded-[10px] object-cover" />
+                          : <span className="grid aspect-[4/3] place-items-center rounded-[10px] bg-paper text-[12px] text-text-3">No photo</span>}
+                        <figcaption className="t-small mt-1">{k}{ph ? ` · ${fmtTime(ph.at)}` : ""}</figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                )}
                 {room.video && <VideoClip v={room.video} label={`${room.name} walkthrough`} className="mt-3" />}
                 {shots.length > 0 && <PhotoStrip photos={shots} label={room.name} size={64} className="mt-3" />}
                 <ul className="mt-2 divide-y divide-line">
@@ -180,10 +194,11 @@ export default async function Page({ params }: PageProps<"/app/reports/[id]">) {
       <Reveal className="mt-6">
         <Panel>
           <PanelHead title="Where this report came from" meta="The chain nobody can edit after the fact" />
-          <ol className="grid gap-px bg-line sm:grid-cols-4">
+          <ol className={cn("grid gap-px bg-line", v.crewStartedAt ? "lg:grid-cols-5" : "sm:grid-cols-4")}>
             {[
               ["OTP shared", `${r.otpAt} — by you`],
               ["Inspector entered", `${r.onSite.split(" → ")[0]}${v.checkIn ? ` · ${checkInWords(v.checkIn).short}` : ""}`],
+              ...(v.crewStartedAt ? [["Cleaning crew started", `${fmtTime(v.crewStartedAt)} · every room photographed first`]] : []),
               ["Checklist submitted", r.onSite.split(" → ")[1] ?? "—"],
               ["Report delivered", fmtDateTime(r.publishedAt)],
             ].map(([k, val]) => (

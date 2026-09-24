@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Bell, LogOut, Mail, Phone, ShieldCheck, Smartphone } from "lucide-react";
-import { otherSide, requireOwner } from "@/lib/auth";
-import { doSignOut, switchApp } from "@/lib/actions";
+import { requireOwner } from "@/lib/auth";
+import { doSignOut } from "@/lib/actions";
+import { prettyPhone, reachOn } from "@/lib/phone";
 import { ProfileForm } from "@/app/welcome/ProfileForm";
 import { InstallCard } from "@/components/app/InstallCard";
 import { PageHead, Panel, PanelHead } from "@/components/app/ui";
@@ -13,7 +14,6 @@ export const metadata = { title: "Account" };
 
 export default async function Page() {
   const user = await requireOwner();
-  const inspector = (await otherSide()) === "inspector";
 
   return (
     <>
@@ -25,7 +25,7 @@ export default async function Page() {
             <Panel>
               <PanelHead title="Your details" meta="What goes on your reports, and where they land" />
               <div className="p-5">
-                <ProfileForm compact phone={user.phone} name={user.name} email={user.email} livesIn={user.livesIn} />
+                <ProfileForm compact phone={reachOn(user)} name={user.name} email={user.email} livesIn={user.livesIn} signedInAs={user.googleSub ? user.email : ""} />
               </div>
             </Panel>
           </Reveal>
@@ -35,7 +35,7 @@ export default async function Page() {
               <PanelHead title="How we reach you" meta="We keep it to what matters" />
               <ul className="divide-y divide-line">
                 {[
-                  { I: Phone, k: "SMS", v: `+91 ${user.phone.slice(0, 5)} ${user.phone.slice(5)}`, n: "Inspector assigned, on the way, and the report link" },
+                  { I: Phone, k: "Phone", v: prettyPhone(reachOn(user)) || "Not set", n: "The inspector's call from the door, and updates on your visit" },
                   { I: Mail, k: "Email", v: user.email || "Not set", n: "The full report, and every bill" },
                   { I: Bell, k: "In the app", v: "On", n: "Everything, kept in Activity" },
                 ].map(({ I, k, v, n }) => (
@@ -95,12 +95,6 @@ export default async function Page() {
           <Reveal delay={0.08}>
             <Panel>
               <div className="p-5">
-                {inspector && (
-                  <form action={switchApp} className="mb-2.5">
-                    <input type="hidden" name="as" value="inspector" />
-                    <button className="btn btn-accent btn-sm w-full"><ShieldCheck size={14} /> Open the inspector app — same number</button>
-                  </form>
-                )}
                 <form action={doSignOut}>
                   <button className="btn btn-white btn-sm w-full"><LogOut size={14} /> Sign out</button>
                 </form>

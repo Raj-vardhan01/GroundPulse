@@ -6,18 +6,19 @@
    for 30 days — long, because the whole point is opening the app at
    11 PM in another country without hunting for a password.
 
-   Locally there is no SMS gateway, so the code is returned to the
-   caller and shown on screen, clearly marked. Wire `sendSms` to
-   MSG91 or Twilio and that stops happening on its own.
+   Codes are sent by SMS through Fast2SMS. On a laptop no SMS is sent —
+   the code is returned to the caller and shown on screen, clearly
+   marked — unless SMS_IN_DEV=1.
    ════════════════════════════════════════════════════════════════ */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, mutate, now, uid } from "@/lib/store";
 import { LIMIT } from "@/lib/offer";
-import { isAccountPhone, parsePhone } from "@/lib/phone";
+import { isAccountPhone, isIndianMobile, parsePhone, reachOn } from "@/lib/phone";
 import { canInspect, ensureInspector, mayInspect, NOT_ON_ROSTER } from "@/lib/roster";
+import { sweepMissed } from "@/lib/jobs";
 import type { Otp, User } from "@/lib/types";
 
 export { prettyPhone } from "@/lib/phone";
@@ -41,9 +42,13 @@ const SEND_WINDOW_MS = 15 * 60_000;
 const MAX_SENDS_PER_IP = 12;
 const ipSends = new Map<string, number[]>();
 
-async function ipAllowed() {
+async function clientIp() {
   const h = await headers();
-  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "local";
+  return (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "local";
+}
+
+async function ipAllowed() {
+  const ip = await clientIp();
   const t = Date.now();
   const recent = (ipSends.get(ip) ?? []).filter((s) => t - s < SEND_WINDOW_MS);
   if (recent.length >= MAX_SENDS_PER_IP) return false;
@@ -113,12 +118,33 @@ function unseal(token: string): SessionPayload | null {
   return payload;
 }
 
-/** The one seam a real SMS provider slots into. */
-async function sendSms(phone: string, code: string) {
-  if (!process.env.SMS_PROVIDER_KEY) return false;
-  // MSG91 / Twilio call goes here. Until then the caller shows the code.
-  console.log(`[auth] would SMS ${phone}: ${code}`);
-  return false;
+/* Sign-in codes go out through Fast2SMS's OTP route, which reaches Indian
+   mobiles only. FAST2SMS_API_KEY holds the key — in the environment, never
+   in this repository.
+
+   A laptop never sends a real SMS unless SMS_IN_DEV=1: the demo accounts
+   use made-up numbers that belong to real people somewhere. */
+type SmsResult = "sent" | "off" | "abroad" | "failed";
+
+async function sendSms(phone: string, code: string): Promise<SmsResult> {
+  const key = process.env.FAST2SMS_API_KEY?.trim();
+  if (!key) return "off";
+  if (process.env.NODE_ENV !== "production" && process.env.SMS_IN_DEV !== "1") return "off";
+  if (!isIndianMobile(phone)) return "abroad";
+  try {
+    const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+      method: "POST",
+      headers: { authorization: key, "content-type": "application/json" },
+      body: JSON.stringify({ route: "otp", variables_values: code, numbers: phone, flash: "0" }),
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => null)) as { return?: boolean; message?: unknown } | null;
+    if (res.ok && body?.return) return "sent";
+    console.error("[sms] Fast2SMS refused the code", res.status, body?.message);
+  } catch (err) {
+    console.error("[sms] Fast2SMS could not be reached", err);
+  }
+  return "failed";
 }
 
 /* The pending code travels in its own short-lived cookie rather than in
@@ -178,14 +204,20 @@ export async function startOtp(cc: string, rawPhone: string, purpose: Purpose = 
     maxAge: OTP_MINUTES * 60,
   });
 
-  const sent = await sendSms(phone, code);
+  const sms = await sendSms(phone, code);
   /* Showing the code on screen is only ever for a laptop. In production a
      code that could not be sent is a failure, never a code handed to
      whoever typed the number. */
-  if (!sent && process.env.NODE_ENV === "production") {
-    return { ok: false, error: "We could not send the code just now. Try again in a minute, or write to us.", phone };
+  if (sms !== "sent" && process.env.NODE_ENV === "production") {
+    return {
+      ok: false,
+      error: sms === "abroad"
+        ? "For now we can send sign-in codes only to Indian mobile numbers. Sign in with an Indian number, or write to us and we will set you up."
+        : "We could not send the code just now. Try again in a minute, or write to us.",
+      phone,
+    };
   }
-  return { ok: true, phone, devCode: sent ? null : code };
+  return { ok: true, phone, devCode: sms === "sent" ? null : code };
 }
 
 /** Check a code without deciding what it is for. */
@@ -223,6 +255,8 @@ async function checkOtp(rawPhone: string, rawCode: string, purpose: Purpose): Pr
 }
 
 export async function verifyOtp(rawPhone: string, rawCode: string, side: Side = "owner") {
+  /* Owners sign in with Google now; a code is only ever an inspector's way in. */
+  if (side !== "inspector") return { ok: false as const, error: "Owners sign in with Google." };
   /* The inspector door is shut to anyone off the roster — checked before
      the code is spent, and before any account is made. */
   if (side === "inspector" && !mayInspect(await db(), rawPhone.trim())) return { ok: false as const, error: NOT_ON_ROSTER };
@@ -242,14 +276,13 @@ export async function verifyOtp(rawPhone: string, rawCode: string, side: Side = 
       /* The launch offer is the first ten owners, in the order they
          arrive. Handing the number out here means it is decided once,
          at sign-up, rather than re-counted on every screen. */
-      /* An inspector signing up is not one of the ten owners. */
-      const taken = s.users.filter((x) => x.foundingNo !== null).length;
-      const founding = side === "owner" && taken < LIMIT;
+      /* Only the inspector door creates an account here — never one of the
+         ten launch owners. */
       u = {
         id: uid(), role: "owner", name: "", phone, email: "", livesIn: "",
         tz: "Asia/Kolkata", prefs: { sms: true, email: true },
         createdAt: now(), onboardedAt: null,
-        foundingNo: founding ? taken + 1 : null,
+        foundingNo: null,
         freeVisitUsedAt: null, deletedAt: null,
       };
       s.users.push(u);
@@ -267,42 +300,6 @@ export async function inspectorDoorOpen(phone: string) {
   return mayInspect(await db(), phone);
 }
 
-/** Move a signed-in person to the other app, if they may go there. */
-export async function switchSide(side: Side): Promise<boolean> {
-  const jar = await cookies();
-  const session = unseal(jar.get(COOKIE)?.value ?? "");
-  if (!session) return false;
-  const d = await db();
-  const u = d.users.find((x) => x.id === session.u && !x.deletedAt);
-  if (!u) return false;
-  if (side === "inspector") {
-    if (!canInspect(u)) return false;
-    await mutate((s) => { ensureInspector(s, s.users.find((x) => x.id === u.id)!); });
-  }
-  await openSession(u.id, side);
-  return true;
-}
-
-/** Move a signed-in account onto a new number, once the new number has
-    proved it is theirs. */
-export async function changePhone(userId: string, rawPhone: string, rawCode: string) {
-  const res = await checkOtp(rawPhone, rawCode, "change");
-  if (!res.ok) return res;
-  const taken = (await db()).users.some((u) => u.phone === res.phone && u.id !== userId);
-  if (taken) return { ok: false as const, error: "That number already has an account. Sign in with it instead." };
-  await mutate((s) => {
-    const u = s.users.find((x) => x.id === userId);
-    if (u) u.phone = res.phone;
-  });
-  return { ok: true as const, phone: res.phone };
-}
-
-/** Is this number free to move an account onto? Checked before a code is
-    sent, so nobody is sent a code they cannot use. */
-export async function phoneTaken(phone: string, exceptUserId: string) {
-  return (await db()).users.some((u) => u.phone === phone && u.id !== exceptUserId);
-}
-
 async function openSession(userId: string, side: Side) {
   const expiresAt = Date.now() + SESSION_DAYS * 86_400_000;
   const jar = await cookies();
@@ -313,6 +310,72 @@ async function openSession(userId: string, side: Side) {
     secure: process.env.NODE_ENV === "production",
     maxAge: SESSION_DAYS * 86_400,
   });
+}
+
+/* ── owners: Google ─────────────────────────────────────────────── */
+
+const OAUTH_COOKIE = "sy_oauth";
+const OAUTH_MINUTES = 10;
+type OAuthCookie = { s: string; v: string; e: number };
+
+/** Remember one Google attempt's state and PKCE verifier, signed, for ten minutes. */
+export async function rememberGoogleAttempt(state: string, verifier: string) {
+  const body = b64(JSON.stringify({ s: state, v: verifier, e: Date.now() + OAUTH_MINUTES * 60_000 } satisfies OAuthCookie));
+  (await cookies()).set(OAUTH_COOKIE, `${body}.${sign(body)}`, {
+    httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production", maxAge: OAUTH_MINUTES * 60,
+  });
+}
+
+/** The verifier for this state — once. Null when it does not match or has expired. */
+export async function takeGoogleAttempt(state: string): Promise<string | null> {
+  const jar = await cookies();
+  const c = openSigned<OAuthCookie>(jar.get(OAUTH_COOKIE)?.value);
+  jar.delete(OAUTH_COOKIE);
+  if (!c || c.e < Date.now() || !state || c.s !== state) return null;
+  return c.v;
+}
+
+/** Sign an owner in with the Google account Google just vouched for.
+    Matched by Google's own id only — never by an email typed into a
+    profile, which anyone could have typed. */
+export async function signInWithGoogle(g: { sub: string; email: string; name: string }) {
+  const user = await mutate((s) => {
+    let u = s.users.find((x) => x.googleSub === g.sub && !x.deletedAt);
+    if (!u) {
+      const taken = s.users.filter((x) => x.foundingNo !== null).length;
+      u = {
+        id: uid(), role: "owner", name: g.name, phone: "", email: g.email, googleSub: g.sub, contactPhone: "", livesIn: "",
+        tz: "Asia/Kolkata", prefs: { sms: true, email: true },
+        createdAt: now(), onboardedAt: null,
+        foundingNo: taken < LIMIT ? taken + 1 : null,
+        freeVisitUsedAt: null, deletedAt: null,
+      };
+      s.users.push(u);
+    }
+    return u;
+  });
+  await openSession(user.id, "owner");
+  return user;
+}
+
+/** Development only: sign in as any owner by email, so a laptop without
+    Google keys can still walk the owner app. Production never gets here. */
+export async function devSignInOwner(email: string) {
+  if (process.env.NODE_ENV === "production") return null;
+  const user = await mutate((s) => {
+    let u = s.users.find((x) => x.email === email && !x.deletedAt);
+    if (!u) {
+      u = {
+        id: uid(), role: "owner", name: "", phone: "", email, contactPhone: "", livesIn: "",
+        tz: "Asia/Kolkata", prefs: { sms: true, email: true }, createdAt: now(), onboardedAt: null,
+        foundingNo: null, freeVisitUsedAt: null, deletedAt: null,
+      };
+      s.users.push(u);
+    }
+    return u;
+  });
+  await openSession(user.id, "owner");
+  return user;
 }
 
 export async function signOut() {
@@ -344,26 +407,18 @@ function effectiveRole(u: User, side: Side | undefined): User["role"] {
   return "owner";
 }
 
-/** Can the signed-in person open the other app too? */
-export async function otherSide(): Promise<Side | null> {
-  const user = await currentUser();
-  if (!user || user.role === "admin") return null;
-  if (user.role === "inspector") return "owner";
-  const d = await db();
-  const stored = d.users.find((x) => x.id === user.id);
-  return stored && canInspect(stored) ? "inspector" : null;
-}
-
 /** Where each kind of account lives. */
 export const homeFor = (role: User["role"]) => (role === "inspector" ? "/field" : role === "admin" ? "/ops" : "/app");
 
 /** Guard for everything under /app. Sends people to sign in, and new
     owners to the welcome flow, before any page body renders. */
 export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
+  await sweepMissed();
   const user = await currentUser();
   if (!user) redirect("/signin");
   if (user.role !== "owner") redirect(homeFor(user.role));
-  if (!user.onboardedAt && !opts.allowOnboarding) redirect("/welcome");
+  /* A phone number is required — the inspector calls it from the door. */
+  if ((!user.onboardedAt || !reachOn(user)) && !opts.allowOnboarding) redirect("/welcome");
   return user;
 }
 
@@ -371,16 +426,67 @@ export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
     row has an account but no work yet — that is a real state, not an
     error, so it is handled by the page rather than bounced. */
 export async function requireInspector() {
+  await sweepMissed();
   const user = await currentUser();
   if (!user) redirect("/signin");
   if (user.role !== "inspector") redirect(homeFor(user.role));
   return user;
 }
 
-/** Guard for the ops console. */
+/* ── ops: one page, one password ──────────────────────────────────
+   The ops console is not an account. Whoever knows OPS_PASSWORD is ops,
+   for twelve hours at a time, in a cookie signed like a session. The
+   password lives in the environment, never in this repository.
+
+   Six digits is only a million guesses, so wrong ones are braked twice:
+   five per address in fifteen minutes, and thirty an hour from
+   everybody together — per server instance, like the SMS brakes. An
+   attack locks ops out for the hour too; that is the right way round. */
+const OPS_COOKIE = "sy_ops";
+const OPS_HOURS = 12;
+const OPS_TRIES_PER_IP = 5;
+const OPS_TRIES_ALL = 30;
+const opsMisses = new Map<string, number[]>();
+let opsMissesAll: number[] = [];
+
+/** Null when the password was right and the cookie is set; otherwise why not. */
+export async function opsSignIn(password: string): Promise<string | null> {
+  const expected = process.env.OPS_PASSWORD;
+  if (!expected) return "OPS_PASSWORD is not set on this server.";
+  const ip = await clientIp();
+  const t = Date.now();
+  const mine = (opsMisses.get(ip) ?? []).filter((s) => t - s < 15 * 60_000);
+  opsMissesAll = opsMissesAll.filter((s) => t - s < 60 * 60_000);
+  if (mine.length >= OPS_TRIES_PER_IP || opsMissesAll.length >= OPS_TRIES_ALL) return "Too many wrong tries. Wait a while, then try again.";
+
+  /* hashed first, so the comparison is the same length and constant-time */
+  const same = timingSafeEqual(createHash("sha256").update(password).digest(), createHash("sha256").update(expected).digest());
+  if (!same) {
+    opsMisses.set(ip, [...mine, t]);
+    opsMissesAll.push(t);
+    return "That is not the password.";
+  }
+  const body = b64(JSON.stringify({ ops: 1, e: t + OPS_HOURS * 3_600_000 }));
+  const jar = await cookies();
+  jar.set(OPS_COOKIE, `${body}.${sign(body)}`, {
+    httpOnly: true, sameSite: "strict", path: "/", secure: process.env.NODE_ENV === "production", maxAge: OPS_HOURS * 3600,
+  });
+  return null;
+}
+
+export async function isOps() {
+  const jar = await cookies();
+  const p = openSigned<{ ops?: number; e?: number }>(jar.get(OPS_COOKIE)?.value);
+  return p?.ops === 1 && (p.e ?? 0) > Date.now();
+}
+
+export async function opsSignOut() {
+  const jar = await cookies();
+  jar.delete(OPS_COOKIE);
+}
+
+/** Guard for everything ops writes. The page itself shows the password
+    form instead of bouncing anywhere. */
 export async function requireAdmin() {
-  const user = await currentUser();
-  if (!user) redirect("/signin");
-  if (user.role !== "admin") redirect(homeFor(user.role));
-  return user;
+  if (!(await isOps())) redirect("/ops");
 }

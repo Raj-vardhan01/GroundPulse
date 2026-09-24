@@ -5,11 +5,12 @@ import Image from "next/image";
 import {
   AlertTriangle, Check, ChevronDown, Flag, Play, Send, Video, X, Wrench,
 } from "lucide-react";
-import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, setItem, setNote, setQuote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
+import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, setCleanPhoto, setItem, setNote, setQuote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
 import { FEE_RATE } from "@/lib/repair";
 import { carePlusCover } from "@/lib/pricing";
 import { PhotoInput } from "@/components/field/PhotoInput";
 import { VideoInput, type Uploaded } from "@/components/field/VideoInput";
+import { CleanProof, type CleanInfo } from "@/components/field/CleanProof";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { outstanding } from "@/lib/checklist";
 import { cn } from "@/lib/cn";
@@ -35,7 +36,7 @@ const VERDICTS: { s: ItemState; label: string; cls: string }[] = [
   { s: "fail", label: "Fail", cls: "bg-fail text-white" },
 ];
 
-export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom[] }) {
+export function VisitWork({ id, draft: initial, clean = null }: { id: string; draft: DraftRoom[]; clean?: CleanInfo | null }) {
   const [draft, setDraft] = useState<DraftRoom[]>(initial);
   const [open, setOpen] = useState<string | null>(initial.find((r) => r.items.some((i) => i.s === null))?.name ?? initial[0]?.name ?? null);
   const [review, setReview] = useState(false);
@@ -85,6 +86,21 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
     edit(room, item, (i) => ({ ...i, videos: i.videos.filter((v) => v.key !== key) }));
     send(dropItemVideo, { room, item, key });
   };
+  /* The clean's photos wait for the server: it may say "not yet", and a
+     photo it refused must not sit on the screen looking saved. */
+  const cleanShot = async (room: string, which: "before" | "after", thumb: string, c: { lat: number | null; lng: number | null }) => {
+    const photoId = crypto.randomUUID();
+    const was = draft.find((r) => r.name === room)?.[which] ?? null;
+    const put = (p: DraftRoom["before"]) => setDraft((d) => d.map((r) => (r.name === room ? { ...r, [which]: p } : r)));
+    put({ id: photoId, thumb, at: new Date().toISOString(), lat: c.lat, lng: c.lng });
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ id, room, which, thumb, photoId, lat: String(c.lat ?? ""), lng: String(c.lng ?? "") })) fd.set(k, v);
+    const res = await setCleanPhoto(fd).catch(() => ({ ok: false, error: "No signal — that photo did not save. Take it again." }));
+    if (res.ok) return null;
+    put(was);
+    return res.error ?? "That photo did not save.";
+  };
+  const cleanedRooms = draft.filter((r) => r.before !== undefined);
 
   const total = draft.reduce((n, r) => n + r.items.length, 0);
   const answered = draft.reduce((n, r) => n + r.items.filter((i) => i.s !== null).length, 0);
@@ -105,6 +121,8 @@ export function VisitWork({ id, draft: initial }: { id: string; draft: DraftRoom
           <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${(answered / total) * 100}%` }} />
         </div>
       </div>
+
+      {clean && cleanedRooms.length > 0 && <CleanProof id={id} clean={clean} rooms={cleanedRooms} onShot={cleanShot} />}
 
       {draft.map((room) => {
         const done = room.items.filter((i) => i.s !== null).length;

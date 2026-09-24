@@ -14,6 +14,7 @@ import { JobTags } from "@/components/field/JobCard";
 import { Panel, PanelHead, money } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
 import { fmtDayDate, fmtTime } from "@/lib/format";
+import { afterOpen, afterOpensAt, cleanOf } from "@/lib/checklist";
 import { checkInWords, navigateHref } from "@/lib/geo";
 import { cn } from "@/lib/cn";
 
@@ -28,6 +29,16 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
   const v = j.visit;
   const onSite = v.status === "on_site";
   const finished = ["submitted", "ready", "closed"].includes(v.status);
+  /* a clean on this visit: the before/after photos and the crew's clock */
+  const size = j.property.size;
+  const tier = onSite ? cleanOf(v) : null;
+  const opensAt = afterOpensAt(v, size);
+  const clean = tier ? {
+    name: tier.name, hours: tier.hours[size], crew: tier.crew[size],
+    started: v.crewStartedAt ? fmtTime(v.crewStartedAt) : null,
+    opensAt: opensAt ? fmtTime(new Date(opensAt).toISOString()) : null,
+    open: afterOpen(v, size),
+  } : null;
 
   return (
     <div className="grid gap-4">
@@ -113,7 +124,7 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
           </Panel>
         </Reveal>
       ) : onSite && v.draft ? (
-        <VisitWork id={v.id} draft={v.draft} />
+        <VisitWork id={v.id} draft={v.draft} clean={clean} />
       ) : (
         <>
           <Reveal delay={0.05}><CheckInGate id={v.id} status={v.status} recording={v.recording} pin={j.property.pin} /></Reveal>

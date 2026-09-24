@@ -11,7 +11,7 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { changePhone, currentUser, homeFor, inspectorDoorOpen, phoneTaken, requireOwner, signOut, startOtp, switchSide, verifyOtp, type Side } from "@/lib/auth";
+import { currentUser, devSignInOwner, homeFor, inspectorDoorOpen, requireOwner, signOut, startOtp, verifyOtp, type Side } from "@/lib/auth";
 import { NOT_ON_ROSTER } from "@/lib/roster";
 import { advanceOf, balanceDue } from "@/lib/payments";
 import { refundOwed } from "@/lib/refunds";
@@ -26,7 +26,7 @@ import { allowanceLeft, effectiveStatus, isPlanId, liveSub, planAllowance, planN
 import { repairBill } from "@/lib/repair";
 import { pushEvent } from "@/lib/events";
 import { approveIssueIn, cancelVisitIn, closeIfSettled } from "@/lib/lifecycle";
-import { parsePhone, prettyPhone } from "@/lib/phone";
+import { parsePhone, reachOn } from "@/lib/phone";
 import { TICKET_TOPICS } from "@/lib/tickets";
 import { bhkKeys, type BhkKey } from "@/lib/cleaning";
 import type { DB, HomeType, Pin, Property, RoomKey, Subscription, Visit, VisitKind } from "@/lib/types";
@@ -44,11 +44,11 @@ const sideOf = (fd: FormData): Side => (s(fd, "as", 12) === "inspector" ? "inspe
 export async function requestCode(_prev: FormState, fd: FormData): Promise<FormState> {
   const cc = s(fd, "cc", 4) || "91";
   const raw = s(fd, "phone", 40);
-  /* Nobody off the roster is even sent a code at the inspector door. */
-  if (sideOf(fd) === "inspector") {
-    const parsed = parsePhone(cc, raw);
-    if (parsed.ok && !(await inspectorDoorOpen(parsed.phone))) return { ok: false, error: NOT_ON_ROSTER };
-  }
+  /* Codes are only for the inspector door — owners sign in with Google.
+     Nobody off the roster is even sent one. */
+  if (sideOf(fd) !== "inspector") return { ok: false, error: "Owners sign in with Google." };
+  const parsed = parsePhone(cc, raw);
+  if (parsed.ok && !(await inspectorDoorOpen(parsed.phone))) return { ok: false, error: NOT_ON_ROSTER };
   const res = await startOtp(cc, raw);
   if (!res.ok) return { ok: false, error: res.error, phone: res.phone };
   return { ok: true, phone: res.phone, devCode: res.devCode };
@@ -75,13 +75,15 @@ export async function switchAccount(fd: FormData) {
   redirect(as === "inspector" ? "/signin?as=inspector" : "/signin");
 }
 
-/** Same number, the other app — no new code needed. */
-export async function switchApp(fd: FormData) {
-  const side: Side = String(fd.get("as") ?? "") === "inspector" ? "inspector" : "owner";
-  const ok = await switchSide(side);
-  if (!ok) redirect(side === "inspector" ? "/signin?as=inspector" : "/signin");
-  const user = await currentUser();
-  redirect(side === "owner" && user && !user.onboardedAt ? "/welcome" : homeFor(side === "inspector" ? "inspector" : "owner"));
+/** Development only: sign in as any owner by email — a laptop has no
+    Google keys. Production refuses. */
+export async function devSignIn(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (process.env.NODE_ENV === "production") return { ok: false, error: "Not available." };
+  const email = s(fd, "email", 200).toLowerCase();
+  if (!isEmail(email)) return { ok: false, error: "That email address does not look right." };
+  const user = await devSignInOwner(email);
+  if (!user) return { ok: false, error: "Not available." };
+  redirect(user.onboardedAt && reachOn(user) ? "/app" : "/welcome");
 }
 
 /* ── profile & account ───────────────────────────────────────── */
@@ -98,16 +100,20 @@ export async function saveProfile(_prev: FormState, fd: FormData): Promise<FormS
   const tz = s(fd, "tz", 60);
   if (!name) return { ok: false, error: "We need a name to put on your reports." };
   if (email && !isEmail(email)) return { ok: false, error: "That email address does not look right." };
+  /* Required: the inspector calls it from the door, and updates go to it. */
+  const phone = parsePhone(s(fd, "cc", 4) || "91", s(fd, "phone", 40));
+  if (!phone.ok) return { ok: false, error: phone.error };
 
   await mutate((d) => {
     const u = d.users.find((x) => x.id === user.id)!;
     u.name = name;
     u.email = email;
+    u.contactPhone = phone.phone;
     u.livesIn = s(fd, "livesIn", 120);
     if (tz && validZone(tz)) u.tz = tz;
   });
   revalidatePath("/app", "layout");
-  if (s(fd, "step") === "welcome") redirect("/welcome/property");
+  if (s(fd, "step") === "welcome") redirect(user.onboardedAt ? "/app" : "/welcome/property");
   return { ok: true, message: "Saved." };
 }
 
@@ -119,30 +125,6 @@ export async function savePrefs(_prev: FormState, fd: FormData): Promise<FormSta
   });
   revalidatePath("/app/account");
   return { ok: true, message: "Saved." };
-}
-
-/** Step one of moving the account to a new number: prove it is theirs. */
-export async function startPhoneChange(_prev: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireOwner();
-  const parsed = parsePhone(s(fd, "cc", 4) || "91", s(fd, "phone", 40));
-  if (!parsed.ok) return { ok: false, error: parsed.error };
-  if (parsed.phone === user.phone) return { ok: false, error: "That is already the number on your account." };
-  if (await phoneTaken(parsed.phone, user.id)) return { ok: false, error: "That number already has its own account. Sign in with it instead." };
-  const res = await startOtp(s(fd, "cc", 4) || "91", s(fd, "phone", 40), "change");
-  if (!res.ok) return { ok: false, error: res.error };
-  return { ok: true, phone: res.phone, devCode: res.devCode };
-}
-
-export async function confirmPhoneChange(_prev: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireOwner();
-  const phone = s(fd, "phone", 20);
-  const res = await changePhone(user.id, phone, s(fd, "code", 8));
-  if (!res.ok) return { ok: false, error: res.error, phone };
-  await mutate((d) => {
-    pushEvent(d, { ownerId: user.id, type: "account.updated", title: "Your number changed", body: `Sign in with ${prettyPhone(res.phone)} from now on`, href: "/app/account" });
-  });
-  revalidatePath("/app", "layout");
-  return { ok: true, message: `Done — your account is on ${prettyPhone(res.phone)} now.` };
 }
 
 /** Close the account. Everything booked is cancelled and put right, every
@@ -176,6 +158,8 @@ export async function deleteAccount(_prev: FormState, fd: FormData): Promise<For
     u.email = "";
     u.livesIn = "";
     u.phone = `deleted:${u.id}`;
+    u.contactPhone = "";
+    u.googleSub = "";
     u.deletedAt = now();
   });
   for (const id of cancelling) await refundOwed(user.id, id);
@@ -527,7 +511,8 @@ export async function bookVisit(_prev: FormState, fd: FormData): Promise<FormSta
     moved or cancelled: that was not the owner's doing. */
 function changeBlocked(v: Visit): string | null {
   if (!["unpaid", "scheduled", "assigned"].includes(v.status)) return "This visit can no longer be changed — it has already started.";
-  if (v.scheduledFor === todayKey()) return "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it.";
+  /* On the day a visit is fixed — unless we are the ones who missed it. */
+  if (v.scheduledFor === todayKey() && !v.missedAt) return "The visit is today. On the day itself a visit can no longer be moved or cancelled — the inspector is already committed to it.";
   return null;
 }
 
@@ -569,6 +554,7 @@ export async function rescheduleVisit(_prev: FormState, fd: FormData): Promise<F
     const hadInspector = !!v.inspectorId;
     v.scheduledFor = date;
     v.slot = slot;
+    v.missedAt = null;
     /* Whoever claimed it claimed that day. The new day goes back on the
        board for whoever can make it — unless the advance is still unpaid,
        in which case it stays off the board until it is. */

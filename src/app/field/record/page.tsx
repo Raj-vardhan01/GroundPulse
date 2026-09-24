@@ -1,6 +1,5 @@
-import { AlertTriangle, BadgeCheck, CalendarClock, Check, MapPinned, Star, Repeat } from "lucide-react";
-import { otherSide, requireInspector } from "@/lib/auth";
-import { switchApp } from "@/lib/actions";
+import { AlertTriangle, BadgeCheck, CalendarClock, Check, MapPinned, Star } from "lucide-react";
+import { requireInspector } from "@/lib/auth";
 import { InspectorProfileForm } from "@/components/field/InspectorProfileForm";
 import { inspectorFor, doneJobs, STATUS_COPY } from "@/lib/field";
 import { SignOutRow } from "@/components/field/FieldShell";
@@ -22,7 +21,6 @@ export default async function Record() {
   const ins = (await inspectorFor(user.id))!;
   const done = await doneJobs(ins);
   const copy = STATUS_COPY[ins.status];
-  const owner = (await otherSide()) === "owner";
 
   return (
     <div className="grid gap-4">
@@ -61,15 +59,6 @@ export default async function Record() {
           <div className="p-5"><InspectorProfileForm name={ins.name} upiId={ins.upiId} /></div>
         </Panel>
       </Reveal>
-
-      {owner && (
-        <Reveal delay={0.055}>
-          <form action={switchApp}>
-            <input type="hidden" name="as" value="owner" />
-            <button className="btn btn-white w-full"><Repeat size={15} /> Open the owner app — same number</button>
-          </form>
-        </Reveal>
-      )}
 
       <Reveal delay={0.06}>
         <Panel>
