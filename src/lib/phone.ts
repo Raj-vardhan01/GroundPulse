@@ -113,3 +113,8 @@ export function prettyPhone(p: string) {
 
 /** What goes after tel: — always international. */
 export const telHref = (p: string) => (isIndianMobile(p) ? `tel:+91${p}` : `tel:${p}`);
+
+/** The number to reach an owner on: the one they gave us, or — for older
+    accounts — the one they signed in with. */
+export const reachOn = (u: { contactPhone?: string; phone: string }) =>
+  u.contactPhone || (u.phone.startsWith("deleted:") ? "" : u.phone);

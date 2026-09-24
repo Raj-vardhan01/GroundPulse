@@ -1,3 +1,4 @@
+import { reachOn } from "@/lib/phone";
 import type { Metadata } from "next";
 import { requireOwner } from "@/lib/auth";
 import { unread, visits, openIssues, invoices } from "@/lib/queries";
@@ -23,7 +24,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
 
   return (
     <AppShell
-      user={{ name: user.name, phone: user.phone }}
+      user={{ name: user.name, phone: reachOn(user), email: user.email }}
       unread={events}
       counts={{
         visits: vs.filter((v) => ["unpaid", "scheduled", "assigned", "en_route", "on_site", "submitted"].includes(v.status)).length,

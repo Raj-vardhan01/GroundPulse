@@ -28,9 +28,16 @@ export type User = {
   id: string;
   role: Role;
   name: string;
-  /** "9876543210" for India, "+971501234567" everywhere else — see lib/phone */
+  /** "9876543210" for India, "+971501234567" everywhere else — see lib/phone.
+      A number proved by a code: an inspector's sign-in. Owners who sign in
+      with Google have none here — see contactPhone. */
   phone: string;
   email: string;
+  /** the Google account an owner signs in with — its stable id, not the email */
+  googleSub?: string;
+  /** the number an owner gives us to be reached on — the inspector's live
+      call, updates. Never used to sign anybody in. */
+  contactPhone?: string;
   livesIn: string;
   /** the zone their browser reported, so times can be shown on their clock
       next to IST */

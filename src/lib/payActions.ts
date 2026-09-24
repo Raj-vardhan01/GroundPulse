@@ -15,6 +15,7 @@ import { checkoutSignatureOk, createOrder, payMode, razorpayKeyId } from "@/lib/
 import { repairBill } from "@/lib/repair";
 import { liveSub } from "@/lib/plans";
 import { fmtDayDate, isBookable } from "@/lib/format";
+import { reachOn } from "@/lib/phone";
 import type { Payment, PaymentPurpose } from "@/lib/types";
 
 export type PayStart =
@@ -81,7 +82,7 @@ export async function startPayment(purpose: PaymentPurpose, refId: string): Prom
 
   return {
     ok: true, mode, paymentId, orderId, amountInr, keyId: razorpayKeyId(), description,
-    prefill: { name: user.name, email: user.email, contact: user.phone.startsWith("+") ? user.phone : `+91${user.phone}` },
+    prefill: { name: user.name, email: user.email, contact: ((n) => (!n || n.startsWith("+") ? n : `+91${n}`))(reachOn(user)) },
   };
 }
 

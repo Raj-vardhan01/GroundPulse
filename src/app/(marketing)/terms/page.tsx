@@ -107,7 +107,7 @@ export default function Page() {
       <Clause id="account" n={4} title="Your account">
         <Points n={4} items={[
           <>You must be 18 or older and able to enter a binding contract to use the Service.</>,
-          <>Your mobile number is your account. You sign in with a one-time code sent to it; keep your phone secure, and never share a code with anyone — we will never ask you for one.</>,
+          <>Owners sign in with their Google account and give us a mobile number we can reach them on — the inspector calls it from the door. Inspectors sign in with their registered mobile number and a one-time code sent to it. Keep your Google account and phone secure, and never share a code with anyone — we will never ask you for one.</>,
           <>The details you give us — your name, contact details and your properties — must be accurate and kept up to date.</>,
           <>You are responsible for what happens under your account. Tell us straight away if you think someone else has used it.</>,
         ]} />
