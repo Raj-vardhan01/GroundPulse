@@ -30,7 +30,7 @@ export default function Page() {
     <>
       <PageHero eyebrow="Our inspectors" title={<>How we choose and<br className="hidden md:block" /> verify every inspector</>} lede="We don't take applications off the street. Every Still Yours inspector is referred or scouted, vetted in person, and verified before their first visit — the kind of person we'd hand our own keys to. Repairs and cleaning are done by rated professionals from established home-service companies, always with your inspector in the room.">
         <Reveal delay={0.1} className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/access" className="btn btn-accent">Book an inspection <ArrowRight size={16} /></Link>
+          <Link href="/access" className="btn btn-accent">Join the waitlist <ArrowRight size={16} /></Link>
           <Link href="/access?role=inspector" className="btn btn-white">Apply to be an inspector <ArrowRight size={16} /></Link>
           {APPS_LIVE && <Link href="/signin?as=inspector" className="btn btn-line ml-0 mt-3 text-white sm:ml-3 sm:mt-0">Sign in</Link>}
         </Reveal>
@@ -110,7 +110,7 @@ export default function Page() {
               <p className="t-lede mx-auto mt-5 max-w-[46ch] text-white/75">Tell us who you are and who can vouch for you. We reach out only when there's a fit — and we keep the network small on purpose.</p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link href="/access?role=inspector" className="btn btn-accent">Request an invitation <ArrowRight size={16} /></Link>
-                <Link href="/access?role=provider" className="btn btn-white">Refer a provider <ArrowRight size={16} /></Link>
+                <Link href="/contact" className="btn btn-white">Refer a provider <ArrowRight size={16} /></Link>
               </div>
               {/* Verified inspectors had no door. Every call to action on this
                   page was for people who have not joined yet. */}

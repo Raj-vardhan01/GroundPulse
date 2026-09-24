@@ -123,7 +123,7 @@ export function ComingHome() {
                 <p className="mt-2.5 text-[12px] leading-relaxed text-text-2">Chimney, fridge, microwave, cabinet interiors and sofa shampoo are itemised, not assumed — you pick them before you pay.</p>
               </div>
               <div className="mt-auto pt-5">
-                <Link href="/access?plan=deep" className="btn btn-accent w-full">Book the Coming home package <ArrowRight size={16} /></Link>
+                <Link href="/access" className="btn btn-accent w-full">Join the waitlist <ArrowRight size={16} /></Link>
                 <Link href="/cleaning" className="mt-2 flex items-center justify-center gap-1.5 py-1 text-[13px] font-medium text-accent-2 hover:underline">
                   See every room, every step and every price <ArrowRight size={13} />
                 </Link>
