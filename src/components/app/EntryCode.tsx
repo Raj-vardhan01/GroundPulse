@@ -8,9 +8,11 @@ import { cn } from "@/lib/cn";
    checklist without it — so it has to be somewhere the owner can
    actually find it, copy it, and send it on to whoever holds the key. */
 export function EntryCode({
-  code, property, when, keyHolder, inspector, dark = false, compact = false,
+  code, property, when, keyHolder, inspector, dark = false, compact = false, kind = "entry",
 }: {
   code: string;
+  /** "exit": the second code, that closes the visit */
+  kind?: "entry" | "exit";
   property: string;
   when: string;
   keyHolder?: string;
@@ -23,7 +25,11 @@ export function EntryCode({
   /* The inspector never sees this code — they have to be given it. So the
      message tells whoever holds the key to expect the question, and who
      should be asking it. */
-  const text = `StillYours entry code for ${property} (${when}): ${code}. ${inspector ? `${inspector} from StillYours` : "The StillYours inspector"} will ask you for it at the gate — the visit cannot start without it. Only give it to them.`;
+  const exit = kind === "exit";
+  const who = inspector ? `${inspector} from StillYours` : "The StillYours inspector";
+  const text = exit
+    ? `StillYours completion code for ${property} (${when}): ${code}. When ${who} hands the keys back, they will ask you for it — the visit only closes with it. Give it only once you have the keys.`
+    : `StillYours entry code for ${property} (${when}): ${code}. ${who} will ask you for it at the gate — the visit cannot start without it. Only give it to them.`;
 
   const copy = async () => {
     try {
@@ -42,10 +48,10 @@ export function EntryCode({
   return (
     <div className={cn("rounded-[16px] p-4", dark ? "bg-white/[0.08]" : "border border-accent/20 bg-accent-tint")}>
       <div className={cn("flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.08em]", dark ? "text-white/55" : "text-accent-2/70")}>
-        <KeyRound size={13} /> Entry code
+        <KeyRound size={13} /> {exit ? "Completion code" : "Entry code"}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <span aria-label={`Entry code ${code.split("").join(" ")}`} className={cn("font-mono font-semibold tracking-[0.35em] tabular-nums", compact ? "text-[26px]" : "text-[34px]", dark ? "text-white" : "text-accent-2")}>
+        <span aria-label={`${exit ? "Completion" : "Entry"} code ${code.split("").join(" ")}`} className={cn("font-mono font-semibold tracking-[0.35em] tabular-nums", compact ? "text-[26px]" : "text-[34px]", dark ? "text-white" : "text-accent-2")}>
           {code}
         </span>
         <div className="ml-auto flex gap-2">
@@ -59,8 +65,10 @@ export function EntryCode({
       </div>
       {!compact && (
         <p className={cn("mt-2 text-[13px] leading-snug", dark ? "text-white/65" : "text-accent-2/80")}>
-          {keyHolder ? `Send it to ${keyHolder}, or read it out yourself when they call.` : "Read it out when the inspector calls from the door, or send it to whoever lets them in."}{" "}
-          The checklist does not open without it — so nobody gets in on a code you did not give.
+          {exit
+            ? <>Give it to {keyHolder || "whoever takes the keys back"} — or read it out yourself — once the keys are back in the right hands. The visit only closes with it, and anything you have not decided closes with it.</>
+            : <>{keyHolder ? `Send it to ${keyHolder}, or read it out yourself when they call.` : "Read it out when the inspector calls from the door, or send it to whoever lets them in."}{" "}
+              The checklist does not open without it — so nobody gets in on a code you did not give.</>}
         </p>
       )}
     </div>

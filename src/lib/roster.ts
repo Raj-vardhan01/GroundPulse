@@ -18,10 +18,17 @@ import type { DB, Inspector, User } from "@/lib/types";
 /** Ten-digit Indian mobiles, as they are stored. */
 export const ROSTER: readonly string[] = ["7470954890", "8640007601"];
 
-export const canInspect = (u: Pick<User, "phone">) => ROSTER.includes(u.phone);
+/* On a laptop the three demo inspectors are on the roster too — their jobs
+   are in the demo data, and without them the inspector app has nothing to
+   show. Production never has demo data and never takes these numbers. */
+const DEMO_INSPECTORS: readonly string[] = ["9000000001", "9000000002", "9000000003"];
+const onRoster = (phone: string) =>
+  ROSTER.includes(phone) || (process.env.NODE_ENV !== "production" && DEMO_INSPECTORS.includes(phone));
+
+export const canInspect = (u: Pick<User, "phone">) => onRoster(u.phone);
 
 /** Before an account exists: may this number use the inspector door? */
-export const mayInspect = (_d: DB, phone: string) => ROSTER.includes(phone);
+export const mayInspect = (_d: DB, phone: string) => onRoster(phone);
 
 export const NOT_ON_ROSTER =
   "This number is not on our verified inspector list. Inspectors are added by StillYours after an in-person check — if you applied, we will call you.";

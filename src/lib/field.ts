@@ -169,8 +169,10 @@ function repairView(d: Awaited<ReturnType<typeof db>>, iss: Issue): RepairJob | 
   };
 }
 
+/* Who found it is who wrote the report — that never changes, while the
+   visit's own inspector field is only who holds it now. */
 const foundBy = (d: Awaited<ReturnType<typeof db>>, ins: Inspector, iss: Issue) =>
-  d.visits.some((v) => v.id === iss.visitId && v.inspectorId === ins.id);
+  (d.reports.find((r) => r.id === iss.reportId)?.inspectorId ?? d.visits.find((v) => v.id === iss.visitId)?.inspectorId) === ins.id;
 
 /** Repairs waiting on this inspector's after-photo, soonest first. */
 export async function repairJobs(ins: Inspector): Promise<RepairJob[]> {
@@ -221,3 +223,9 @@ export const STATUS_COPY: Record<InspectorStatus, { label: string; tone: "pass" 
   active: { label: "Active", tone: "pass", note: "Full access. Your reports go straight to the owner when you submit them." },
   paused: { label: "Paused", tone: "fail", note: "Your account is on hold. We will call you — nothing is decided until we have spoken." },
 };
+
+/** What this visit has sent to the owner live, newest first. */
+export async function liveIssues(visitId: string) {
+  const d = await db();
+  return d.issues.filter((i) => i.visitId === visitId && i.sentAt).sort((a, b) => (a.sentAt! < b.sentAt! ? 1 : -1));
+}

@@ -90,6 +90,10 @@ export async function visitView(ownerId: string, id: string) {
     invoice: d.invoices.find((i) => i.visitId === visit.id && !i.issueId && i.stage !== "advance") ?? null,
     advance: d.invoices.find((i) => i.visitId === visit.id && i.stage === "advance") ?? null,
     balance: balanceDue(d, visit.id),
+    /** what the inspector sent live from the property, newest first */
+    live: d.issues.filter((i) => i.visitId === visit.id && i.sentAt).sort((a, b) => (a.sentAt! < b.sentAt! ? 1 : -1)),
+    liveInvoices: Object.fromEntries(d.invoices.filter((i) => i.issueId && i.visitId === visit.id).map((i) => [i.issueId!, i])) as Record<string, Invoice>,
+    coverSub: visit.subscriptionId ? d.subscriptions.find((s) => s.id === visit.subscriptionId) ?? null : liveSub(d.subscriptions, visit.propertyId),
     subscription: visit.subscriptionId ? d.subscriptions.find((s) => s.id === visit.subscriptionId) ?? null : null,
     tickets: d.tickets.filter((t) => t.visitId === visit.id && t.ownerId === ownerId).sort((a, b) => byDateDesc(a.createdAt, b.createdAt)),
   };
@@ -136,8 +140,13 @@ function reportContext(d: DB, report: Report) {
 export async function openIssues(ownerId: string) {
   const d = await db();
   const seen = visibleReports(d);
-  return d.issues.filter((i) => i.ownerId === ownerId && i.decision === "pending" && seen.has(i.reportId));
+  /* a live one, sent from the property, is open before any report exists */
+  return d.issues.filter((i) => i.ownerId === ownerId && i.decision === "pending" && (seen.has(i.reportId) || !!i.sentAt));
 }
+
+/** Where to decide on an issue: the visit while it is live, else its report. */
+export const issueHref = (i: Pick<Issue, "id" | "reportId" | "visitId">) =>
+  i.reportId ? `/app/reports/${i.reportId}#${i.id}` : `/app/visits/${i.visitId}#live`;
 
 /** Repairs the owner approved but has not said when yet. */
 export async function repairsToSchedule(ownerId: string) {

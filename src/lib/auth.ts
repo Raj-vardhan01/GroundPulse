@@ -11,7 +11,8 @@
    marked — unless SMS_IN_DEV=1.
    ════════════════════════════════════════════════════════════════ */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
+import { promisify } from "node:util";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, mutate, now, uid } from "@/lib/store";
@@ -19,6 +20,9 @@ import { LIMIT } from "@/lib/offer";
 import { isAccountPhone, isIndianMobile, parsePhone, reachOn } from "@/lib/phone";
 import { canInspect, ensureInspector, mayInspect, NOT_ON_ROSTER } from "@/lib/roster";
 import { sweepMissed } from "@/lib/jobs";
+import { sweepLive } from "@/lib/liveRepairs";
+import { buttonEmail, sendEmail } from "@/lib/notify";
+import { SITE_URL } from "@/lib/seo";
 import type { Otp, User } from "@/lib/types";
 
 export { prettyPhone } from "@/lib/phone";
@@ -88,11 +92,13 @@ const sign = (body: string) => createHmac("sha256", secret()).update(body).diges
     inspector; the door they came through decides, and switching is a
     button, not a second account. */
 export type Side = "owner" | "inspector";
-type SessionPayload = { u: string; e: number; s?: Side };
+/** `a` is the account's auth version when the session began — a password
+    change bumps it, and every older session stops verifying. */
+type SessionPayload = { u: string; e: number; s?: Side; a?: number };
 
 /** `<payload>.<signature>` — unreadable to nobody, unforgeable to everybody. */
-function seal(userId: string, expiresAt: number, side: Side) {
-  const body = b64(JSON.stringify({ u: userId, e: expiresAt, s: side } satisfies SessionPayload));
+function seal(userId: string, expiresAt: number, side: Side, authVersion: number) {
+  const body = b64(JSON.stringify({ u: userId, e: expiresAt, s: side, a: authVersion } satisfies SessionPayload));
   return `${body}.${sign(body)}`;
 }
 
@@ -130,6 +136,9 @@ async function sendSms(phone: string, code: string): Promise<SmsResult> {
   const key = process.env.FAST2SMS_API_KEY?.trim();
   if (!key) return "off";
   if (process.env.NODE_ENV !== "production" && process.env.SMS_IN_DEV !== "1") return "off";
+  /* The demo accounts' 90000000xx numbers are made up, which means they are
+     somebody's real phone. Never text them, even with SMS_IN_DEV on. */
+  if (/^90000000\d\d$/.test(phone)) return "off";
   if (!isIndianMobile(phone)) return "abroad";
   try {
     const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
@@ -255,8 +264,9 @@ async function checkOtp(rawPhone: string, rawCode: string, purpose: Purpose): Pr
 }
 
 export async function verifyOtp(rawPhone: string, rawCode: string, side: Side = "owner") {
-  /* Owners sign in with Google now; a code is only ever an inspector's way in. */
-  if (side !== "inspector") return { ok: false as const, error: "Owners sign in with Google." };
+  /* Owners sign in with Google or an email and password; a code is only
+     ever an inspector's way in. */
+  if (side !== "inspector") return { ok: false as const, error: "Owners sign in with Google or their email." };
   /* The inspector door is shut to anyone off the roster — checked before
      the code is spent, and before any account is made. */
   if (side === "inspector" && !mayInspect(await db(), rawPhone.trim())) return { ok: false as const, error: NOT_ON_ROSTER };
@@ -303,7 +313,8 @@ export async function inspectorDoorOpen(phone: string) {
 async function openSession(userId: string, side: Side) {
   const expiresAt = Date.now() + SESSION_DAYS * 86_400_000;
   const jar = await cookies();
-  jar.set(COOKIE, seal(userId, expiresAt, side), {
+  const authVersion = (await db()).users.find((x) => x.id === userId)?.authVersion ?? 0;
+  jar.set(COOKIE, seal(userId, expiresAt, side, authVersion), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -342,14 +353,23 @@ export async function signInWithGoogle(g: { sub: string; email: string; name: st
   const user = await mutate((s) => {
     let u = s.users.find((x) => x.googleSub === g.sub && !x.deletedAt);
     if (!u) {
-      const taken = s.users.filter((x) => x.foundingNo !== null).length;
-      u = {
-        id: uid(), role: "owner", name: g.name, phone: "", email: g.email, googleSub: g.sub, contactPhone: "", livesIn: "",
-        tz: "Asia/Kolkata", prefs: { sms: true, email: true },
-        createdAt: now(), onboardedAt: null,
-        foundingNo: taken < LIMIT ? taken + 1 : null,
-        freeVisitUsedAt: null, deletedAt: null,
-      };
+      /* An owner who joined with this email and a password. Google has just
+         proved the inbox is theirs, so it is one person and one account. A
+         password nobody ever proved that inbox for is dropped — whoever set
+         it may not have been them. */
+      const same = s.users.find((x) => x.role === "owner" && !x.deletedAt && !x.googleSub && x.email === g.email);
+      if (same) {
+        same.googleSub = g.sub;
+        if (!same.emailVerifiedAt && same.passwordHash) {
+          delete same.passwordHash;
+          same.authVersion = (same.authVersion ?? 0) + 1;
+        }
+        same.emailVerifiedAt ??= now();
+        u = same;
+      }
+    }
+    if (!u) {
+      u = newOwner(s.users, { name: g.name, email: g.email, googleSub: g.sub, emailVerifiedAt: now() });
       s.users.push(u);
     }
     return u;
@@ -378,6 +398,239 @@ export async function devSignInOwner(email: string) {
   return user;
 }
 
+/** A new owner account. The first ten owners are the launch cohort,
+    however they signed up. */
+function newOwner(users: User[], f: Pick<User, "name" | "email"> & Partial<User>): User {
+  const taken = users.filter((x) => x.foundingNo !== null).length;
+  return {
+    id: uid(), role: "owner", phone: "", contactPhone: "", livesIn: "",
+    tz: "Asia/Kolkata", prefs: { sms: true, email: true },
+    createdAt: now(), onboardedAt: null,
+    foundingNo: taken < LIMIT ? taken + 1 : null,
+    freeVisitUsedAt: null, deletedAt: null,
+    ...f,
+  };
+}
+
+/* ── owners: email and a password ───────────────────────────────────
+   For owners who would rather not use Google. The password is kept only
+   as a salted scrypt hash — nobody, us included, can read it back.
+
+   Wrong passwords are braked per address and per account, and a wrong
+   answer never says whether the email has an account: an unknown email
+   costs the same scrypt time as a known one. Reset and verification
+   links are signed like sessions and point at stillyours.in, never at
+   whatever host the request claimed to be. */
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 200;
+const RESET_MINUTES = 30;
+const VERIFY_DAYS = 7;
+const scryptAsync = promisify(scrypt) as (pw: string, salt: Buffer, len: number, opts: ScryptOptions) => Promise<Buffer>;
+/* a real hash of nothing anybody uses, so a missing account still costs a scrypt */
+const DECOY_HASH = "scrypt$16384$8$1$fn7MOsxZf395lY0FtiGReA$JNKQca6mcQu62M_baNZWpqsQekcWpu_YN7IpiVUedDM";
+
+/** One address, no lists, nothing a mail header could be tricked with. */
+export const cleanEmail = (raw: string) => {
+  const e = raw.trim().toLowerCase();
+  return /^[^\s@,;<>"'()]+@[^\s@,;<>"'()]+\.[a-z]{2,}$/.test(e) && e.length <= 200 ? e : null;
+};
+
+export function passwordProblem(pw: string, email = "") {
+  if (pw.length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters.`;
+  if (pw.length > PASSWORD_MAX) return "That password is too long.";
+  if (email && pw.toLowerCase() === email) return "Your password cannot be your email address.";
+  return null;
+}
+
+async function hashPassword(pw: string) {
+  const salt = randomBytes(16);
+  const key = await scryptAsync(pw, salt, 32, { N: 16384, r: 8, p: 1 });
+  return `scrypt$16384$8$1$${salt.toString("base64url")}$${key.toString("base64url")}`;
+}
+
+async function passwordMatches(pw: string, stored: string | undefined) {
+  const [, n, r, p, salt, key] = (stored || DECOY_HASH).split("$");
+  const want = Buffer.from(key ?? "", "base64url");
+  const got = await scryptAsync(pw, Buffer.from(salt ?? "", "base64url"), want.length || 32, { N: Number(n), r: Number(r), p: Number(p) });
+  return !!stored && got.length === want.length && timingSafeEqual(got, want);
+}
+
+const pwMisses = new Map<string, number[]>();
+function tooMany(key: string, limit: number, windowMs: number) {
+  const t = Date.now();
+  const recent = (pwMisses.get(key) ?? []).filter((x) => t - x < windowMs);
+  pwMisses.set(key, recent);
+  return recent.length >= limit;
+}
+const noteMiss = (key: string) => pwMisses.set(key, [...(pwMisses.get(key) ?? []), Date.now()]);
+
+/** Where a link in an email points: the real site in production, this
+    laptop in development. */
+async function linkBase() {
+  if (process.env.NODE_ENV === "production") return SITE_URL;
+  const h = await headers();
+  return `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost:3000"}`;
+}
+
+/** Changes whenever the password or email does — so a reset link dies the
+    moment it has been used, or the account has moved on. */
+const accountPrint = (u: User) => createHash("sha256").update(`${u.passwordHash ?? "-"}|${u.email}|${u.authVersion ?? 0}`).digest("base64url").slice(0, 16);
+
+const signToken = (payload: object) => {
+  const body = b64(JSON.stringify(payload));
+  return `${body}.${sign(body)}`;
+};
+
+type MailOutcome = { devLink: string | null; error?: string };
+
+/** Send the link, or — on a laptop with no mail set up — hand it back to
+    be shown on screen, clearly marked, the way the SMS code is. */
+async function mailLink(to: string, subject: string, html: string, link: string): Promise<MailOutcome> {
+  const sent = await sendEmail(to, subject, html);
+  if (sent === "sent") return { devLink: null };
+  if (process.env.NODE_ENV !== "production") return { devLink: link };
+  return { devLink: null, error: "We could not send the email just now. Try again in a minute, or write to us." };
+}
+
+async function sendVerifyLink(u: User): Promise<MailOutcome> {
+  const token = signToken({ p: "verify", v: u.id, m: u.email, e: Date.now() + VERIFY_DAYS * 86_400_000 });
+  const link = `${await linkBase()}/signin/verify?token=${encodeURIComponent(token)}`;
+  return mailLink(u.email, "Confirm your email — StillYours",
+    buttonEmail("Confirm your email", "One tap to confirm this address is yours. It is where your reports and bills go, and how you get back in if you forget your password.", "Confirm my email", link, `The link works for ${VERIFY_DAYS} days. If you did not sign up for StillYours, ignore this email.`), link);
+}
+
+export type PasswordResult = { ok: true; user: User; devLink?: string | null } | { ok: false; error: string };
+
+/** A new owner, with an email and a password. They are in straight away;
+    the email is confirmed by a link, in the background. */
+export async function signUpWithPassword(rawEmail: string, password: string): Promise<PasswordResult> {
+  const email = cleanEmail(rawEmail);
+  if (!email) return { ok: false, error: "That email address does not look right." };
+  const problem = passwordProblem(password, email);
+  if (problem) return { ok: false, error: problem };
+  const ip = await clientIp();
+  if (tooMany(`signup:${ip}`, 10, 60 * 60_000)) return { ok: false, error: "Too many new accounts from here. Try again in an hour." };
+  noteMiss(`signup:${ip}`);
+
+  const hash = await hashPassword(password);
+  const made = await mutate((s) => {
+    const had = s.users.find((x) => x.email === email && !x.deletedAt && x.role !== "inspector");
+    if (had) return null;
+    const u = newOwner(s.users, { name: "", email, passwordHash: hash, emailVerifiedAt: null, authVersion: 0 });
+    s.users.push(u);
+    return u;
+  });
+  if (!made) return { ok: false, error: "That email already has an account. Sign in — or use “Forgot password” to set one." };
+  await openSession(made.id, "owner");
+  const mail = await sendVerifyLink(made);
+  if (mail.devLink) console.log(`[auth] development — confirm ${made.email}: ${mail.devLink}`);
+  return { ok: true, user: made, devLink: mail.devLink };
+}
+
+export async function signInWithPassword(rawEmail: string, password: string): Promise<PasswordResult> {
+  const email = cleanEmail(rawEmail) ?? rawEmail.trim().toLowerCase().slice(0, 200);
+  const ip = await clientIp();
+  if (tooMany(`ip:${ip}`, 20, 15 * 60_000) || tooMany(`acct:${email}`, 8, 15 * 60_000)) {
+    return { ok: false, error: "Too many tries. Wait fifteen minutes, or reset your password." };
+  }
+  const u = (await db()).users.find((x) => x.email === email && !x.deletedAt && x.role === "owner");
+  const good = await passwordMatches(password.slice(0, PASSWORD_MAX), u?.passwordHash);
+  if (!u || !good) {
+    noteMiss(`ip:${ip}`);
+    noteMiss(`acct:${email}`);
+    return { ok: false, error: "That email and password do not match. If you joined with Google, use Continue with Google." };
+  }
+  await openSession(u.id, "owner");
+  return { ok: true, user: u };
+}
+
+/** Always the same answer, whether or not the email has an account. */
+export async function startPasswordReset(rawEmail: string): Promise<MailOutcome> {
+  const email = cleanEmail(rawEmail);
+  if (!email) return { devLink: null, error: "That email address does not look right." };
+  const ip = await clientIp();
+  if (tooMany(`reset:${ip}`, 5, 15 * 60_000) || tooMany(`reset:${email}`, 3, 15 * 60_000)) {
+    return { devLink: null, error: "We have sent a few links already. Check your inbox and spam, or try again in fifteen minutes." };
+  }
+  noteMiss(`reset:${ip}`);
+  noteMiss(`reset:${email}`);
+  const u = (await db()).users.find((x) => x.email === email && !x.deletedAt && x.role === "owner");
+  if (!u) return { devLink: null };
+  const token = signToken({ p: "reset", r: u.id, h: accountPrint(u), e: Date.now() + RESET_MINUTES * 60_000 });
+  const link = `${await linkBase()}/signin/reset?token=${encodeURIComponent(token)}`;
+  return mailLink(u.email, "Set your password — StillYours",
+    buttonEmail(u.passwordHash ? "Reset your password" : "Set a password", "Somebody asked to set a new password for your StillYours account. If it was you, use the button below.", "Choose a new password", link, `The link works for ${RESET_MINUTES} minutes and only once. If it was not you, ignore this email — nothing changes.`), link);
+}
+
+/** Whose account a reset link is for, while it is still good. */
+export async function resetTarget(token: string): Promise<User | null> {
+  const t = openSigned<{ p?: string; r?: string; h?: string; e?: number }>(token);
+  if (t?.p !== "reset" || !t.r || (t.e ?? 0) < Date.now()) return null;
+  const u = (await db()).users.find((x) => x.id === t.r && !x.deletedAt) ?? null;
+  return u && accountPrint(u) === t.h ? u : null;
+}
+
+/** A new password from a reset link. It proves the inbox, so the email is
+    confirmed too — and every other session on the account ends. */
+export async function finishPasswordReset(token: string, password: string): Promise<PasswordResult> {
+  const u0 = await resetTarget(token);
+  if (!u0) return { ok: false, error: "That link has expired or been used. Ask for a new one." };
+  const problem = passwordProblem(password, u0.email);
+  if (problem) return { ok: false, error: problem };
+  const hash = await hashPassword(password);
+  const user = await mutate((s) => {
+    const u = s.users.find((x) => x.id === u0.id)!;
+    u.passwordHash = hash;
+    u.emailVerifiedAt ??= now();
+    u.authVersion = (u.authVersion ?? 0) + 1;
+    return u;
+  });
+  await openSession(user.id, "owner");
+  return { ok: true, user };
+}
+
+/** Change it from the account page: the current password first, when
+    there is one. Other sessions end; this one carries on. */
+export async function changePassword(userId: string, current: string, next: string): Promise<{ ok: boolean; error?: string }> {
+  const u0 = (await db()).users.find((x) => x.id === userId && !x.deletedAt);
+  if (!u0) return { ok: false, error: "Your session ended. Sign in again." };
+  if (u0.passwordHash && !(await passwordMatches(current.slice(0, PASSWORD_MAX), u0.passwordHash))) {
+    return { ok: false, error: "Your current password is not right." };
+  }
+  const problem = passwordProblem(next, u0.email);
+  if (problem) return { ok: false, error: problem };
+  const hash = await hashPassword(next);
+  await mutate((s) => {
+    const u = s.users.find((x) => x.id === userId)!;
+    u.passwordHash = hash;
+    u.authVersion = (u.authVersion ?? 0) + 1;
+  });
+  await openSession(userId, "owner");
+  return { ok: true };
+}
+
+/** The confirm link from a sign-up email. Good only for the address it was
+    sent to — an email changed since then needs a new link. */
+export async function confirmEmail(token: string): Promise<boolean> {
+  const t = openSigned<{ p?: string; v?: string; m?: string; e?: number }>(token);
+  if (t?.p !== "verify" || !t.v || (t.e ?? 0) < Date.now()) return false;
+  return mutate((s) => {
+    const u = s.users.find((x) => x.id === t.v && !x.deletedAt);
+    if (!u || u.email !== t.m) return false;
+    u.emailVerifiedAt ??= now();
+    return true;
+  });
+}
+
+/** Another confirm link, from the account page. */
+export async function resendVerification(userId: string): Promise<MailOutcome> {
+  const u = (await db()).users.find((x) => x.id === userId && !x.deletedAt);
+  if (!u?.email || u.emailVerifiedAt) return { devLink: null };
+  if (tooMany(`verify:${userId}`, 3, 60 * 60_000)) return { devLink: null, error: "We have sent a few already. Check your spam folder." };
+  noteMiss(`verify:${userId}`);
+  return sendVerifyLink(u);
+}
+
 export async function signOut() {
   const jar = await cookies();
   jar.delete(COOKIE);
@@ -394,9 +647,11 @@ export async function currentUser(): Promise<User | null> {
   const d = await db();
   const u = d.users.find((x) => x.id === session.u) ?? null;
   if (!u || u.deletedAt) return null;
+  if ((session.a ?? 0) !== (u.authVersion ?? 0)) return null;
   /* A copy, with the role this session is acting in. The stored role is
      only the default for sessions from before there were two doors. */
-  return { ...u, role: effectiveRole(u, session.s) };
+  /* The hash never leaves the store: callers only learn that there is one. */
+  return { ...u, passwordHash: u.passwordHash ? "set" : undefined, role: effectiveRole(u, session.s) };
 }
 
 function effectiveRole(u: User, side: Side | undefined): User["role"] {
@@ -414,6 +669,7 @@ export const homeFor = (role: User["role"]) => (role === "inspector" ? "/field" 
     owners to the welcome flow, before any page body renders. */
 export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
   await sweepMissed();
+  await sweepLive();
   const user = await currentUser();
   if (!user) redirect("/signin");
   if (user.role !== "owner") redirect(homeFor(user.role));
@@ -427,6 +683,7 @@ export async function requireOwner(opts: { allowOnboarding?: boolean } = {}) {
     error, so it is handled by the page rather than bounced. */
 export async function requireInspector() {
   await sweepMissed();
+  await sweepLive();
   const user = await currentUser();
   if (!user) redirect("/signin");
   if (user.role !== "inspector") redirect(homeFor(user.role));

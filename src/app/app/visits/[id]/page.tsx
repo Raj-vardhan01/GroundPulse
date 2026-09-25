@@ -11,6 +11,8 @@ import { Panel, PanelHead, StatusPill, money, visitLook } from "@/components/app
 import { PayButton } from "@/components/app/PayButton";
 import { VisitActions } from "@/components/app/VisitActions";
 import { EntryCode } from "@/components/app/EntryCode";
+import { IssueCard } from "@/components/app/IssueCard";
+import { AutoRefresh } from "@/components/app/AutoRefresh";
 import { RateVisit } from "@/components/app/RateVisit";
 import { TicketForm } from "@/components/app/TicketForm";
 import { Reveal } from "@/components/ui/Reveal";
@@ -40,7 +42,7 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
   const view = await visitView(user.id, id);
   if (!view) notFound();
 
-  const { visit: v, property: p, inspector, report, heldForReview, invoice, advance, balance, subscription, tickets } = view;
+  const { visit: v, property: p, inspector, report, heldForReview, invoice, advance, balance, subscription, tickets, live, liveInvoices, coverSub } = view;
   const unpaid = v.status === "unpaid";
   const cancelled = v.status === "cancelled";
   const reached = ORDER.indexOf(v.status);
@@ -79,6 +81,24 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
   return (
     <>
       <Link href="/app/visits" className="mb-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-text-2 transition hover:text-ink"><ArrowLeft size={14} /> Visits</Link>
+
+      {/* decisions sent live from the property — the page keeps itself current */}
+      {v.status === "on_site" && <AutoRefresh every={15} />}
+      {live.length > 0 && (
+        <Reveal className="mb-4">
+          <section id="live" className="scroll-mt-24">
+            <h2 className="serif text-[22px] tracking-[-0.03em]">From your property{v.status === "on_site" ? ", right now" : ""}</h2>
+            <p className="t-small mt-1 mb-3 leading-snug">
+              {v.status === "on_site"
+                ? "Your inspector found these while inside, and can ring you about them. Decide each within the hour — if you approve, it is done on this visit, with them there."
+                : "What your inspector sent you from this visit, and what came of it."}
+            </p>
+            <div className="grid gap-4">
+              {live.map((i) => <IssueCard key={i.id} issue={i} founding={v.founding === true} sub={coverSub} invoice={liveInvoices[i.id]} tz={user.tz} />)}
+            </div>
+          </section>
+        </Reveal>
+      )}
 
       {/* we did not turn up — the owner chooses, free */}
       {v.missedAt && movable && (
@@ -204,6 +224,12 @@ export default async function Page({ params, searchParams }: PageProps<"/app/vis
           {!cancelled && beforeEntry && (
             <div className="border-t border-line p-4">
               <EntryCode code={v.otp} property={p.label} when={`${fmtDayDate(v.scheduledFor)}, ${v.slot} IST`} keyHolder={p.keyHolderName || undefined} inspector={inspector?.name} />
+            </div>
+          )}
+          {/* the second code, that closes the visit — for whoever takes the keys back */}
+          {!cancelled && v.exitCode && (beforeEntry || v.status === "on_site") && (
+            <div className="border-t border-line p-4">
+              <EntryCode kind="exit" code={v.exitCode} property={p.label} when={`${fmtDayDate(v.scheduledFor)}, ${v.slot} IST`} keyHolder={p.keyHolderName || undefined} inspector={inspector?.name} compact={beforeEntry} />
             </div>
           )}
           {v.checkIn && (

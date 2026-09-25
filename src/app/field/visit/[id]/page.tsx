@@ -6,7 +6,8 @@ import {
   MessageSquareQuote, Navigation, Phone, Radio, Undo2, Video,
 } from "lucide-react";
 import { requireInspector } from "@/lib/auth";
-import { inspectorFor, jobView } from "@/lib/field";
+import { inspectorFor, jobView, liveIssues } from "@/lib/field";
+import { LiveDecisions } from "@/components/field/LiveDecisions";
 import { releaseJob } from "@/lib/fieldActions";
 import { CheckInGate } from "@/components/field/CheckInGate";
 import { VisitWork } from "@/components/field/VisitWork";
@@ -16,6 +17,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { fmtDayDate, fmtTime } from "@/lib/format";
 import { afterOpen, afterOpensAt, cleanOf } from "@/lib/checklist";
 import { checkInWords, navigateHref } from "@/lib/geo";
+import { telHref } from "@/lib/phone";
 import { cn } from "@/lib/cn";
 
 export default async function LiveVisit({ params, searchParams }: PageProps<"/field/visit/[id]">) {
@@ -28,6 +30,7 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
 
   const v = j.visit;
   const onSite = v.status === "on_site";
+  const live = onSite ? await liveIssues(v.id) : [];
   const finished = ["submitted", "ready", "closed"].includes(v.status);
   /* a clean on this visit: the before/after photos and the crew's clock */
   const size = j.property.size;
@@ -97,11 +100,13 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
                 <p className="mt-1 text-[14.5px] leading-relaxed">{v.notes}</p>
               </>
             )}
-            {v.liveCall && (
-              <a href="tel:+918000000000" className="btn btn-white btn-sm mt-3 w-full">
+            {v.liveCall && (j.ownerPhone ? (
+              <a href={telHref(j.ownerPhone)} className="btn btn-white btn-sm mt-3 w-full">
                 <Phone size={14} /> Ring the owner — they asked for a live call
               </a>
-            )}
+            ) : (
+              <p className="t-small mt-3">They asked for a live call, but there is no number on their account — call ops and we will put you through.</p>
+            ))}
           </div>
         </Reveal>
       )}
@@ -124,7 +129,10 @@ export default async function LiveVisit({ params, searchParams }: PageProps<"/fi
           </Panel>
         </Reveal>
       ) : onSite && v.draft ? (
-        <VisitWork id={v.id} draft={v.draft} clean={clean} />
+        <>
+          <LiveDecisions issues={live} />
+          <VisitWork id={v.id} draft={v.draft} clean={clean} />
+        </>
       ) : (
         <>
           <Reveal delay={0.05}><CheckInGate id={v.id} status={v.status} recording={v.recording} pin={j.property.pin} /></Reveal>

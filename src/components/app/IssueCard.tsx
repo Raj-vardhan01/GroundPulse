@@ -10,9 +10,18 @@ import { FEE_RATE, repairBill } from "@/lib/repair";
 import { carePlusCover } from "@/lib/pricing";
 import { effectiveStatus } from "@/lib/plans";
 
-const FEE_PCT = Math.round(FEE_RATE * 100);
+import { Countdown } from "@/components/app/Countdown";
 import { cn } from "@/lib/cn";
 import type { Invoice, Issue, Subscription } from "@/lib/types";
+
+const FEE_PCT = Math.round(FEE_RATE * 100);
+
+/* How an issue that nobody decided reads. */
+const CLOSED = {
+  expired: { chip: "Closed · time ran out", body: "No decision within the hour, so nothing was done. It stays on your report — ask us from Help if you want it done." },
+  visit_closed: { chip: "Closed with the visit", body: "The visit closed before a decision, so nothing was done. It stays on your report — ask us from Help if you want it done." },
+  not_sent: { chip: "On the record", body: "Noted on the report, not offered for a repair on this visit. Ask us from Help if you want it done." },
+} as const;
 
 /* The moment the whole product exists for: photographs, a quote in plain
    numbers, and two buttons. Nothing happens on the property until one of
@@ -49,10 +58,14 @@ export function IssueCard({
           </div>
         </div>
         {open
-          ? <span className={cn("chip", i.severity === "fail" ? "chip-fail" : "chip-warn")}>{i.severity === "fail" ? "Fail" : "Attention"} · {i.quote ? "needs you" : "being quoted"}</span>
+          ? <span className={cn("chip", i.severity === "fail" ? "chip-fail" : "chip-warn")}>{i.severity === "fail" ? "Fail" : "Attention"} · {i.decideBy ? "decide now" : i.quote ? "needs you" : "being quoted"}</span>
           : i.decision === "approved"
-            ? <span className="chip chip-pass">{r?.status === "completed" ? "Repaired" : "Approved"}</span>
-            : <span className="chip">Declined</span>}
+            ? r?.status === "cancelled"
+              ? <span className="chip">Cancelled · refunded</span>
+              : <span className="chip chip-pass">{r?.status === "completed" ? "Repaired" : r?.status === "in_progress" ? "Being done now" : "Approved"}</span>
+            : i.decision === "closed"
+              ? <span className="chip">{CLOSED[i.closedWhy ?? "expired"].chip}</span>
+              : <span className="chip">Declined</span>}
       </div>
 
       <div className={cn("grid gap-5 p-5", !shared && "lg:grid-cols-2")}>
@@ -109,7 +122,9 @@ export function IssueCard({
                 )}
                 <p className="t-small mt-2 leading-snug">
                   {i.quote.source === "urban-company" ? "The same service costs this on Urban Company today — your inspector checked. " : ""}
-                  Paid when you approve. Work happens on a day you choose, with your inspector present, and the after-photos land back in this report.
+                  {i.sentAt
+                    ? "Paid when you approve. It is done on this visit, with your inspector there, and the after-photos land back here. If it cannot be done today — or the professional has not arrived within two hours — it is cancelled and everything you paid comes back."
+                    : "Paid when you approve. Work happens on a day you choose, with your inspector present, and the after-photos land back in this report."}
                 </p>
               </>
             ) : (
@@ -120,7 +135,20 @@ export function IssueCard({
             )}
 
             {open ? (
-              <DecisionButtons id={i.id} payable={bill?.payable ?? null} canApprove={!!i.quote} />
+              <>
+                {i.decideBy && (
+                  <p className="mt-4 flex flex-wrap items-center gap-1.5 rounded-[10px] bg-warn-soft px-3.5 py-2.5 text-[13px] text-text-2">
+                    <Hourglass size={13} className="shrink-0 text-warn" /> Your inspector is still there — decide within the hour:
+                    <Countdown until={i.decideBy} className="font-semibold tabular-nums text-ink" />
+                  </p>
+                )}
+                <DecisionButtons id={i.id} payable={bill?.payable ?? null} canApprove={!!i.quote} />
+              </>
+            ) : i.decision === "closed" ? (
+              <div className="mt-4 flex items-start gap-2 rounded-[10px] bg-beige px-3.5 py-3 text-[13.5px] text-text-2">
+                <CircleSlash size={15} className="mt-0.5 shrink-0" />
+                <span>{CLOSED[i.closedWhy ?? "expired"].body}</span>
+              </div>
             ) : (
               <div className={cn("mt-4 flex items-start gap-2 rounded-[10px] px-3.5 py-3 text-[13.5px] font-medium", i.decision === "approved" ? "bg-pass-soft text-[#157a44]" : "bg-beige text-text-2")}>
                 {i.decision === "approved" ? <Check size={15} className="mt-0.5 shrink-0" /> : <CircleSlash size={15} className="mt-0.5 shrink-0" />}
@@ -149,13 +177,15 @@ export function IssueCard({
             <div className="grow basis-[15rem]">
               <div className="text-[14.5px] font-medium">{r.providerName} · {r.trade}</div>
               <div className="t-small">
-                {r.completedAt ? `Completed ${fmtDate(r.completedAt, { year: true })}`
+                {r.status === "cancelled" ? `Could not be done on the visit${r.note ? ` — ${r.note}` : ""}. Cancelled, and refunded in full.`
+                  : r.status === "in_progress" ? (r.proArrivedAt ? "The professional is there, with your inspector" : "Being booked now — the professional has two hours to arrive")
+                  : r.completedAt ? `Completed ${fmtDate(r.completedAt, { year: true })}`
                   : r.scheduledFor ? `${fmtDayDate(r.scheduledFor)} · ${r.slot} IST${r.status === "requested" ? " — we are confirming the pro for this day" : ""}`
                   : "Choose a day for the work"}
               </div>
             </div>
-            <span className={cn("chip", r.status === "completed" ? "chip-pass" : r.scheduledFor ? "chip-accent" : "chip-warn")}>
-              {r.status === "completed" ? "Done" : r.status === "in_progress" ? "In progress" : r.status === "assigned" ? "Confirmed" : r.scheduledFor ? "Day chosen" : <><CalendarClock size={11} className="mr-0.5" />Pick a day</>}
+            <span className={cn("chip", r.status === "completed" ? "chip-pass" : r.status === "cancelled" ? "" : r.scheduledFor ? "chip-accent" : "chip-warn")}>
+              {r.status === "completed" ? "Done" : r.status === "cancelled" ? "Refunded" : r.status === "in_progress" ? "In progress" : r.status === "assigned" ? "Confirmed" : r.scheduledFor ? "Day chosen" : <><CalendarClock size={11} className="mr-0.5" />Pick a day</>}
             </span>
           </div>
           {!shared && ["requested", "assigned"].includes(r.status) && (

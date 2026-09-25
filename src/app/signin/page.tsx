@@ -118,7 +118,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
                   This browser is signed in as <b className="text-ink">{user.name || "your account"}</b> ·{" "}
                   {user.role === "inspector" ? "inspector" : user.role === "admin" ? "ops" : "owner"} · {user.email && user.role !== "inspector" ? user.email : prettyPhone(user.phone)}.
                   {mismatch && wants === "inspector" && " The inspector app needs a number on the inspector roster."}
-                  {mismatch && wants === "owner" && " Owners sign in with Google."}
+                  {mismatch && wants === "owner" && " Owners sign in with Google or their email."}
                 </p>
 
                 {/* On a mismatch the obvious button has to be the one that
@@ -136,7 +136,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
                     <button className={cn("w-full", mismatch ? "btn btn-accent" : "btn btn-white")}>
                       <LogOut size={15} />
                       {mismatch
-                        ? wants === "inspector" ? "Sign in with an inspector number" : "Sign in with Google"
+                        ? wants === "inspector" ? "Sign in with an inspector number" : "Sign in as an owner"
                         : "Sign in as somebody else"}
                     </button>
                   </form>
@@ -149,7 +149,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
             ) : inspector ? (
               <SignInForm key={wants} side="inspector" />
             ) : (
-              <OwnerDoor googleOn={googleReady()} dev={process.env.NODE_ENV !== "production"} error={error} />
+              <OwnerDoor googleOn={googleReady()} dev={process.env.NODE_ENV !== "production"} error={error} mode={sp.mode === "signup" ? "signup" : "signin"} />
             )}
           </div>
 
@@ -165,7 +165,7 @@ export default async function Page({ searchParams }: PageProps<"/signin">) {
           {inspector ? (
             <>Not an inspector? <Link href="/signin" className="font-medium text-white underline underline-offset-4">Owner sign in</Link> · Want to join? <Link href={"/access?role=inspector" as Route} className="font-medium text-white underline underline-offset-4">Apply</Link></>
           ) : (
-            <>New here? Signing in with Google creates your account. By continuing you agree to our <Link href="/terms" className="underline underline-offset-4">Terms</Link> and <Link href={"/privacy" as Route} className="underline underline-offset-4">Privacy Policy</Link> — your property media stays private and is never sold.</>
+            <>By continuing you agree to our <Link href="/terms" className="underline underline-offset-4">Terms</Link> and <Link href={"/privacy" as Route} className="underline underline-offset-4">Privacy Policy</Link> — your property media stays private and is never sold.</>
           )}
         </p>
       </section>
