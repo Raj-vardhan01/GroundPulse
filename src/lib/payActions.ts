@@ -13,6 +13,7 @@ import { db, mutate, now, uid } from "@/lib/store";
 import { balanceDue, settlePayment } from "@/lib/payments";
 import { checkoutSignatureOk, createOrder, payMode, razorpayKeyId } from "@/lib/razorpay";
 import { repairBill } from "@/lib/repair";
+import { isLive, liveRefusal } from "@/lib/liveRepairs";
 import { liveSub } from "@/lib/plans";
 import { fmtDayDate, isBookable } from "@/lib/format";
 import { reachOn } from "@/lib/phone";
@@ -49,10 +50,14 @@ export async function startPayment(purpose: PaymentPurpose, refId: string): Prom
     description = `${inv.title} · ${inv.ref}`;
   } else {
     const iss = d.issues.find((i) => i.id === refId && i.ownerId === user.id);
-    if (!iss || iss.decision !== "pending") return { ok: false, error: "You have already decided this one." };
-    const rep = d.reports.find((r) => r.id === iss.reportId);
-    if (!rep || rep.heldForReview) return { ok: false, error: "We could not find that issue." };
-    if (balanceDue(d, iss.visitId)) return { ok: false, error: "Pay for the report first — then you can approve repairs from it." };
+    if (!iss || iss.decision !== "pending") return { ok: false, error: "This one is already decided or closed." };
+    const refusal = liveRefusal(d, iss);
+    if (refusal) return { ok: false, error: refusal };
+    if (!isLive(iss)) {
+      const rep = d.reports.find((r) => r.id === iss.reportId);
+      if (!rep || rep.heldForReview) return { ok: false, error: "We could not find that issue." };
+      if (balanceDue(d, iss.visitId)) return { ok: false, error: "Pay for the report first — then you can approve repairs from it." };
+    }
     if (!iss.quote) return { ok: false, error: "There is no quote on this yet." };
     const visit = d.visits.find((v) => v.id === iss.visitId);
     const sub = visit?.subscriptionId ? d.subscriptions.find((x) => x.id === visit.subscriptionId) ?? null : liveSub(d.subscriptions, iss.propertyId);

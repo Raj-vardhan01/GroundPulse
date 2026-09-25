@@ -24,7 +24,7 @@ export function Steps() {
         <div className="mt-12 grid gap-8 md:mt-16 md:gap-12">
           {steps.map((s, i) => (
             <Reveal key={s.k}>
-              <div className={cn("grid items-center gap-8 lg:grid-cols-12 lg:gap-12", i % 2 === 1 && "lg:[&>*:first-child]:order-2")}>
+              <div className={cn("grid items-center gap-8 lg:grid-cols-12 lg:gap-12 [&>*]:min-w-0", i % 2 === 1 && "lg:[&>*:first-child]:order-2")}>
                 <div className="lg:col-span-4">
                   <div className="flex items-center gap-3"><span className="text-[13px] font-semibold text-accent">{s.n}</span><span className="t-label">{s.k}</span></div>
                   <h3 className="t-2 mt-4 max-w-[16ch]">{s.t}</h3>

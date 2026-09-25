@@ -130,7 +130,7 @@ export function EvidenceFrame({
   const color = toneColor[tone];
   return (
     <figure
-      className={cn("relative overflow-hidden rounded-[10px] bg-[#15181c] select-none", className)}
+      className={cn("@container relative overflow-hidden rounded-[10px] bg-[#15181c] select-none", className)}
       style={ratio === "auto" ? undefined : { aspectRatio: ratio }}
     >
       {src ? (
@@ -162,7 +162,12 @@ export function EvidenceFrame({
         >
           {boxLabel && (
             <span
-              className="absolute -top-[22px] left-[-1.5px] whitespace-nowrap rounded-[4px] px-1.5 py-[3px] font-mono text-[9.5px] uppercase tracking-[0.12em] text-ink"
+              className={cn(
+                /* on a thumbnail the label is noise, and it has nowhere to go */
+                "absolute whitespace-nowrap rounded-[4px] px-1.5 py-[3px] font-mono text-[9.5px] uppercase tracking-[0.12em] text-ink @max-[140px]:hidden",
+                /* a box near the top edge keeps its label inside, or a short frame clips it */
+                box[1] < 20 ? "left-[2px] top-[2px]" : "-top-[22px] left-[-1.5px]",
+              )}
               style={{ background: color }}
             >
               {boxLabel}

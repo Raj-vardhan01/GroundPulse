@@ -40,6 +40,40 @@ export async function notify(subject: string, lines: [string, string][]) {
   }
 }
 
+/**
+ * One email to one person — a password link, a verification link. Same two
+ * ways to send as `notify`. Says what happened instead of throwing: "off"
+ * means no mail is configured (a laptop), "failed" means the provider said no.
+ */
+export async function sendEmail(to: string, subject: string, html: string): Promise<"sent" | "off" | "failed"> {
+  const from = process.env.MAIL_FROM || process.env.LEADS_EMAIL_FROM;
+  const resend = !!process.env.RESEND_API_KEY;
+  const smtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (!from || (!resend && !smtp)) return "off";
+  /* one address, exactly — both senders would split a list, and a password
+     link must never reach a second inbox */
+  if (/[\s,;<>]/.test(to) || (to.match(/@/g) ?? []).length !== 1) return "failed";
+  try {
+    if (resend) await sendViaResend(from, to, subject, html);
+    else await sendViaSmtp(from, to, subject, html);
+    return "sent";
+  } catch (err) {
+    console.error("[mail] could not send", subject, err);
+    return "failed";
+  }
+}
+
+/** A short, plain email with one button — what every account email is. */
+export function buttonEmail(heading: string, body: string, button: string, href: string, foot: string) {
+  return (
+    `<div style="font:15px/1.55 system-ui,sans-serif;color:#23201d;max-width:480px">` +
+    `<h2 style="font-weight:600;color:#134027;margin:0 0 12px">${escapeHtml(heading)}</h2>` +
+    `<p style="margin:0 0 20px">${escapeHtml(body)}</p>` +
+    `<p style="margin:0 0 20px"><a href="${escapeHtml(href)}" style="display:inline-block;background:#134027;color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600">${escapeHtml(button)}</a></p>` +
+    `<p style="margin:0;color:#8a847d;font-size:13px">${escapeHtml(foot)}</p></div>`
+  );
+}
+
 async function sendViaResend(from: string, to: string, subject: string, html: string) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

@@ -38,6 +38,14 @@ export type User = {
   /** the number an owner gives us to be reached on — the inspector's live
       call, updates. Never used to sign anybody in. */
   contactPhone?: string;
+  /** owners who sign in with an email and a password: a salted scrypt
+      hash — never the password itself */
+  passwordHash?: string;
+  /** when they proved the email is theirs — a link we sent, a password
+      reset, or Google */
+  emailVerifiedAt?: string | null;
+  /** bumped when the password changes, so every older session ends */
+  authVersion?: number;
   livesIn: string;
   /** the zone their browser reported, so times can be shown on their clock
       next to IST */
@@ -186,6 +194,10 @@ export type Visit = {
   /** the owner's entry code. No OTP, no checklist — the inspectors'
       own declaration, enforced here rather than trusted */
   otp: string;
+  /** the second code — given back at the end, by whoever takes the keys.
+      The visit only closes with it. */
+  exitCode?: string;
+  exitTries?: number;
   /** wrong codes tried at the door — five locks the door until ops has
       spoken to the owner */
   otpTries: number;
@@ -262,8 +274,14 @@ export type DraftQuote = {
   parts?: number;
   /** outside Care+ by its terms — appliance, structural, cosmetic, damage */
   excluded?: boolean;
+  /** the inspector checked: Urban Company shows a slot for it today */
+  slotToday?: boolean;
 };
-export type DraftItem = { t: string; s: ItemState | null; note: string; photos: Photo[]; videos: Video[]; quote?: DraftQuote | null };
+export type DraftItem = {
+  t: string; s: ItemState | null; note: string; photos: Photo[]; videos: Video[]; quote?: DraftQuote | null;
+  /** the live issue this item became when it was sent to the owner */
+  issueId?: string;
+};
 export type DraftRoom = {
   name: string;
   variant: "bathroom" | "kitchen" | "bedroom" | "balcony" | "electrical" | "entrance" | "living";
@@ -320,11 +338,15 @@ export type Report = {
   shareToken: string | null;
 };
 
-export type Decision = "pending" | "approved" | "declined";
+/* "closed": nobody decided — the hour ran out, the visit was closed first,
+   or it was only noted and never sent for a decision. */
+export type Decision = "pending" | "approved" | "declined" | "closed";
 /* requested → the owner has approved and said when suits them
    assigned  → a verified pro and a day are confirmed
    in_progress / completed → the work, inspector present */
-export type RepairStatus = "requested" | "assigned" | "in_progress" | "completed";
+/* cancelled → it could not be done on the visit: refunded in full, never
+   carried to another day */
+export type RepairStatus = "requested" | "assigned" | "in_progress" | "completed" | "cancelled";
 
 export type Quote = {
   labour: number; parts: number; fee: number; total: number; provider: string; trade: string;
@@ -361,6 +383,12 @@ export type Issue = {
   decidedAt: string | null;
   /** why the owner said no — the site promises "decline with a reason" */
   declineReason?: string;
+  /** sent to the owner live, from the property, while the inspector is
+      still there — and the hour they have to decide in */
+  sentAt?: string | null;
+  decideBy?: string | null;
+  /** why it closed without a decision */
+  closedWhy?: "expired" | "visit_closed" | "not_sent";
   repair: {
     status: RepairStatus;
     providerName: string;
@@ -373,6 +401,10 @@ export type Issue = {
     /** from the same spot as the before — a photo, a clip, or both */
     afterPhoto: Photo | null;
     afterVideo: Video | null;
+    /** a live repair: when the professional reached the property. Two
+        hours from approval without one, it is cancelled and refunded. */
+    proArrivedAt?: string | null;
+    cancelledAt?: string | null;
     /** the owner's rating of the finished work */
     rating?: { stars: number; note: string; at: string } | null;
   } | null;

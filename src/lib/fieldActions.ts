@@ -25,6 +25,8 @@ import { deliverReport } from "@/lib/lifecycle";
 import { discard, readVideo } from "@/lib/media";
 import { includedMinutes, overtimeFor } from "@/lib/payout";
 import { coverFor, urbanCompanyQuote } from "@/lib/repair";
+import { cancelLiveRepair, closeLive, notReadyToSend, sendLive } from "@/lib/liveRepairs";
+import { refundOwed } from "@/lib/refunds";
 import { initialsOf } from "@/lib/roster";
 import type { DraftRoom, ItemState, Photo, ReportRoom } from "@/lib/types";
 
@@ -271,7 +273,8 @@ export async function setItem(fd: FormData) {
 
   return editDraft(id, (draft) => {
     const it = draft.find((r) => r.name === room)?.items.find((x) => x.t === item);
-    if (it) it.s = state;
+    /* once sent, the owner is deciding on exactly what they were sent */
+    if (it && !it.issueId) it.s = state;
   });
 }
 
@@ -297,10 +300,11 @@ export async function setQuote(fd: FormData) {
   const price = Math.round(num(fd, "price") ?? 0);
   const parts = Math.round(num(fd, "parts") ?? 0);
   const excluded = str(fd, "excluded", 4) === "1";
+  const slotToday = str(fd, "slotToday", 4) === "1";
   if (price < 0 || price > 500_000 || parts < 0 || parts > 500_000) return false;
   return editDraft(id, (draft) => {
     const it = draft.find((r) => r.name === room)?.items.find((x) => x.t === item);
-    if (it) it.quote = service && price > 0 ? { service, price, parts, excluded } : null;
+    if (it && !it.issueId) it.quote = service && price > 0 ? { service, price, parts, excluded, slotToday } : null;
   });
 }
 
@@ -470,6 +474,25 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
   const missing = outstanding(v0.draft);
   if (missing.length) return { ok: false, error: `${missing.length} thing${missing.length > 1 ? "s" : ""} still to finish. ${missing[0]}` };
 
+  /* A repair approved on this visit is either done or put to another day
+     before the visit closes — never left hanging. */
+  const midway = d0.issues.find((i) => i.visitId === id && i.repair?.status === "in_progress");
+  if (midway) return { ok: false, error: `"${midway.title}" is still being repaired. Record the after photo, or mark it as not finished today.` };
+
+  /* The visit closes only with the second code — from the owner, or
+     whoever takes the keys back. */
+  if ((v0.exitTries ?? 0) >= MAX_OTP_TRIES) return { ok: false, error: "Too many wrong completion codes. Call ops — they will check with the owner and unlock it." };
+  const exit = str(fd, "exitCode", 8).replace(/\D/g, "");
+  if (v0.exitCode && exit !== v0.exitCode) {
+    const tries = await mutate((d) => {
+      const v = d.visits.find((x) => x.id === id)!;
+      v.exitTries = (v.exitTries ?? 0) + 1;
+      return v.exitTries;
+    });
+    const left = MAX_OTP_TRIES - tries;
+    return { ok: false, error: left > 0 ? `That is not the completion code. Ask the owner, or whoever takes the keys, to read it again — ${left} ${left === 1 ? "try" : "tries"} left.` : "Too many wrong completion codes. Call ops — they will check with the owner and unlock it." };
+  }
+
   const reportId = uid();
   await mutate((d) => {
     const v = d.visits.find((x) => x.id === id)!;
@@ -517,9 +540,15 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
        first report finds is quoted separately, so it is not eligible. */
     const sub = v.subscriptionId ? d.subscriptions.find((s) => s.id === v.subscriptionId) ?? null : null;
     const firstOfPlan = !!sub && sub.startedByVisitId === v.id;
+    /* Live questions still open close with the visit; every live issue
+       now belongs to this report. */
+    for (const li of d.issues.filter((x) => x.visitId === v.id && x.sentAt)) {
+      closeLive(d, li, "visit_closed");
+      li.reportId = reportId;
+    }
     for (const r of draft) {
       for (const i of r.items) {
-        if (i.s === "pass" || !i.s) continue;
+        if (i.s === "pass" || !i.s || i.issueId) continue;
         const q = i.quote ? urbanCompanyQuote(i.quote.price, i.quote.service, i.quote.parts ?? 0) : null;
         /* outside the cover: the plan's first report, or work its terms exclude */
         const eligible = !firstOfPlan && !i.quote?.excluded;
@@ -527,7 +556,9 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
           id: uid(), ref: issueRef(d), reportId, visitId: v.id, propertyId: v.propertyId, ownerId: v.ownerId,
           room: r.name, title: i.t, severity: i.s, body: i.note, variant: r.variant, photos: i.photos, videos: i.videos,
           quote: q, quotedAt: q ? now() : null, coverEligible: eligible, coveredInr: q ? coverFor(q, sub, eligible) : 0,
-          decision: "pending", decidedAt: null, repair: null,
+          /* repairs are decided live, during the visit — anything not sent
+             then is on the record, not up for a repair now */
+          decision: "closed", closedWhy: "not_sent", decidedAt: now(), repair: null,
         });
       }
     }
@@ -552,6 +583,67 @@ export async function submitVisit(_prev: FieldState, fd: FormData): Promise<Fiel
   redirect(`/field/visit/${id}?done=1`);
 }
 
+/* ── live decisions ──────────────────────────────────────────── */
+
+/** Send a flagged, priced item to the owner now. They have an hour. */
+export async function sendIssue(_prev: FieldState, fd: FormData): Promise<FieldState> {
+  const { ins } = await me();
+  if (!ins) return { ok: false, error: "Your inspector profile is not set up yet." };
+  const id = str(fd, "id", 60);
+  const room = str(fd, "room", 80);
+  const item = str(fd, "item", 120);
+  let error: string | null = null;
+  await mutate((d) => {
+    const v = d.visits.find((x) => x.id === id && x.inspectorId === ins.id);
+    if (!v || v.status !== "on_site" || !v.draft) { error = "This visit is not open."; return; }
+    const r = v.draft.find((x) => x.name === room);
+    const it = r?.items.find((x) => x.t === item);
+    if (!r || !it) { error = "That item is not on this checklist."; return; }
+    error = notReadyToSend(it);
+    if (!error) sendLive(d, v, r, it);
+  });
+  if (error) return { ok: false, error };
+  revalidatePath(`/field/visit/${id}`);
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
+/** The professional has reached the property — the two-hour clock stops. */
+export async function proArrived(fd: FormData) {
+  const { ins } = await me();
+  if (!ins) return;
+  const id = str(fd, "id", 60);
+  await mutate((d) => {
+    const iss = d.issues.find((i) => i.id === id);
+    const v = iss && d.visits.find((x) => x.id === iss.visitId);
+    if (!iss?.repair || !v || v.inspectorId !== ins.id || iss.repair.status !== "in_progress" || iss.repair.proArrivedAt) return;
+    iss.repair.proArrivedAt = now();
+  });
+  revalidatePath("/field", "layout");
+  revalidatePath("/app", "layout");
+}
+
+/** An approved repair that cannot be done on this visit. It is cancelled
+    and the owner refunded in full — nobody comes back another day for it. */
+export async function cancelRepair(fd: FormData) {
+  const { ins } = await me();
+  if (!ins) return;
+  const id = str(fd, "id", 60);
+  const why = str(fd, "why", 300) || "it could not be done on the visit";
+  let owner = "", visit = "";
+  await mutate((d) => {
+    const iss = d.issues.find((i) => i.id === id);
+    const v = iss && d.visits.find((x) => x.id === iss.visitId);
+    if (!iss?.repair || !v || v.inspectorId !== ins.id || iss.repair.status !== "in_progress") return;
+    cancelLiveRepair(d, iss, why);
+    owner = iss.ownerId;
+    visit = iss.visitId;
+  });
+  if (owner) await refundOwed(owner, visit);
+  revalidatePath("/field", "layout");
+  revalidatePath("/app", "layout");
+}
+
 /* ── repairs ─────────────────────────────────────────────────── */
 
 /** The inspector who found it closes the repair: an after-photo from the
@@ -570,9 +662,10 @@ export async function witnessRepair(_prev: FieldState, fd: FormData): Promise<Fi
 
   const d0 = await db();
   const iss0 = d0.issues.find((i) => i.id === id);
-  const found = iss0 && d0.visits.some((v) => v.id === iss0.visitId && v.inspectorId === ins.id);
+  /* the inspector who wrote the report found it, whoever holds the visit now */
+  const found = !!iss0 && (d0.reports.find((r) => r.id === iss0.reportId)?.inspectorId ?? d0.visits.find((v) => v.id === iss0.visitId)?.inspectorId) === ins.id;
   if (!iss0?.repair || !found) return { ok: false, error: "This repair is not yours." };
-  if (iss0.repair.status === "completed") return { ok: false, error: "This repair is already closed." };
+  if (iss0.repair.status === "completed" || iss0.repair.status === "cancelled") return { ok: false, error: "This repair is already closed." };
   if (!iss0.repair.scheduledFor) return { ok: false, error: "The owner has not picked a day for it yet." };
   if (iss0.repair.scheduledFor > todayKey()) return { ok: false, error: `This repair is on ${fmtDayDate(iss0.repair.scheduledFor)}. Take the after photo on the day.` };
   if (clip && !afterVideo) return { ok: false, error: "The after clip did not upload — record it again." };
@@ -590,7 +683,7 @@ export async function witnessRepair(_prev: FieldState, fd: FormData): Promise<Fi
     pushEvent(d, {
       ownerId: iss.ownerId, propertyId: iss.propertyId, visitId: iss.visitId, type: "repair.completed",
       title: "Repair completed", body: `${iss.title} · ${r.providerName} · ${r.afterPhoto && r.afterVideo ? "after photo and clip" : r.afterVideo ? "after clip" : "after photo"} from the same angle, taken by ${ins.name}`,
-      href: `/app/reports/${iss.reportId}#${iss.id}`,
+      href: iss.reportId ? `/app/reports/${iss.reportId}#${iss.id}` : `/app/visits/${iss.visitId}#live`,
     });
   });
   revalidatePath("/field", "layout");

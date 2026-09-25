@@ -1,7 +1,7 @@
 import { Check, X } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/shared/SectionHead";
-import { carePlusCover as c, inr } from "@/lib/pricing";
+import { carePlusCover as c, damageCover, inr } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
 
 export function CoverTerms() {
@@ -55,10 +55,10 @@ export function CoverTerms() {
             <div>
               <p className="text-[16px] font-medium text-white/70">Our promise · every plan, every visit</p>
               <h3 className="t-2 mt-1 max-w-[16ch]">We fix what we damage.</h3>
-              <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">If we break something while we're inside — a fitting, a tile, a pipe — we repair or replace it at our cost. It's built so that rarely happens: one verified person, every room on video, and an exit walkthrough before they leave.</p>
+              <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">If we break something while we're inside — a fitting, a tile, a pipe — we repair or replace it at our cost — up to {damageCover.words} a visit. It's built so that rarely happens: one verified person, every room on video, and an exit walkthrough before they leave.</p>
             </div>
             <ol className="grid gap-2">
-              {["One verified person, in only after you confirm · GPS + time on every photo", "Every room on video, plus an exit walkthrough before leaving", "Something off? Tell us on WhatsApp — any time until your next visit", "Anything we damaged, we fix at our cost. Cupboards and lockers are never opened — keep cash, jewellery and documents locked away."].map((t, i) => (
+              {["One verified person, in only after you confirm · GPS + time on every photo", "Every room on video, plus an exit walkthrough before leaving", "Something off? Tell us on WhatsApp — any time until your next visit", `Anything we damaged, we fix at our cost — up to ${damageCover.words} a visit. Cupboards and lockers are never opened — keep cash, jewellery and documents locked away.`].map((t, i) => (
                 <li key={t} className="flex items-start gap-3 rounded-[12px] bg-white/[0.07] px-4 py-3 text-[14px]"><span className="mt-px shrink-0 text-white/40">0{i + 1}</span>{t}</li>
               ))}
             </ol>

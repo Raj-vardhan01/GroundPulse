@@ -59,7 +59,7 @@ export function CleanMethod() {
 
           <div className="grid content-start gap-3">
             {area.shots.map((n, i) => (
-              <BeforeAfter key={n} name={n} label={`${area.area} · ${shotLabel[n]}`} time={i === 0 ? ["11:14", "15:40"] : ["11:52", "15:44"]} compact />
+              <BeforeAfter key={n} name={n} label={`${area.area} · ${shotLabel[n]}`} time={i === 0 ? ["11:14", "15:40"] : ["11:52", "15:44"]} compact className={i > 0 ? "max-sm:hidden" : undefined} />
             ))}
             <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-text-2">
               <Camera size={14} className="mt-[2px] shrink-0 text-accent" />
@@ -70,7 +70,7 @@ export function CleanMethod() {
       </AnimatePresence>
 
       {/* the four things that only happen because an inspector is standing there */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="swipe mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {finish.map((f) => (
           <div key={f.t} className="card h-full bg-beige p-5">
             <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-accent shadow-card"><Check size={15} strokeWidth={3} /></span>

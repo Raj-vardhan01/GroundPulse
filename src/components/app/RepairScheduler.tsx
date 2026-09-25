@@ -6,14 +6,19 @@ import { scheduleRepair, type FormState } from "@/lib/actions";
 import { SubmitButton } from "@/components/app/SubmitButton";
 import { DayPicker, firstBookable } from "@/components/app/DayPicker";
 
+/* One object, made once. An inline `{ ok: false }` is a new object on every
+   render, so on the server the "has the result changed?" check below never
+   settles and the page dies with "Too many re-renders". */
+const IDLE: FormState = { ok: false };
+
 /** The owner says when the approved repair can happen; ops confirms the
     pro for that day and sends an inspector to be there. */
 export function RepairScheduler({ id, current, tz }: { id: string; current: { date: string; slot: string } | null; tz: string }) {
-  const [state, save] = useActionState(scheduleRepair, { ok: false } as FormState);
+  const [state, save] = useActionState(scheduleRepair, IDLE);
   const [open, setOpen] = useState(!current);
   const [date, setDate] = useState(() => current?.date || firstBookable());
   const [slot, setSlot] = useState(current?.slot || "10:00 – 13:00");
-  const [seen, setSeen] = useState<FormState | null>(null);
+  const [seen, setSeen] = useState<FormState>(IDLE);
   if (state !== seen) {
     setSeen(state);
     if (state.ok) setOpen(false);

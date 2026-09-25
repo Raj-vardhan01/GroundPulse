@@ -176,6 +176,7 @@ const visit = ({ property, ...v }: VisitSeed): Visit => {
     lines: [],
     payoutInr: payoutFor(property, kind, addOns),
     otp: String(1000 + (property.id.charCodeAt(4) * 7 + (v.ref?.charCodeAt(9) ?? 3) * 13) % 9000),
+    exitCode: String(1000 + (property.id.charCodeAt(4) * 11 + (v.ref?.charCodeAt(9) ?? 5) * 17) % 9000),
     otpTries: 0,
     claimedAt: null,
     checkIn: null,

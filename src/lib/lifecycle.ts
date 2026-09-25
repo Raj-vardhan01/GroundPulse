@@ -161,9 +161,13 @@ export function approveIssueIn(
   iss.decidedAt = now();
   iss.coveredInr = money.covered;
   if (sub && money.covered) sub.coverUsedInr += money.covered;
+  /* Approved live, with the inspector still inside: it is done now, on
+     this visit. Anything else waits for the owner to pick a day. */
+  const now_ = !!iss.sentAt && visit?.status === "on_site";
   iss.repair = {
-    status: "requested", providerName: iss.quote?.provider ?? "", trade: iss.quote?.trade ?? "",
-    scheduledFor: "", slot: "", completedAt: null, note: "", afterPhoto: null, afterVideo: null,
+    status: now_ ? "in_progress" : "requested", providerName: iss.quote?.provider ?? "", trade: iss.quote?.trade ?? "",
+    scheduledFor: now_ ? visit!.scheduledFor : "", slot: now_ ? visit!.slot : "",
+    completedAt: null, note: "", afterPhoto: null, afterVideo: null,
   };
   if (money.payable > 0) {
     d.invoices.push({
@@ -184,8 +188,8 @@ export function approveIssueIn(
     ownerId: iss.ownerId, propertyId: iss.propertyId, visitId: iss.visitId,
     type: "issue.approved",
     title: "You approved a repair",
-    body: `${iss.title} · ${iss.ref}${money.payable ? ` · ${inr(money.payable)} paid` : " · fully covered"}${money.covered ? `, Care+ covers ${inr(money.covered)}` : ""} — pick a day for it`,
-    href: `/app/reports/${iss.reportId}#${iss.id}`,
+    body: `${iss.title} · ${iss.ref}${money.payable ? ` · ${inr(money.payable)} paid` : " · fully covered"}${money.covered ? `, Care+ covers ${inr(money.covered)}` : ""} — ${now_ ? "being done now, with your inspector there" : "pick a day for it"}`,
+    href: iss.reportId ? `/app/reports/${iss.reportId}#${iss.id}` : `/app/visits/${iss.visitId}#live`,
   });
   closeIfSettled(d, iss.visitId);
 }

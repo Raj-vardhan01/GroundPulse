@@ -225,6 +225,16 @@ function migrate(d: DB): DB {
     }
   }
 
+  if (version < 10) {
+    /* A second code, to close a visit, for every visit not yet finished. */
+    for (const v of d.visits) {
+      if (!v.exitCode && ["unpaid", "scheduled", "assigned", "en_route", "on_site"].includes(v.status)) {
+        v.exitCode = String(1000 + Math.floor(Math.random() * 9000));
+      }
+    }
+    for (const i of d.inspectors) (i as unknown as Loose).penalties ??= [];
+  }
+
   d.version = STORE_VERSION;
   return d;
 }

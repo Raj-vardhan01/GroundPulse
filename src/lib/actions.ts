@@ -8,12 +8,17 @@
    add-ons and plans are decided on the server, never taken from the form.
    ════════════════════════════════════════════════════════════════ */
 
+import { APPS_LIVE } from "@/lib/flags";
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { currentUser, devSignInOwner, homeFor, inspectorDoorOpen, requireOwner, signOut, startOtp, verifyOtp, type Side } from "@/lib/auth";
+import {
+  changePassword, cleanEmail, currentUser, devSignInOwner, finishPasswordReset, homeFor, inspectorDoorOpen, requireOwner, resendVerification,
+  signInWithPassword, signOut, signUpWithPassword, startOtp, startPasswordReset, verifyOtp, type Side,
+} from "@/lib/auth";
 import { NOT_ON_ROSTER } from "@/lib/roster";
 import { advanceOf, balanceDue } from "@/lib/payments";
+import { isLive, liveRefusal } from "@/lib/liveRepairs";
 import { refundOwed } from "@/lib/refunds";
 import { db, invoiceRef, mutate, now, ticketRef, uid, visitRef } from "@/lib/store";
 import { ADD_ON_LIMITS, SLOTS, inr, planPriceAt, quote } from "@/lib/quote";
@@ -35,18 +40,24 @@ const s = (fd: FormData, k: string, max = 400) => String(fd.get(k) ?? "").trim()
 const n = (fd: FormData, k: string) => Number(fd.get(k) ?? 0) || 0;
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 
-export type FormState = { ok: boolean; error?: string; devCode?: string | null; phone?: string; message?: string };
+export type FormState = { ok: boolean; error?: string; devCode?: string | null; phone?: string; message?: string; devLink?: string | null };
 
 /* ── sign in ─────────────────────────────────────────────────── */
+
+/* Hiding the sign-in pages is not enough: these actions can be called
+   without the page. While the apps are off, none of them does anything —
+   no code is sent, no account is made. */
+const APPS_CLOSED: FormState = { ok: false, error: "Not available." };
 
 const sideOf = (fd: FormData): Side => (s(fd, "as", 12) === "inspector" ? "inspector" : "owner");
 
 export async function requestCode(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
   const cc = s(fd, "cc", 4) || "91";
   const raw = s(fd, "phone", 40);
   /* Codes are only for the inspector door — owners sign in with Google.
      Nobody off the roster is even sent one. */
-  if (sideOf(fd) !== "inspector") return { ok: false, error: "Owners sign in with Google." };
+  if (sideOf(fd) !== "inspector") return { ok: false, error: "Owners sign in with Google or their email." };
   const parsed = parsePhone(cc, raw);
   if (parsed.ok && !(await inspectorDoorOpen(parsed.phone))) return { ok: false, error: NOT_ON_ROSTER };
   const res = await startOtp(cc, raw);
@@ -55,6 +66,7 @@ export async function requestCode(_prev: FormState, fd: FormData): Promise<FormS
 }
 
 export async function confirmCode(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
   const res = await verifyOtp(s(fd, "phone", 20), s(fd, "code", 8), sideOf(fd));
   if (!res.ok) return { ok: false, error: res.error, phone: s(fd, "phone", 20) };
   redirect(res.role === "owner" && !res.onboarded ? "/welcome" : homeFor(res.role));
@@ -78,12 +90,64 @@ export async function switchAccount(fd: FormData) {
 /** Development only: sign in as any owner by email — a laptop has no
     Google keys. Production refuses. */
 export async function devSignIn(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
   if (process.env.NODE_ENV === "production") return { ok: false, error: "Not available." };
   const email = s(fd, "email", 200).toLowerCase();
   if (!isEmail(email)) return { ok: false, error: "That email address does not look right." };
   const user = await devSignInOwner(email);
   if (!user) return { ok: false, error: "Not available." };
   redirect(user.onboardedAt && reachOn(user) ? "/app" : "/welcome");
+}
+
+/* ── owners: email and password ──────────────────────────────── */
+
+/* Passwords are read as typed — never trimmed, a space is a character. */
+const pw = (fd: FormData, k: string) => String(fd.get(k) ?? "").slice(0, 400);
+const homeOf = (u: { onboardedAt: string | null; contactPhone?: string; phone: string }) => (u.onboardedAt && reachOn(u) ? "/app" : "/welcome");
+
+export async function passwordSignIn(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
+  const res = await signInWithPassword(s(fd, "email", 200), pw(fd, "password"));
+  if (!res.ok) return { ok: false, error: res.error };
+  redirect(homeOf(res.user));
+}
+
+export async function passwordSignUp(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
+  const res = await signUpWithPassword(s(fd, "email", 200), pw(fd, "password"));
+  if (!res.ok) return { ok: false, error: res.error };
+  redirect("/welcome");
+}
+
+export async function forgotPassword(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
+  const r = await startPasswordReset(s(fd, "email", 200));
+  if (r.error) return { ok: false, error: r.error };
+  return { ok: true, message: "If that email has an account, a link to choose a new password is on its way. It works for 30 minutes.", devLink: r.devLink };
+}
+
+export async function resetPassword(_prev: FormState, fd: FormData): Promise<FormState> {
+  if (!APPS_LIVE) return APPS_CLOSED;
+  if (pw(fd, "password") !== pw(fd, "again")) return { ok: false, error: "The two passwords are not the same." };
+  const res = await finishPasswordReset(s(fd, "token", 2000), pw(fd, "password"));
+  if (!res.ok) return { ok: false, error: res.error };
+  redirect(homeOf(res.user));
+}
+
+export async function savePassword(_prev: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireOwner();
+  if (pw(fd, "password") !== pw(fd, "again")) return { ok: false, error: "The two new passwords are not the same." };
+  const r = await changePassword(user.id, pw(fd, "current"), pw(fd, "password"));
+  if (!r.ok) return { ok: false, error: r.error };
+  revalidatePath("/app/account");
+  return { ok: true, message: "Password saved. Every other device is signed out." };
+}
+
+export async function sendVerification(): Promise<FormState> {
+  const user = await requireOwner();
+  const r = await resendVerification(user.id);
+  if (r.error) return { ok: false, error: r.error };
+  return { ok: true, message: "Sent — check your inbox, and your spam folder.", devLink: r.devLink };
 }
 
 /* ── profile & account ───────────────────────────────────────── */
@@ -100,6 +164,17 @@ export async function saveProfile(_prev: FormState, fd: FormData): Promise<FormS
   const tz = s(fd, "tz", 60);
   if (!name) return { ok: false, error: "We need a name to put on your reports." };
   if (email && !isEmail(email)) return { ok: false, error: "That email address does not look right." };
+  /* An email can be a sign-in, so two owners cannot share one — and one
+     that changes is unconfirmed until its own link is used. */
+  if (email && email !== user.email) {
+    if (!cleanEmail(email)) return { ok: false, error: "That email address does not look right." };
+    const d0 = await db();
+    if (d0.users.some((x) => x.id !== user.id && x.email === email && !x.deletedAt && x.role !== "inspector")) {
+      return { ok: false, error: "That email already belongs to another account." };
+    }
+  }
+  const stored = (await db()).users.find((x) => x.id === user.id);
+  if (!email && stored?.passwordHash) return { ok: false, error: "You sign in with this email — it cannot be blank." };
   /* Required: the inspector calls it from the door, and updates go to it. */
   const phone = parsePhone(s(fd, "cc", 4) || "91", s(fd, "phone", 40));
   if (!phone.ok) return { ok: false, error: phone.error };
@@ -107,6 +182,7 @@ export async function saveProfile(_prev: FormState, fd: FormData): Promise<FormS
   await mutate((d) => {
     const u = d.users.find((x) => x.id === user.id)!;
     u.name = name;
+    if (u.email !== email) u.emailVerifiedAt = null;
     u.email = email;
     u.contactPhone = phone.phone;
     u.livesIn = s(fd, "livesIn", 120);
@@ -351,7 +427,7 @@ function makeVisit(d: DB, property: Property, v: NewVisit): Visit {
     id: uid(), ref: visitRef(d), tierId: "", addOns, status: "scheduled", inspectorId: "",
     amountInr: 0, paid: false, liveCall: false, notes: "", founding: false,
     subscriptionId: null, usesPlan: false, planClean: false, planService: "", lines: [],
-    payoutInr: payoutFor(property, v.kind, addOns), otp: newOtp(), otpTries: 0,
+    payoutInr: payoutFor(property, v.kind, addOns), otp: newOtp(), otpTries: 0, exitCode: newOtp(), exitTries: 0,
     claimedAt: null, checkIn: null, draft: null, recording: true, rating: null,
     createdAt: now(), cancelledAt: null, startedAt: null, endedAt: null, reportId: null,
     advanceInr: 0, overtimeInr: 0,
@@ -582,10 +658,14 @@ export async function decideIssue(_prev: FormState, fd: FormData): Promise<FormS
   const d0 = await db();
   const iss0 = d0.issues.find((i) => i.id === id && i.ownerId === user.id);
   if (!iss0) return { ok: false, error: "We could not find that issue." };
-  if (iss0.decision !== "pending") return { ok: false, error: "You have already decided this one." };
-  const rep0 = d0.reports.find((r) => r.id === iss0.reportId);
-  if (!rep0 || rep0.heldForReview) return { ok: false, error: "We could not find that issue." };
-  if (balanceDue(d0, iss0.visitId)) return { ok: false, error: "Pay for the report first — then you can decide on what it found." };
+  if (iss0.decision !== "pending") return { ok: false, error: "This one is already decided or closed." };
+  const refusal = liveRefusal(d0, iss0);
+  if (refusal) return { ok: false, error: refusal };
+  if (!isLive(iss0)) {
+    const rep0 = d0.reports.find((r) => r.id === iss0.reportId);
+    if (!rep0 || rep0.heldForReview) return { ok: false, error: "We could not find that issue." };
+    if (balanceDue(d0, iss0.visitId)) return { ok: false, error: "Pay for the report first — then you can decide on what it found." };
+  }
   if (approve && !iss0.quote) return { ok: false, error: "There is no quote on this yet — nothing can be approved until you can see the price." };
   /* "Approve, or decline with a reason" — the reason is kept with the decision. */
   const reason = s(fd, "reason", 400);

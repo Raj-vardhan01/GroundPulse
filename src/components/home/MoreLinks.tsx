@@ -23,7 +23,7 @@ export function MoreLinks() {
           title={<span id="more-title">Want the details?</span>}
           lede="Everything else has its own page."
         />
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="swipe mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {links.map(({ I, t, b, href }, i) => (
             <Reveal key={t} delay={i * 0.04}>
               <Link href={href} className="card group flex h-full flex-col bg-white p-6 shadow-card transition hover:-translate-y-0.5">

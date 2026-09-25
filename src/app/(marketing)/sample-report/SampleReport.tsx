@@ -104,7 +104,7 @@ function HomeReport({ approved, setApproved }: { approved: boolean; setApproved:
       </div>
 
       {/* rooms */}
-      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="swipe mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {rooms.map((r) => (
           <div key={r.name} className="card bg-white p-4 shadow-card">
             <VideoTile title={r.name} dur={r.dur} v={r.v} />

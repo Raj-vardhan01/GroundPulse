@@ -27,7 +27,7 @@ export function MapCard({ className }: { className?: string }) {
       </svg>
       {pins.map((p) => (
         <div key={p.l} className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${p.x}%`, top: `${p.y}%` }}>
-          <div className="mb-1 whitespace-nowrap rounded-[10px] bg-white px-2.5 py-1.5 text-[12px] shadow-card"><span className="font-medium">{p.l}</span> <span className="text-text-2">· {p.n}</span></div>
+          <div className="mb-1 whitespace-nowrap rounded-[10px] bg-white px-2 py-1 text-[11px] shadow-card sm:px-2.5 sm:py-1.5 sm:text-[12px]"><span className="font-medium">{p.l}</span><span className="text-text-2 max-lg:hidden"> · {p.n}</span></div>
           <div className="mx-auto grid h-8 w-8 place-items-center rounded-full bg-accent text-white shadow-[0_6px_14px_-4px_rgba(20,102,74,.7)]"><MapPin size={15} /></div>
         </div>
       ))}

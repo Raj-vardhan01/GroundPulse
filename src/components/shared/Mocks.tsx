@@ -202,7 +202,7 @@ export function OwnerDashMock() {
   ];
   return (
     <Card title="My properties" meta="Priya S.">
-      <div className="grid gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {props.map((p, i) => (
           <div key={p.n} className="flex items-center gap-3 rounded-[12px] border border-line p-2.5">
             <HealthRing score={p.s} size={46} stroke={4.5} delay={0.3 + i * 0.1} />

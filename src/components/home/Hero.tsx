@@ -48,7 +48,7 @@ export function Hero() {
             </Link>
           </motion.div>
           <motion.div {...up(0.5)} className="mt-3.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[14px] font-medium text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.45)]">
-            <span>Live in Bengaluru</span><span className="h-3.5 w-px bg-white/40" /><span>Homes · Plots · Cars</span><span className="h-3.5 w-px bg-white/40" /><span>We fix what we damage</span>
+            <span>Live in Bengaluru</span><span className="h-3.5 w-px bg-white/40 max-sm:hidden" /><span>Homes · Plots · Cars</span><span className="h-3.5 w-px bg-white/40 max-sm:hidden" /><span>We fix what we damage</span>
           </motion.div>
         </div>
 

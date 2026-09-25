@@ -150,6 +150,10 @@ export const visitCovers = [
 export const visitUseCases = ["Before you fly down", "After a storm or monsoon", "Tenant check-in / check-out", "Parents' house, once a quarter", "Before you buy or rent it out"];
 
 /* ── Care+ cover terms (plain language) ──────────────────────── */
+/* If we damage something during a visit we repair or replace it at our
+   cost — up to this much for everything damaged on any one visit. */
+export const damageCover = { perVisit: 100_000, words: "₹1 lakh" } as const;
+
 export const carePlusCover = {
   yearly: 20000,
   perIncident: 10000,

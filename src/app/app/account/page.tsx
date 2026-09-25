@@ -9,6 +9,7 @@ import { PageHead, Panel, PanelHead } from "@/components/app/ui";
 import { Reveal } from "@/components/ui/Reveal";
 import { fmtDate } from "@/lib/format";
 import { site } from "@/lib/site";
+import { SignInSettings } from "./SignInSettings";
 
 export const metadata = { title: "Account" };
 
@@ -27,6 +28,13 @@ export default async function Page() {
               <div className="p-5">
                 <ProfileForm compact phone={reachOn(user)} name={user.name} email={user.email} livesIn={user.livesIn} signedInAs={user.googleSub ? user.email : ""} />
               </div>
+            </Panel>
+          </Reveal>
+
+          <Reveal delay={0.03}>
+            <Panel>
+              <PanelHead title="Signing in" meta="Google, your email and password, or both" />
+              <SignInSettings email={user.email} verified={!!user.emailVerifiedAt} google={!!user.googleSub} hasPassword={!!user.passwordHash} />
             </Panel>
           </Reveal>
 

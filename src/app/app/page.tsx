@@ -5,7 +5,7 @@ import {
   Home as HomeIcon, Hourglass, MapPin, Plus, Radio, Wrench,
 } from "lucide-react";
 import { requireOwner } from "@/lib/auth";
-import { propertyViews, portfolioScore, openIssues, timeline, invoices, inspectorsById, repairsToSchedule, visits as allVisits, isOverdue, UPCOMING } from "@/lib/queries";
+import { issueHref, propertyViews, portfolioScore, openIssues, timeline, invoices, inspectorsById, repairsToSchedule, visits as allVisits, isOverdue, UPCOMING } from "@/lib/queries";
 import { PropertyCard } from "@/components/app/PropertyCard";
 import { FoundingCard } from "@/components/app/FoundingCard";
 import { EntryCode } from "@/components/app/EntryCode";
@@ -154,7 +154,7 @@ export default async function Dashboard() {
               ))}
               {decide.map((i) => (
                 <li key={i.id}>
-                  <Link href={`/app/reports/${i.reportId}#${i.id}` as Route} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-paper">
+                  <Link href={issueHref(i) as Route} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-paper">
                     <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", i.severity === "fail" ? "bg-fail-soft text-fail" : "bg-warn-soft text-warn")}><Flag size={16} /></span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[15px] font-medium">{i.title}</div>
@@ -167,7 +167,7 @@ export default async function Dashboard() {
               ))}
               {toSchedule.map((i) => (
                 <li key={i.id}>
-                  <Link href={`/app/reports/${i.reportId}#${i.id}` as Route} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-paper">
+                  <Link href={issueHref(i) as Route} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-paper">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-tint text-accent"><Wrench size={16} /></span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[15px] font-medium">Pick a day for: {i.title}</div>

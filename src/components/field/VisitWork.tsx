@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   AlertTriangle, Check, ChevronDown, Flag, Play, Send, Video, X, Wrench,
 } from "lucide-react";
-import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, setCleanPhoto, setItem, setNote, setQuote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
+import { addItemVideo, addPhoto, dropItemVideo, dropPhoto, sendIssue, setCleanPhoto, setItem, setNote, setQuote, setRoomVideo, submitVisit, type FieldState } from "@/lib/fieldActions";
 import { FEE_RATE } from "@/lib/repair";
 import { carePlusCover } from "@/lib/pricing";
 import { PhotoInput } from "@/components/field/PhotoInput";
@@ -62,7 +62,7 @@ export function VisitWork({ id, draft: initial, clean = null }: { id: string; dr
   };
   const priceIt = (room: string, item: string, q: Required<DraftQuote>) => {
     edit(room, item, (i) => ({ ...i, quote: q.service && q.price > 0 ? q : null }));
-    send(setQuote, { room, item, service: q.service, price: String(q.price), parts: String(q.parts), excluded: q.excluded ? "1" : "" });
+    send(setQuote, { room, item, service: q.service, price: String(q.price), parts: String(q.parts), excluded: q.excluded ? "1" : "", slotToday: q.slotToday ? "1" : "" });
   };
   const photo = (room: string, item: string, thumb: string, c: { lat: number | null; lng: number | null }) => {
     /* the same id on both sides, so removing it a second later removes it on the server too */
@@ -150,6 +150,8 @@ export function VisitWork({ id, draft: initial, clean = null }: { id: string; dr
                     onVerdict={(s) => verdict(room.name, item.t, s)}
                     onNote={(v) => note(room.name, item.t, v)}
                     onQuote={(q) => priceIt(room.name, item.t, q)}
+                    room={room.name}
+                    onSent={() => edit(room.name, item.t, (i) => ({ ...i, issueId: "sent" }))}
                     onPhoto={(t, c) => photo(room.name, item.t, t, c)}
                     onDrop={(pid) => removePhoto(room.name, item.t, pid)}
                     onVideo={(u) => itemVideo(room.name, item.t, u)}
@@ -192,10 +194,12 @@ export function VisitWork({ id, draft: initial, clean = null }: { id: string; dr
 }
 
 function Item({
-  item, visitId, onVerdict, onNote, onQuote, onPhoto, onDrop, onVideo, onDropVideo,
+  item, visitId, room, onSent, onVerdict, onNote, onQuote, onPhoto, onDrop, onVideo, onDropVideo,
 }: {
   item: DraftItem;
   visitId: string;
+  room: string;
+  onSent: () => void;
   onVerdict: (s: ItemState) => void;
   onNote: (v: string) => void;
   onQuote: (q: Required<DraftQuote>) => void;
@@ -205,14 +209,16 @@ function Item({
   onDropVideo: (key: string) => void;
 }) {
   const needsProof = item.s === "attn" || item.s === "fail";
+  /* sent to the owner: fixed, because they are deciding on exactly this */
+  const sent = !!item.issueId;
   return (
     <div className="border-b border-line px-4 py-3.5 last:border-0">
       <div className="text-[14.5px] font-medium">{item.t}</div>
 
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
         {VERDICTS.map((v) => (
-          <button key={v.s} type="button" onClick={() => onVerdict(v.s)}
-            className={cn("h-11 rounded-[10px] text-[13px] font-semibold transition active:translate-y-px",
+          <button key={v.s} type="button" onClick={() => !sent && onVerdict(v.s)} disabled={sent && item.s !== v.s}
+            className={cn("h-11 rounded-[10px] text-[13px] font-semibold transition active:translate-y-px disabled:opacity-40",
               item.s === v.s ? v.cls : "border border-line-2 text-text-2")}>
             {v.label}
           </button>
@@ -255,7 +261,16 @@ function Item({
             <PhotoInput onPhoto={onPhoto} label={item.photos.length ? "Another photo" : "Add photo"} />
             {item.videos.length < 3 && <VideoInput scope="visit" id={visitId} label="Add video" maxSeconds={ITEM_SECONDS} onVideo={onVideo} />}
           </div>
-          <QuoteFields quote={item.quote ?? null} onQuote={onQuote} />
+          {sent ? (
+            <p className="mt-3 flex items-center gap-1.5 border-t border-line pt-3 text-[13px] font-medium text-accent">
+              <Send size={13} /> Sent to the owner — their decision shows at the top of this page.
+            </p>
+          ) : (
+            <>
+              <QuoteFields quote={item.quote ?? null} onQuote={onQuote} />
+              <SendToOwner visitId={visitId} room={room} item={item} onSent={onSent} />
+            </>
+          )}
         </div>
       )}
 
@@ -275,6 +290,9 @@ function Review({
   id, draft, todo, back, onJump,
 }: { id: string; draft: DraftRoom[]; todo: string[]; back: () => void; onJump: (room: string) => void }) {
   const [state, submit] = useActionState(submitVisit, { ok: false } as FieldState);
+  /* held here, so a wrong completion code does not wipe the summary */
+  const [summary, setSummary] = useState("");
+  const [exitCode, setExitCode] = useState("");
   const counts = draft.reduce(
     (a, r) => { for (const i of r.items) if (i.s) a[i.s]++; return a; },
     { pass: 0, attn: 0, fail: 0 } as Record<ItemState, number>,
@@ -329,9 +347,21 @@ function Review({
             The owner reads this before anything else. What is the state of the place, and what actually needs doing?
           </p>
           <textarea
-            name="summary" rows={5} required minLength={40}
+            name="summary" rows={5} required minLength={40} value={summary} onChange={(e) => setSummary(e.target.value)}
             placeholder="The house is in good order for a place shut five months. One thing needs a decision — a slow leak under the first bathroom sink…"
             className="w-full rounded-[12px] border border-line-2 bg-white px-4 py-3 text-[15px] leading-relaxed outline-none focus:border-accent focus:ring-4 focus:ring-accent/10"
+          />
+        </label>
+
+        <label className="mt-4 block">
+          <span className="text-[15px] font-semibold">Completion code</span>
+          <p className="t-small mt-0.5 mb-2">
+            The second code, from the owner — or from whoever you hand the keys back to. The visit only closes with it.
+          </p>
+          <input
+            name="exitCode" required inputMode="numeric" autoComplete="one-time-code" maxLength={4} value={exitCode}
+            onChange={(e) => setExitCode(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="····"
+            className="h-14 w-full rounded-[12px] border border-line-2 bg-white px-4 text-center font-mono text-[24px] tracking-[0.5em] outline-none focus:border-accent focus:ring-4 focus:ring-accent/10"
           />
         </label>
 
@@ -345,7 +375,7 @@ function Review({
           <Send size={16} /> Submit the visit
         </SubmitButton>
         <p className="t-small mt-3 leading-snug">
-          Once submitted, nothing here can be edited — that is the point of it. Anything you flagged becomes a question the owner answers.
+          Once submitted, nothing here can be edited — that is the point of it. Anything you flagged but did not send to the owner goes in the report, on the record.
         </p>
       </form>
     </div>
@@ -362,11 +392,12 @@ function QuoteFields({ quote, onQuote }: { quote: DraftQuote | null; onQuote: (q
   const [price, setPrice] = useState(quote?.price ? String(quote.price) : "");
   const [parts, setParts] = useState(quote?.parts ? String(quote.parts) : "");
   const [excluded, setExcluded] = useState(!!quote?.excluded);
+  const [slotToday, setSlotToday] = useState(!!quote?.slotToday);
   const n = Number(price) || 0;
   const pt = Number(parts) || 0;
   const fee = Math.round((n + pt) * FEE_RATE);
   const save = (over: Partial<Required<DraftQuote>> = {}) =>
-    onQuote({ service: service.trim(), price: n, parts: pt, excluded, ...over });
+    onQuote({ service: service.trim(), price: n, parts: pt, excluded, slotToday, ...over });
   const digits = (v: string) => v.replace(/\D/g, "").slice(0, 6);
   const rupee = "flex h-10 items-center rounded-[10px] border border-line-2 bg-white px-3 focus-within:border-accent";
   const box = "w-full min-w-0 bg-transparent pl-1 text-[14px] tabular-nums outline-none";
@@ -393,6 +424,10 @@ function QuoteFields({ quote, onQuote }: { quote: DraftQuote | null; onQuote: (q
         <input type="checkbox" checked={excluded} onChange={(e) => { setExcluded(e.target.checked); save({ excluded: e.target.checked }); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
         Not under Care+ — an appliance, structural or civil work, cosmetic, or damage from misuse, pests or weather
       </label>
+      <label className="mt-2 flex items-start gap-2 text-[12.5px] leading-snug text-text-2">
+        <input type="checkbox" checked={slotToday} onChange={(e) => { setSlotToday(e.target.checked); save({ slotToday: e.target.checked }); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+        <span><b className="font-semibold text-ink">Urban Company has a slot for it today</b> — I checked. Only small jobs that can be done on this visit go to the owner; waterproofing, civil work or a new appliance stays on the report.</span>
+      </label>
       {n > 0 && (
         <p className="t-small mt-1.5 tabular-nums">
           Owner sees {inr(n)} on Urban Company{pt ? ` + ${inr(pt)} parts` : ""} + {inr(fee)} ours ({Math.round(FEE_RATE * 100)}%) = <b className="text-ink">{inr(n + pt + fee)}</b>.
@@ -400,5 +435,30 @@ function QuoteFields({ quote, onQuote }: { quote: DraftQuote | null; onQuote: (q
         </p>
       )}
     </div>
+  );
+}
+
+/* Send a flagged, priced item to the owner now — then ring them. They have
+   an hour to approve or decline; if they approve, it is done on this visit. */
+function SendToOwner({ visitId, room, item, onSent }: { visitId: string; room: string; item: DraftItem; onSent: () => void }) {
+  const [state, act] = useActionState(async (prev: FieldState, fd: FormData) => {
+    const r = await sendIssue(prev, fd);
+    if (r.ok) onSent();
+    return r;
+  }, { ok: false } as FieldState);
+  const ready = !!item.quote?.service && (item.quote?.price ?? 0) > 0 && !!item.quote?.slotToday && (item.photos.length > 0 || item.videos.length > 0) && item.note.trim().length >= 8;
+  return (
+    <form action={act} className="mt-3 border-t border-line pt-3">
+      <input type="hidden" name="id" value={visitId} />
+      <input type="hidden" name="room" value={room} />
+      <input type="hidden" name="item" value={item.t} />
+      <SubmitButton className={cn("btn-sm w-full", !ready && "opacity-60")} pendingLabel="Sending…">
+        <Send size={14} /> Send to the owner — 1 hour to decide
+      </SubmitButton>
+      <p className="t-small mt-1.5 leading-snug">
+        {ready ? "Then ring them and explain. If they approve, it is done today, on this visit — or cancelled and refunded if it cannot be." : "Needs a photo or clip, a line about it, the Urban Company price, and a slot for it today."}
+      </p>
+      {state.error && <p className="mt-1.5 text-[12.5px] text-fail" role="alert">{state.error}</p>}
+    </form>
   );
 }

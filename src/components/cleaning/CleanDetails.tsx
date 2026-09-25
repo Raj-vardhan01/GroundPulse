@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Check, ClipboardList, DoorOpen, Info, KeyRound, Minus, Package, Sparkles, Users, X } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
+import { PhoneMore } from "@/components/ui/PhoneMore";
 import { cn } from "@/lib/cn";
 import { bhkKeys, bhkLabel, bringVsNeed, coverage, compare, crew, excluded, extraGroups, fulfilment, included, inr, notes, shotWall, tiers } from "@/lib/cleaning";
 import { BeforeAfter } from "./Shots";
@@ -70,9 +71,10 @@ export function CleanIncluded() {
         <div className="card bg-white p-6 shadow-card sm:p-7">
           <div className="text-[18px] font-medium tracking-[-0.02em]">What is included</div>
           <p className="t-small mt-1">Every line below is in the deep clean at the price you picked. Nothing here carries an asterisk.</p>
-          <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+          {/* a plain list on a phone — twelve boxes stacked is a screen and a half */}
+          <PhoneMore as="div" show={6} label="included" className="mt-5 grid divide-y divide-line sm:grid-cols-2 sm:gap-2.5 sm:divide-y-0">
             {included.map((i) => (
-              <div key={i.t} className="rounded-[12px] bg-paper p-3.5">
+              <div key={i.t} className="py-3 sm:rounded-[12px] sm:bg-paper sm:p-3.5">
                 <div className="flex items-start gap-2">
                   <span className="mt-[3px] grid h-[17px] w-[17px] shrink-0 place-items-center rounded-full bg-accent-soft text-accent-2"><Check size={10} strokeWidth={3} /></span>
                   <div className="min-w-0">
@@ -82,7 +84,7 @@ export function CleanIncluded() {
                 </div>
               </div>
             ))}
-          </div>
+          </PhoneMore>
         </div>
       </Reveal>
 
@@ -169,11 +171,13 @@ export function CleanWall() {
   return (
     <div>
       <Reveal>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {/* each one is a slider, so they cannot swipe sideways — a few,
+            then the rest behind a tap */}
+        <PhoneMore as="div" show={3} label="surfaces" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {shotWall.map((s, i) => (
             <BeforeAfter key={s.name} name={s.name} label={s.label} time={s.time} className={i === 0 ? "shadow-card" : "shadow-card"} />
           ))}
-        </div>
+        </PhoneMore>
       </Reveal>
       <Reveal delay={0.06}>
         <p className="t-small mt-4 max-w-[80ch] text-[13px]">
@@ -204,7 +208,7 @@ export function CleanCrew() {
             </p>
             <Link href="/access" className="btn btn-accent mt-6">Join the waitlist <ArrowRight size={16} /></Link>
           </div>
-          <ol className="grid gap-3 sm:grid-cols-2">
+          <ol className="swipe grid gap-3 [--swipe-bleed:1.5rem] sm:grid-cols-2">
             {roles.map((r, i) => (
               <li key={r.t} className="rounded-[14px] bg-paper p-5">
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-accent-soft font-mono text-[13px] text-accent-2">{i + 1}</span>
@@ -273,7 +277,7 @@ export function ComingBack() {
           </p>
         </div>
       </Reveal>
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="swipe grid gap-3 lg:grid-cols-3">
         {cols.map((c, i) => (
           <Reveal key={c.t} delay={i * 0.06}>
             <div className="card h-full bg-white p-6 shadow-card">
@@ -341,7 +345,7 @@ export function CleanPrices() {
             </div>
             <Link href="/access" className="btn btn-accent btn-sm shrink-0">Join the waitlist <ArrowRight size={15} /></Link>
           </div>
-          <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          <div className="swipe mt-5 grid gap-3 lg:grid-cols-3">
             {extraGroups.map((g) => (
               <div key={g.id} className="card bg-white p-5 shadow-card">
                 <div className="text-[15px] font-medium">{g.name}</div>

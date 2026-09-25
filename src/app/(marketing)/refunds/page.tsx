@@ -38,7 +38,7 @@ export default function Page() {
         <>Move or cancel a visit free until the day before it. Cancel, and your {ADV} advance comes back automatically. On the day itself, a visit cannot be moved or cancelled.</>,
         <>If we cancel, or do not turn up, everything you paid for that visit comes back — or we come on a new day free, your choice.</>,
         <>A yearly plan can be cancelled in full before its first visit. Once it has started, you can switch off renewal instead.</>,
-        <>A repair you paid for that is not carried out is refunded in full.</>,
+        <>A repair is decided within the hour during the visit and done on it. If it cannot be done that day, it is cancelled and everything you paid for it comes back — our fee too.</>,
         <>Refunds go back to the card, UPI or account you paid from.</>,
       ]}
     >
@@ -52,7 +52,8 @@ export default function Page() {
           ["Your report is ready", `The remaining ${BAL} is due and is not refundable — the visit has been done.`],
           ["A yearly plan, before its first visit", "Cancel it in full: the advance is refunded and its booked visits are cancelled."],
           ["A yearly plan, after it has started", "No refund for the plan year. Switch off renewal and it ends at the year's close."],
-          ["A repair you approved and paid for is not carried out", "Refunded in full."],
+          ["A repair you paid for cannot be done on the visit", "Cancelled, and everything you paid for it — our fee included — refunded automatically."],
+          ["The professional has not arrived within two hours of your approval", "The same: cancelled and refunded in full, automatically."],
           ["The launch-offer inspection", "Nothing was paid. Cancelling gives the free inspection back to you."],
         ]} />
       </Clause>
@@ -80,8 +81,10 @@ export default function Page() {
 
       <Clause id="repairs" n={4} title="Repairs">
         <Points n={4} items={[
-          <>A repair is paid in full when you approve it. Nothing is booked before that.</>,
-          <>If an approved repair cannot be arranged, or is not carried out, what you paid for it is refunded in full.</>,
+          <>A repair is sent to you live during the visit, and paid in full when you approve it, within the hour. Nothing is booked before that.</>,
+          <>If an approved repair cannot be done on the visit, it is cancelled and everything you paid for it — our fee included — is refunded automatically. Nobody comes back another day for it; you can approve it again on a later visit.</>,
+          <>If the professional has not arrived within two hours of your approval, the repair is cancelled and refunded in the same way, without you asking.</>,
+          <>Any cancellation or visiting charge Urban Company makes when a job is cancelled is ours to bear, never yours.</>,
           <>If a payment for a repair reaches us after the issue was already decided some other way, it is refunded in full.</>,
           <>Once a repair is completed and its after-photos are in your report, it is not refundable. If something is wrong with the work, tell us and we take it up with the professional and help put it right.</>,
           <>Where Care+ cover could no longer absorb a repair because another one used it first, the difference is shown to you as a bill before anything more is taken.</>,
