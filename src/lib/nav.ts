@@ -16,12 +16,14 @@ export const navLinks: NavEntry[] = [
   },
   { href: "/how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
+  /* the thing people most want to see before they trust us — one tap away */
+  { href: "/sample-report", label: "Sample report" },
   {
-    href: "/network",
+    href: "/about",
     label: "Company",
     items: [
+      { href: "/about", label: "About us", note: "Who we are, why we started, and our story" },
       { href: "/network", label: "Our inspectors", note: "How every inspector is vetted, and how to apply" },
-      { href: "/sample-report", label: "Sample report", note: "See exactly what lands in your inbox" },
     ],
   },
 ];

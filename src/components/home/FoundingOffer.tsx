@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Check, MessageCircle, Smartphone, Users } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
+import { PhoneMore } from "@/components/ui/PhoneMore";
+import { damageCover } from "@/lib/pricing";
 
 /**
  * Launch offer for the first ten owners.
@@ -17,7 +19,7 @@ const terms = [
   "Your whole visit recorded on a body camera, start to finish — and you get the full video",
   "We never open cupboards, wardrobes or lockers, and your keys go back the same day",
   "Cleaning and repairs aren't included. Any repair you approve is at the professional's actual cost, with no StillYours fee",
-  "If we damage something while we're inside, we repair or replace it at our cost",
+  `If we damage something while we're inside, we repair or replace it at our cost — up to ${damageCover.words} a visit`,
   "No card needed. It never turns into a paid plan unless you choose one",
 ];
 
@@ -37,16 +39,17 @@ export function FoundingOffer() {
             <p className="mt-3 text-[13px] text-white/50">The offer closes when ten owners have booked.</p>
           </div>
 
-          <ul className="grid content-start gap-2.5">
+          {/* one quiet list on a phone, a column of cards from sm up */}
+          <PhoneMore dark show={5} label="terms" className="grid content-start divide-y divide-white/10 rounded-[14px] bg-white/[0.05] px-4 sm:gap-2.5 sm:divide-y-0 sm:bg-transparent sm:px-0">
             {terms.map((t) => (
-              <li key={t} className="flex items-start gap-3 rounded-[12px] bg-white/[0.07] px-4 py-3 text-[14.5px]">
+              <li key={t} className="flex items-start gap-3 py-2.5 text-[14px] leading-snug sm:rounded-[12px] sm:bg-white/[0.07] sm:px-4 sm:py-3 sm:text-[14.5px]">
                 <span className="mt-[3px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/15"><Check size={11} strokeWidth={3} /></span>
                 {t}
               </li>
             ))}
-          </ul>
+          </PhoneMore>
 
-          <div className="grid gap-3 md:col-span-2 md:grid-cols-3">
+          <div className="swipe grid gap-3 [--swipe-bleed:1.5rem] md:col-span-2 md:grid-cols-3">
             <div className="rounded-[14px] bg-white/[0.07] p-5">
               <div className="flex items-center gap-2 text-[15px] font-medium"><MessageCircle size={16} /> What we ask in return</div>
               <p className="mt-2 text-[14px] leading-relaxed text-white/70">

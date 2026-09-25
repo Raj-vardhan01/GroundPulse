@@ -39,17 +39,17 @@ export function Pocket() {
         <div className="grid gap-4 md:grid-cols-[1.2fr_1fr] md:gap-5">
           {/* phone card */}
           <Reveal>
-            <div className="card relative min-h-[520px] overflow-hidden bg-beige p-7 sm:p-9">
+            <div className="card relative overflow-hidden bg-beige p-7 sm:min-h-[520px] sm:p-9">
               <div className="relative z-10 max-w-[30ch]">
                 <h2 id="pocket-title" className="t-1">Your home, in your pocket</h2>
                 <p className="t-body mt-3 text-text-2">Every flat, villa and plot — every report, every decision — from wherever you are. Approve a repair between meetings.</p>
                 <Link href="/owners" className="btn btn-accent btn-sm mt-6">For owners <ArrowRight size={15} /></Link>
               </div>
-              <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce} transition={{ duration: 1, delay: 0.2, ease: EASE }} className="absolute -bottom-10 right-4 w-[300px] sm:right-8 sm:w-[330px] md:-bottom-8">
+              <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce} transition={{ duration: 1, delay: 0.2, ease: EASE }} className="relative -mb-16 ml-auto mt-8 w-[min(300px,100%)] sm:absolute sm:-bottom-10 sm:right-8 sm:mb-0 sm:mt-0 sm:w-[330px] md:-bottom-8">
                 <div className="card shadow-float bg-white p-4"><PhoneDash /></div>
               </motion.div>
               {/* floating notification, Opendoor-style */}
-              <motion.div initial={{ opacity: 0, y: 12, x: 10 }} whileInView={{ opacity: 1, y: 0, x: 0 }} viewport={viewportOnce} transition={{ duration: 0.8, delay: 1.1, ease: EASE }} className="absolute right-3 top-[44%] z-20 flex items-center gap-3 rounded-[16px] bg-white/95 p-3 pr-4 shadow-float backdrop-blur sm:right-6 md:top-[40%]">
+              <motion.div initial={{ opacity: 0, y: 12, x: 10 }} whileInView={{ opacity: 1, y: 0, x: 0 }} viewport={viewportOnce} transition={{ duration: 0.8, delay: 1.1, ease: EASE }} className="absolute right-3 bottom-[15rem] z-20 flex sm:bottom-auto sm:top-[44%] items-center gap-3 rounded-[16px] bg-white/95 p-3 pr-4 shadow-float backdrop-blur sm:right-6 md:top-[40%]">
                 <span className="relative"><Mark size={34} /><span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-pass text-white"><Check size={9} strokeWidth={3} /></span></span>
                 <div><div className="text-[13.5px] font-medium">Your health score just went up!</div><div className="text-[12px] text-text-2">Ancestral Apartment · 71 → 84</div></div>
               </motion.div>

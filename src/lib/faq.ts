@@ -1,5 +1,7 @@
 /* Shared so the accordion and the FAQPage structured data can never drift
    apart — Google is quoting the same answers the page shows. */
+import { damageCover } from "@/lib/pricing";
+
 export type Faq = { q: string; a: string };
 
 export const faqs: Faq[] = [
@@ -20,7 +22,7 @@ export const faqs: Faq[] = [
   { q: "How do I know the inspector actually checked every room?", a: "When you sign up you list your rooms — bedrooms, bathrooms, kitchen, balconies, parking — and every one of them is filmed and photographed, with a final walkthrough of the whole home on video before the inspector leaves. Every photo carries its GPS location and time, so you can see where and when it was taken." },
   { q: "Can you record the whole visit?", a: "Yes, at no extra cost. Your inspector wears a body camera from the moment they walk in until they leave, and you get the whole video on a private link. Recordings stay private to you and are deleted after 90 days unless you ask us to keep them." },
   { q: "Can I watch the visit myself?", a: "Yes. Tick \"Call me live\" at sign-up and the inspector video-calls you at the start and the end of every visit — you, your parents or your caretaker can watch live from anywhere. Every room is on recorded video anyway." },
-  { q: "What if something is damaged during a visit?", a: "It's built so that can't happen quietly: one verified person, in only after you confirm, the whole visit on a body camera, every room on video, GPS and time on every photo, and an exit walkthrough before they leave. Watch the exit video in your report; if anything looks off, tell us on WhatsApp — any time until your next visit. If we broke something while we were inside, we repair or replace it at our cost. Inspectors never open cupboards, wardrobes or lockers, so keep cash, jewellery and documents locked away." },
+  { q: "What if something is damaged during a visit?", a: `It's built so that can't happen quietly: one verified person, in only after you confirm, the whole visit on a body camera, every room on video, GPS and time on every photo, and an exit walkthrough before they leave. Watch the exit video in your report; if anything looks off, tell us on WhatsApp — any time until your next visit. If we broke something while we were inside, we repair or replace it at our cost — up to ${damageCover.words} a visit. Inspectors never open cupboards, wardrobes or lockers, so keep cash, jewellery and documents locked away.` },
   { q: "Who actually does the visit right now?", a: "One of the two of us who started StillYours. We are doing every one of our first ten inspections ourselves — not handing them to anyone — so that we learn the job properly before we ask anyone else to do it." },
   { q: "What happens when you start taking on inspectors?", a: "Every inspector is referred, met in person, and checked: Aadhaar, address proof, police verification and two references we actually call. Their first two visits are done with one of us standing beside them. They wear the body camera on every visit, and the footage is uploaded and wiped from the device afterwards." },
   { q: "Does the inspector leave after an hour?", a: "No. The inspector stays for the entire visit, however long it takes to cover every room and item. We pay inspectors for the extra time — you never do." },

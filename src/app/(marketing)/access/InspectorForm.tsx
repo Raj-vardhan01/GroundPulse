@@ -74,10 +74,6 @@ export function InspectorForm() {
 
   return (
     <form onSubmit={submitApplication} className="mt-8 grid gap-5">
-      <p className="rounded-[12px] bg-beige px-4 py-3 text-[14px] leading-relaxed text-text-2">
-        We are not hiring yet — we are doing our first inspections ourselves. Leave your details and we will call you when we start.
-      </p>
-
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Your name">
           <input name="name" required autoComplete="name" className={input} placeholder="Full name" />

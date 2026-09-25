@@ -11,6 +11,7 @@ const routes: [path: string, priority: number, changeFrequency: MetadataRoute.Si
   ["/pricing", 0.9, "monthly"],
   ["/how-it-works", 0.8, "monthly"],
   ["/sample-report", 0.7, "monthly"],
+  ["/about", 0.6, "monthly"],
   ["/access", 0.7, "monthly"],
   ["/network", 0.6, "monthly"],
   ["/platform", 0.5, "monthly"],

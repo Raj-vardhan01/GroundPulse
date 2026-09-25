@@ -44,7 +44,7 @@ export function Pricing({ full }: { full?: boolean }) {
                 <div className="card flex h-full items-start gap-4 bg-white p-5 shadow-card">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><I size={19} /></span>
                   <div className="min-w-0">
-                    <div className="flex items-center justify-between gap-2"><span className="text-[16px] font-medium">{a.name}</span><span className="chip chip-accent">{a.from}</span></div>
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1"><span className="text-[16px] font-medium">{a.name}</span><span className="chip chip-accent">{a.from}</span></div>
                     <p className="t-small mt-1">{a.b}</p>
                   </div>
                 </div>
@@ -64,7 +64,7 @@ export function Pricing({ full }: { full?: boolean }) {
           </div>
           <p className="t-small">{tabNote[tab]}</p>
         </div>
-        <div className={cn("mt-6 grid gap-4 lg:gap-5", tab === "home" ? "lg:grid-cols-3" : tab === "clean" ? "lg:grid-cols-2" : "lg:grid-cols-[1fr_1.5fr]")}>
+        <div className={cn("swipe mt-6 grid gap-4 lg:gap-5", tab === "home" ? "lg:grid-cols-3" : tab === "clean" ? "lg:grid-cols-2" : "lg:grid-cols-[1fr_1.5fr]")}>
           {tab === "clean" && cleanTiers.map((t, i) => {
             const lead = i === 1;
             return (
@@ -169,7 +169,7 @@ export function Pricing({ full }: { full?: boolean }) {
               <div><div className="text-[18px] font-medium tracking-[-0.02em]">Add-ons — on any plan, any visit</div><div className="t-small">Book with a visit, or on their own in between. Cleaning prices are all-in and include the inspector — and cost less when added to an inspection you've already booked, because the inspector is already there.</div></div>
               <Link href="/cleaning" className="btn btn-white btn-sm shrink-0">See the cleaning in full <ArrowRight size={15} /></Link>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="swipe mt-5 grid gap-3 [--swipe-bleed:1.25rem] sm:grid-cols-3">
               {addOns.map((a) => {
                 const I = addOnIcon[a.id as keyof typeof addOnIcon];
                 return (

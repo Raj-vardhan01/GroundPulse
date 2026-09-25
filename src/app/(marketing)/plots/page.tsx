@@ -49,7 +49,7 @@ export default function Page() {
       <section className="wrap mt-6 grid gap-4 md:mt-8 lg:grid-cols-[1fr_1.2fr]">
         <Reveal><div className="card relative h-[380px] overflow-hidden bg-white shadow-card lg:h-full"><MapCard className="h-full !rounded-none !shadow-none" /><div className="absolute left-4 top-4 rounded-[12px] bg-white/95 px-3.5 py-2.5 text-[13px] shadow-card backdrop-blur"><span className="font-medium">Live in Bengaluru</span> · Yelahanka, Devanahalli, Whitefield, Sarjapur</div></div></Reveal>
         <Reveal delay={0.08}>
-          <ol className="grid gap-3 sm:grid-cols-2">
+          <ol className="swipe grid gap-3 sm:grid-cols-2">
             {steps.map(({ I, t, b }, i) => <li key={t} className="card bg-white p-5 shadow-card"><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent"><I size={18} /></span><span className="text-[13px] font-medium text-text-2">0{i + 1}</span></div><div className="mt-4 text-[16px] font-medium">{t}</div><p className="t-small mt-1.5 text-[14px]">{b}</p></li>)}
           </ol>
         </Reveal>
@@ -58,7 +58,7 @@ export default function Page() {
       <section className="section">
         <div className="wrap">
           <SectionHead title="Every worry you have about that plot" lede="We've heard all of these from owners 2,000 km away. Each one is a line on the checklist." />
-          <div className="mt-10 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="swipe mt-10 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {worries.map(([t, b], i) => <Reveal key={t} delay={i * 0.04}><div className="card h-full bg-white p-6 shadow-card"><div className="text-[16px] font-medium leading-snug">"{t}"</div><p className="t-small mt-2 text-[14px]">{b}</p></div></Reveal>)}
           </div>
         </div>

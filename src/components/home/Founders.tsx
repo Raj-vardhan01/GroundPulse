@@ -1,5 +1,6 @@
 import { PenLine, Quote } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
+import { PhoneMore } from "@/components/ui/PhoneMore";
 import { SectionHead } from "@/components/shared/SectionHead";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/cn";
@@ -77,7 +78,7 @@ export function Founders() {
                             {f.quote}
                           </p>
                           <div className={cn("my-7 h-px w-full", dark ? "bg-white/12" : "bg-line")} />
-                          <div className="space-y-4">
+                          <PhoneMore as="div" show={1} label="paragraphs" more="Read the whole story" dark={dark} className="space-y-4">
                             {f.story.map((p, k) => (
                               <p
                                 key={k}
@@ -89,7 +90,7 @@ export function Founders() {
                                 {p}
                               </p>
                             ))}
-                          </div>
+                          </PhoneMore>
                           <div className="mt-8 flex items-center gap-4">
                             <span className={cn("hand -rotate-3 text-[30px] leading-none", dark ? "text-white" : "text-accent-2")}>
                               {f.sign}

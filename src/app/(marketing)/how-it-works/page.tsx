@@ -51,10 +51,10 @@ export default function Page() {
       <section className="section bg-white">
         <div className="wrap">
           <SectionHead eyebrow="The checklist" title="What the inspector actually checks." lede="A structured, room-by-room checklist so every inspection is comparable with the last one — not a walk-around and a vibe." />
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
             {rooms.map(({ I, t, b }, i) => (
               <Reveal key={t} delay={i * 0.04}>
-                <div className="card h-full bg-paper p-5 shadow-card"><span className="grid h-10 w-10 place-items-center rounded-full bg-white text-accent shadow-card"><I size={18} /></span><div className="mt-4 text-[15.5px] font-medium">{t}</div><div className="t-small mt-1">{b}</div></div>
+                <div className="card h-full bg-paper p-4 shadow-card sm:p-5"><span className="grid h-9 w-9 place-items-center rounded-full bg-white text-accent shadow-card sm:h-10 sm:w-10"><I size={17} /></span><div className="mt-3 text-[14.5px] font-medium leading-snug sm:mt-4 sm:text-[15.5px]">{t}</div><div className="t-small mt-1 text-[12.5px] leading-snug sm:text-[14px]">{b}</div></div>
               </Reveal>
             ))}
           </div>

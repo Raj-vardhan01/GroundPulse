@@ -18,7 +18,30 @@ export function Compare() {
       <div className="wrap">
         <SectionHead title={<span id="compare-title">Still Yours vs. the usual way</span>} lede="Every workaround is missing something. Here's the whole picture, side by side." />
         <Reveal className="mt-10 md:mt-14">
-          <div className="grid gap-4 md:grid-cols-[180px_1fr_1fr] md:gap-0">
+          {/* a phone gets the same comparison as a two-column table — each
+              answer next to the one it is being compared with */}
+          <div className="overflow-hidden rounded-[16px] border border-line bg-white md:hidden">
+            <div className="grid grid-cols-2 text-[13px] font-semibold">
+              <div className="bg-accent-tint px-3.5 py-3 text-accent-2">Still Yours</div>
+              <div className="px-3.5 py-3 text-text-2">The usual way</div>
+            </div>
+            {rows.map((r) => (
+              <div key={r.k} className="border-t border-line">
+                <div className="grid grid-cols-2">
+                  <div className="bg-accent-tint px-3.5 pb-3 pt-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-3">{r.k}</div>
+                    <div className="mt-1 text-[13.5px] font-medium leading-snug text-ink">{r.a}</div>
+                  </div>
+                  <div className="px-3.5 pb-3 pt-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-transparent" aria-hidden="true">{r.k}</div>
+                    <div className="mt-1 text-[13.5px] leading-snug text-text-2">{r.b}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:grid md:grid-cols-[180px_1fr_1fr] md:gap-0">
             <div className="hidden md:block" />
             <div className="hidden md:block px-5 pb-3"><Logo /></div>
             <div className="hidden md:block px-5 pb-3 text-[18px] font-medium text-text-2">The usual way</div>

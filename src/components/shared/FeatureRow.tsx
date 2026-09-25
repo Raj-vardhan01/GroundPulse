@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 export function FeatureRow({ n, k, title, body, children, flip, bullets }: { n?: string; k?: string; title: React.ReactNode; body: React.ReactNode; children: React.ReactNode; flip?: boolean; bullets?: string[] }) {
   return (
     <Reveal>
-      <div className={cn("grid items-center gap-8 lg:grid-cols-12 lg:gap-12", flip && "lg:[&>*:first-child]:order-2")}>
+      <div className={cn("grid items-center gap-8 lg:grid-cols-12 lg:gap-12 [&>*]:min-w-0", flip && "lg:[&>*:first-child]:order-2")}>
         <div className="lg:col-span-4">
           {(n || k) && <div className="flex items-center gap-3">{n && <span className="text-[13px] font-semibold text-accent">{n}</span>}{k && <span className="t-label">{k}</span>}</div>}
           <h3 className="t-2 mt-4 max-w-[16ch]">{title}</h3>

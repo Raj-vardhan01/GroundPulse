@@ -52,7 +52,7 @@ export default function Page() {
 
       <Clause id="collect" n={2} title="What we collect">
         <Table head={["Whose, and what", "Details"]} rows={[
-          ["Owners — your account", "From Google sign-in: your name, email address and Google account ID — never your Google password. From you: your mobile number, the city or country you live in, your time zone, and your notification preferences."],
+          ["Owners — your account", "From Google sign-in: your name, email address and Google account ID — never your Google password. If you sign up with email instead: your email address and a password, which we keep only as a one-way salted hash — nobody, including us, can read it back. From you: your mobile number, the city or country you live in, your time zone, and your notification preferences."],
           ["Owners — your properties", "Addresses, map pins, size and rooms, access notes, who holds the keys, and each visit's entry code."],
           ["Visits and reports", "Photographs and video of the property, the time and — where the phone can tell — the location they were taken at, the checklist, the inspector's notes, and the inspector's location when checking in at the door."],
           ["Decisions and payments", "Bookings, approvals and declines with your reasons, ratings, support messages, bills, and payment references from Razorpay. We never receive your card number, UPI PIN or bank login."],

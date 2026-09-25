@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Reveal } from "@/components/ui/Reveal";
@@ -32,9 +33,9 @@ const theirs: Item[] = [
   { t: "Hope it got done. Repeat next quarter.", kind: "white" },
 ];
 
-function Column({ title, items, accent }: { title: React.ReactNode; items: Item[]; accent?: boolean }) {
+function Column({ title, items, accent, className }: { title: React.ReactNode; items: Item[]; accent?: boolean; className?: string }) {
   return (
-    <div className={cn("border-l pl-4 sm:pl-5", accent ? "border-line-2" : "border-line")}>
+    <div className={cn("border-l pl-4 sm:pl-5", accent ? "border-line-2" : "border-line", className)}>
       <div className={cn("mb-4 text-[22px] leading-none tracking-[-0.02em] sm:text-[26px]", accent ? "serif text-ink" : "font-medium text-text-2")}>{title}</div>
       <motion.ol className="space-y-2" variants={{ show: { transition: { staggerChildren: 0.07 } }, hidden: {} }} initial="hidden" whileInView="show" viewport={viewportOnce}>
         {items.map((it, i) => {
@@ -65,6 +66,9 @@ function Column({ title, items, accent }: { title: React.ReactNode; items: Item[
 }
 
 export function Timeline() {
+  /* On a phone the two columns would stack into one very long list — so
+     it shows one at a time, and the other is a tap away. */
+  const [side, setSide] = useState<"ours" | "theirs">("ours");
   return (
     <section className="section overflow-hidden" aria-labelledby="timeline-title">
       <div className="wrap grid gap-12 lg:grid-cols-12 lg:gap-8">
@@ -95,8 +99,16 @@ export function Timeline() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:col-span-7 lg:gap-8">
-          <Column title="Still Yours" items={ours} accent />
-          <Column title="Traditional" items={theirs} />
+          <div className="grid grid-cols-2 gap-1 rounded-[14px] bg-beige p-1 sm:hidden" role="tablist" aria-label="Which way">
+            {([["ours", "Still Yours"], ["theirs", "Traditional"]] as const).map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={side === k} onClick={() => setSide(k)}
+                className={cn("h-10 rounded-[11px] text-[14px] font-medium transition", side === k ? "bg-white text-ink shadow-card" : "text-text-2")}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <Column title="Still Yours" items={ours} accent className={cn(side !== "ours" && "max-sm:hidden")} />
+          <Column title="Traditional" items={theirs} className={cn(side !== "theirs" && "max-sm:hidden")} />
         </div>
       </div>
     </section>

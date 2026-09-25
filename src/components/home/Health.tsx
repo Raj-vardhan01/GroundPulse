@@ -80,7 +80,7 @@ export function Health() {
                       <div className="min-w-0"><div className="truncate text-[16px] font-semibold">{p.n}</div><div className="t-small mt-0.5 truncate">{p.a}</div></div>
                       <HealthRing score={p.s} size={56} stroke={5} delay={0.3 + i * 0.15} />
                     </div>
-                    <div className="mt-4 flex items-center gap-2"><span className="chip">Inspected {p.last}</span>{p.open > 0 ? <span className={cn("chip", p.open > 1 ? "chip-warn" : "chip-fail")}>{p.open} open</span> : <span className="chip chip-pass">No issues</span>}</div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2"><span className="chip">Inspected {p.last}</span>{p.open > 0 ? <span className={cn("chip", p.open > 1 ? "chip-warn" : "chip-fail")}>{p.open} open</span> : <span className="chip chip-pass">No issues</span>}</div>
                   </div>
                 </article>
               </Reveal>

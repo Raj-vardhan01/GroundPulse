@@ -177,9 +177,34 @@ body {
   .on-dark .chip { background: rgba(255,255,255,.12); color: #fff; }
 
   /* Horizontal scroll / carousel ---------------------------------- */
-  .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; scrollbar-width: none; scroll-behavior: smooth; }
+  .hscroll { display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; padding-bottom: 8px; scrollbar-width: none; scroll-behavior: smooth; }
   .hscroll::-webkit-scrollbar { display: none; }
   .hscroll > * { scroll-snap-align: start; flex: 0 0 auto; }
+  /* Every sideways scroller here is sideways only. overflow-x: auto quietly
+     makes overflow-y auto too, and a box that can scroll a few pixels up and
+     down catches the finger — the page stops dead mid-fling. With y hidden,
+     every up-and-down swipe goes straight to the page. */
+
+  /* Side by side on a phone. A row of cards that would stack into a long
+     scroll swipes sideways instead — each card most of the screen wide, the
+     next one peeking in so it is plain there is more. It bleeds to the edge
+     of whatever it sits in: the page gutter by default, or --swipe-bleed
+     inside a padded card. From sm up the element's own grid takes over. */
+  @media (max-width: 639px) {
+    .swipe {
+      display: flex !important; gap: 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; min-width: 0;
+      /* its width comes from where it sits, never from the row of cards in
+         it — otherwise the cards' combined width props the page open */
+      contain: inline-size;
+      margin-inline: calc(var(--swipe-bleed, var(--gutter)) * -1);
+      padding: 14px var(--swipe-bleed, var(--gutter)) 10px;
+      scroll-padding-inline: var(--swipe-bleed, var(--gutter));
+      scrollbar-width: none; overscroll-behavior-x: contain; overscroll-behavior-y: auto;
+    }
+    .swipe::-webkit-scrollbar { display: none; }
+    .swipe > * { flex: 0 0 84%; scroll-snap-align: start; min-width: 0; }
+    .swipe-narrow > * { flex-basis: 70%; }
+  }
   .arrow-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line-2); transition: box-shadow .2s, opacity .2s; }
   .arrow-btn:hover { box-shadow: 0 0 0 1px var(--ink); }
   .arrow-btn:disabled { opacity: .35; }
@@ -205,7 +230,7 @@ body {
   @media (max-width: 400px) {
     :root { --gutter: 14px; }
     .wrap > *, .wrap > * > *, .wrap > * > * > * { min-width: 0; }
-    .panel { overflow-x: auto; min-width: 0; scrollbar-width: none; }
+    .panel { overflow-x: auto; overflow-y: hidden; min-width: 0; scrollbar-width: none; }
     .panel::-webkit-scrollbar { display: none; }
   }
 }

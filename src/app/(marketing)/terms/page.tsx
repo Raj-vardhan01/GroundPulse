@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bullets, Clause, LegalPage, Points, type Toc } from "@/components/legal/Legal";
 import { site } from "@/lib/site";
-import { carePlusCover, inr } from "@/lib/pricing";
+import { carePlusCover, damageCover, inr } from "@/lib/pricing";
 import { LIMIT, terms as offerTerms } from "@/lib/offer";
 import { LEAD_DAYS, WINDOW_DAYS } from "@/lib/format";
 import { DEPOSIT, hoursWords, OVERTIME } from "@/lib/payout";
@@ -66,7 +66,7 @@ export default function Page() {
         <>Nobody goes in until you confirm, and we never open cupboards, wardrobes, lockers, safes or drawers.</>,
         <>You pay {ADV} when you book and the rest when the report is ready. Move or cancel free until the day before — the advance comes back to you.</>,
         <>Nothing is repaired without your yes on the exact amount. A repair is Urban Company&apos;s price for the same service plus {FEE} — and no fee at all on repairs your Care+ cover pays for.</>,
-        <>If we damage something while we are inside, we repair or replace it at our cost.</>,
+        <>If we damage something while we are inside, we repair or replace it at our cost — up to {inr(damageCover.perVisit)} for any one visit.</>,
         <>Your photos and recordings are yours and never sold. Recordings are deleted after 90 days unless you ask us to keep them.</>,
       ]}
     >
@@ -108,7 +108,7 @@ export default function Page() {
       <Clause id="account" n={4} title="Your account">
         <Points n={4} items={[
           <>You must be 18 or older and able to enter a binding contract to use the Service.</>,
-          <>Owners sign in with their Google account and give us a mobile number we can reach them on — the inspector calls it from the door. Inspectors sign in with their registered mobile number and a one-time code sent to it. Keep your Google account and phone secure, and never share a code with anyone — we will never ask you for one.</>,
+          <>Owners sign in with their Google account, or with their email address and a password, and give us a mobile number we can reach them on — the inspector calls it from the door. Inspectors sign in with their registered mobile number and a one-time code sent to it. Keep your Google account, password and phone secure, and never share a code with anyone — we will never ask you for one.</>,
           <>The details you give us — your name, contact details and your properties — must be accurate and kept up to date.</>,
           <>You are responsible for what happens under your account. Tell us straight away if you think someone else has used it.</>,
         ]} />
@@ -132,6 +132,7 @@ export default function Page() {
           <>We never open cupboards, wardrobes, lockers, safes, drawers or any locked storage. We handle nothing beyond what a check needs — running a tap, flipping a switch, opening a window latch.</>,
           <>We never keep your keys overnight. They go back to your caretaker, your society office or whoever you nominate, on the same day.</>,
           <>We never let anyone else into the property. If you want a caretaker, neighbour or relative present, tell us and we will wait for them.</>,
+          <>Every visit has two codes in your app: the entry code, given at the door, and the completion code, given back at the end by you or whoever takes the keys. A visit only closes with the completion code, so you always know the keys are back in the right hands.</>,
           <>Photographs are taken live on the inspector&apos;s camera, with the time and — where the phone can tell — the place. None can come from a gallery.</>,
         ]} />
       </Clause>
@@ -168,9 +169,11 @@ export default function Page() {
         <Points n={10} items={[
           <>A flagged issue is a question, not an invoice. Each one comes to you with the room, what was found, and the inspector&apos;s photos and video.</>,
           <><b>Price.</b> Where the inspector can price a repair, the price is what Urban Company charges for the same service on the day, as checked by the inspector, plus any parts at their rate card, plus a StillYours fee of {FEE}. You see every part of that before you decide. On a launch-offer visit there is no StillYours fee; on a repair covered by Care+ there is none either (clause 11).</>,
-          <><b>Your decision.</b> Nothing is repaired, bought or scheduled without your approval of the exact amount. You approve by paying it. You may decline with a reason — the issue is then closed, nobody is sent, and your decision and reason are kept on record.</>,
-          <><b>The work.</b> Approved repairs are carried out by independent, rated professionals on a day you choose, with your inspector present. The inspector records after-photos from the same angle and a completion note, and you can rate the work.</>,
-          <>The professional is responsible for the quality of their work. If something is wrong with it, tell us and we will take it up with them and help put it right. If an approved repair cannot be arranged or is not carried out, we refund what you paid for it.</>,
+          <><b>Decided live.</b> When the inspector finds something that can be fixed, they send it to you from the property — the photos, what they saw and the price — and can ring you to explain. You have one hour to decide. We only send repairs that can be done on the visit: smaller jobs Urban Company has a slot for that day. Larger work — waterproofing, civil work, a new appliance — is recorded in your report.</>,
+          <><b>Your decision.</b> Nothing is repaired, bought or scheduled without your approval of the exact amount. You approve by paying it. You may decline with a reason — nothing is done, and your decision and reason are kept on record. If you make no decision within the hour, or the visit closes first, it closes without a repair and stays on your report.</>,
+          <><b>The work.</b> An approved repair is carried out on the same visit by an independent, rated professional, with your inspector there. The inspector records after-photos from the same angle and a completion note, and you can rate the work.</>,
+          <><b>If it cannot be done that day</b> — or the professional has not arrived within two hours of your approval — the repair is cancelled and everything you paid for it, our fee included, is refunded to you automatically. We do not come back another day for it; approve it again on a later visit if you still want it. Any cancellation charge Urban Company makes is ours, never yours.</>,
+          <>Anything flagged that was not sent to you for a decision during the visit is recorded in your report only. The professional is responsible for the quality of their work; if something is wrong with it, tell us and we take it up with them and help put it right.</>,
           <>StillYours is not affiliated with Urban Company. We use its published prices only as a reference so that you can see a price is fair. &quot;Urban Company&quot; is a trademark of its owner.</>,
         ]} />
       </Clause>
@@ -210,7 +213,7 @@ export default function Page() {
 
       <Clause id="damage" n={14} title="If we damage something">
         <p>
-          If we break something while we are inside — a tap, a tile, a fitting, a pipe — we repair or replace it at our cost, without argument about whose fault it was.
+          If we break something while we are inside — a tap, a tile, a fitting, a pipe — we repair or replace it at our cost, without argument about whose fault it was — up to {inr(damageCover.perVisit)} in all for any one visit.
           This does not extend to anything already broken before we arrived, ordinary wear and tear, or damage caused by weather, tenants, neighbours or anyone else with access to the property.
           The visit recording is there so that neither of us has to guess. Tell us within 30 days of the visit.
         </p>
@@ -281,6 +284,7 @@ export default function Page() {
           <>A day&apos;s earnings are paid to the UPI ID on your profile by the end of that day.</>,
           <>You check in only at the property, with the owner&apos;s entry code and a photo of the door. You walk every item honestly, photograph and film what the checklist asks, and never use a photo you did not take there and then.</>,
           <>Where you price a repair, you enter Urban Company&apos;s price for that service on the day, and parts at their rate card, truthfully. You never accept money, gifts or commission from an owner or a professional.</>,
+          <>You send an owner only repairs Urban Company has a slot for that day. Once one is approved you book it on Urban Company straight away, stay while it is done, mark when the professional arrives, and record the after-photo. If it cannot be done on the visit, you cancel it in the app — the owner is refunded — and cancel the booking on Urban Company too.</>,
           <>You never open cupboards, wardrobes, lockers or any locked storage, never keep an owner&apos;s keys overnight, and never let anyone into a property.</>,
           <>Addresses, entry codes, photos and everything else you learn on a job are confidential. They stay in the app and are never shared, copied or posted anywhere.</>,
           <>The body camera is StillYours property, issued against a signed receipt. You wear it for the whole of every visit; footage is uploaded after each visit and wiped from the device. If it is lost or damaged, its replacement cost of ₹9,000 is deducted from your fees.</>,
